@@ -1,0 +1,32 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deliveryDate", "order": "ASCENDING" },
+        { "fieldPath": "createTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "deliveryDate", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "orders", "fieldPath": "items", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "customerAddress", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "shippingNotes", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "paymentNotes", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "notes", "indexes": [] },
+    { "collectionGroup": "orders", "fieldPath": "orderUnitCount", "indexes": [] },
+    { "collectionGroup": "products", "fieldPath": "description", "indexes": [] },
+    { "collectionGroup": "customers", "fieldPath": "address", "indexes": [] },
+    { "collectionGroup": "settings", "fieldPath": "weekday", "indexes": [] },
+    { "collectionGroup": "capacityUsage", "fieldPath": "quantity", "indexes": [] }
+  ]
+}

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金家訂單管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.css">
+    <script src="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.js"></script>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="h-full flex flex-col overflow-hidden">
+
+    <!-- 可視範圍量測探針（iframe 內嵌時用來偵測被瀏覽器介面裁切的高度） -->
+    <div id="viewportProbe" aria-hidden="true"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-md z-20 flex-none">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-3">
+                <div class="flex space-x-2">
+                    <button onclick="showSection('customer', this)" id="nav-customer" class="nav-item px-5 py-3 rounded-lg text-base font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
+                        <i class="fas fa-user mr-2"></i><span class="hidden lg:inline">客戶</span>
+                    </button>
+                    <button onclick="showSection('date', this)" id="nav-date" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-calendar mr-2"></i><span class="hidden lg:inline">日期</span>
+                    </button>
+                    <button onclick="showSection('gift', this)" id="nav-gift" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-cookie mr-2"></i><span class="hidden lg:inline">伴手禮</span>
+                    </button>
+                    <button onclick="showSection('cake', this)" id="nav-cake" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-birthday-cake mr-2"></i><span class="hidden lg:inline">喜餅</span>
+                    </button>
+                    <button onclick="showSection('giftbox', this)" id="nav-giftbox" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-box mr-2"></i><span class="hidden lg:inline">禮盒</span>
+                    </button>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="showSection('search', this)" id="nav-search" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-search mr-2"></i><span class="hidden lg:inline">搜尋</span>
+                    </button>
+                    <button onclick="showSection('settings', this)" id="nav-settings" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-cog mr-2"></i><span class="hidden lg:inline">設定</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-gray-50 p-4 relative">
+
+        <!-- 客戶資訊頁 -->
+        <section id="customer" class="content-section active max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                <i class="fas fa-user-edit mr-3 text-blue-500"></i>客戶資訊
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="customer-ac-wrap">
+                    <label class="block text-base font-medium text-gray-700 mb-2">客戶姓名</label>
+                    <div class="name-title-row">
+                        <input type="text" id="customerName" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg name-title-input" placeholder="請輸入姓名" autocomplete="off">
+                        <div class="name-title-group" id="nameTitleGroup">
+                            <button type="button" class="name-title-btn" data-title="先生" onclick="toggleNameTitle(this)">先生</button>
+                            <button type="button" class="name-title-btn" data-title="小姐" onclick="toggleNameTitle(this)">小姐</button>
+                        </div>
+                    </div>
+                    <div id="customerAcList" class="customer-ac-list"></div>
+                </div>
+                <div class="customer-ac-wrap">
+                    <label class="block text-base font-medium text-gray-700 mb-2">客戶電話</label>
+                    <input type="tel" id="customerPhone" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg" placeholder="09xx-xxx-xxx" autocomplete="off">
+                    <div id="customerAcListPhone" class="customer-ac-list"></div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-base font-medium text-gray-700 mb-2">客戶類型</label>
+                <div class="grove-btn-group">
+                    <button id="customerNormal" class="active" onclick="selectCustomerType(this, false)">一般客戶</button>
+                    <button id="customerCompany" onclick="selectCustomerType(this, true)">企業客戶</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-base font-medium text-gray-700 mb-2">配送方式</label>
+                    <div class="grove-btn-group">
+                        <button id="deliveryHome" data-value="外送" class="active" onclick="selectDeliveryType(this, '外送')">外送</button>
+                        <button id="deliveryShipping" data-value="寄貨" onclick="selectDeliveryType(this, '寄貨')">寄貨</button>
+                        <button id="deliveryPickup" data-value="自取" onclick="selectDeliveryType(this, '自取')">自取</button>
+                    </div>
+                    <input type="hidden" id="deliveryTypeValue" value="外送">
+                </div>
+                <div id="shippingFeeGroup">
+                    <label class="block text-base font-medium text-gray-700 mb-2">運費設定</label>
+                    <div class="grove-btn-group">
+                        <button id="freeShipping" data-value="free" class="active" onclick="selectShippingFee(this, 'free')">免運</button>
+                        <button id="chargeShipping" data-value="charge" onclick="selectShippingFee(this, 'charge')">收取運費</button>
+                    </div>
+                    <input type="hidden" id="shippingOption" value="free">
+                </div>
+            </div>
+
+            <div id="shippingFeeInput" style="display: none;" class="mb-6">
+                <label class="block text-base font-medium text-gray-700 mb-2">運費金額</label>
+                <input type="number" id="shippingFee" placeholder="請輸入運費金額" min="0" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" onchange="updateOrderTotal()">
+            </div>
+
+            <div class="border-t border-gray-100 my-6"></div>
+
+            <h3 class="text-lg font-semibold mb-4 text-gray-700">收件人資訊 <span class="text-sm font-normal text-gray-400">(若同客戶可省略)</span></h3>
+            <div id="recipientInfoGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                <input type="text" id="recipientName" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="收件人姓名">
+                <input type="tel" id="recipientPhone" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="收件人電話">
+            </div>
+            <div class="mb-8">
+                <input type="text" id="customerAddress" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="請輸入完整地址">
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="clearCustomerForm()" class="flex-1 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-300 transition">清空資料</button>
+                <button onclick="saveCustomer()" class="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2">
+                    儲存並下一步 <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- 日期選擇頁 -->
+        <section id="date" class="content-section max-w-4xl mx-auto min-h-full flex flex-col">
+            <div class="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col">
+                <h2 class="text-2xl font-bold mb-2 text-gray-800 flex items-center">
+                    <i class="far fa-calendar-alt mr-3 text-blue-500"></i>選擇交貨日期
+                </h2>
+                <p id="selected-date-display" class="text-gray-500 mb-6">目前尚未選擇日期</p>
+
+                <div class="flex-1 flex flex-col max-w-2xl mx-auto w-full">
+                    <div class="flex justify-between items-center mb-6 px-4 py-2 bg-gray-50 rounded-xl">
+                        <button onclick="changeMonth(-1)" class="p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition">
+                            <i class="fas fa-chevron-left text-xl"></i>
+                        </button>
+                        <h3 id="calendar-month-year" class="text-2xl font-bold text-gray-800 tracking-wide">2023年 11月</h3>
+                        <button onclick="changeMonth(1)" class="p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition">
+                            <i class="fas fa-chevron-right text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-2 mb-4 text-center">
+                        <div class="text-red-500 font-bold">日</div>
+                        <div class="text-gray-500 font-bold">一</div>
+                        <div class="text-gray-500 font-bold">二</div>
+                        <div class="text-gray-500 font-bold">三</div>
+                        <div class="text-gray-500 font-bold">四</div>
+                        <div class="text-gray-500 font-bold">五</div>
+                        <div class="text-green-600 font-bold">六</div>
+                    </div>
+
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-3 text-lg flex-1 align-start"></div>
+
+                    <!-- 隱藏的原生日期選擇器，用於保持兼容性 -->
+                    <input type="date" id="deliveryDate" style="display: none;">
+                </div>
+
+                <div class="mt-6 pt-6 border-t">
+                    <button id="btn-confirm-date" onclick="confirmDateSelection()" class="w-full py-4 bg-gray-300 text-white rounded-xl font-bold text-lg transition shadow-sm cursor-not-allowed" disabled>
+                        請先選擇日期
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 伴手禮頁 -->
+        <section id="gift" class="content-section max-w-6xl mx-auto pb-24">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">伴手禮選購</h2>
+            <div id="giftProducts" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">載入中...</div>
+        </section>
+
+        <!-- 喜餅頁 -->
+        <section id="cake" class="content-section max-w-6xl mx-auto pb-24">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">喜餅選購</h2>
+            <div id="cakeProducts" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">載入中...</div>
+        </section>
+
+        <!-- 禮盒頁 -->
+        <section id="giftbox" class="content-section max-w-6xl mx-auto min-h-full flex flex-col">
+            <!-- 步驟1: 選擇盒裝規格 -->
+            <div id="giftboxStep1" class="giftbox-step active flex-1 flex flex-col items-center justify-center">
+                <h2 class="text-3xl font-bold mb-10 text-gray-800">請選擇禮盒規格</h2>
+                <div class="grid grid-cols-3 gap-8 w-full max-w-3xl">
+                    <button onclick="selectGiftboxSize(6)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
+                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">6入</span>
+                    </button>
+                    <button onclick="selectGiftboxSize(8)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
+                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">8入</span>
+                    </button>
+                    <button onclick="selectGiftboxSize(10)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
+                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">10入</span>
+                    </button>
+                    <button onclick="selectGiftboxSize(12)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
+                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">12入</span>
+                    </button>
+                    <button onclick="selectGiftboxSize(15)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
+                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">15入</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 步驟2: 選擇商品組合 -->
+            <div id="giftboxStep2" class="giftbox-step flex-col h-full" style="display: none;">
+                <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm">
+                    <h2 id="giftboxStep2Title" class="text-2xl font-bold text-gray-800">自選禮盒內容</h2>
+                    <div class="giftbox-progress bg-blue-50 px-6 py-2 rounded-lg border-l-4 border-blue-500 transition-colors duration-300">
+                        <span class="text-gray-600">目前進度: </span>
+                        <span id="selectedCount" class="font-bold text-2xl text-blue-600">0</span>
+                        <span class="text-gray-400 text-lg"> / </span>
+                        <span id="targetCount" class="font-bold text-gray-600 text-lg">6</span>
+                    </div>
+                </div>
+                <div id="giftboxProducts" class="giftbox-product-list bg-white border rounded-xl p-4 mb-4">載入中...</div>
+                <div class="flex gap-4">
+                    <button onclick="backToStep1()" class="px-8 py-3 bg-gray-200 rounded-xl font-bold text-gray-700">重選規格</button>
+                    <button id="proceedStep3" onclick="proceedToStep3()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-lg">下一步</button>
+                </div>
+            </div>
+
+            <!-- 步驟3: 設定組數和備註 -->
+            <div id="giftboxStep3" class="giftbox-step flex-col" style="display: none;">
+                <div class="giftbox-confirm-container">
+                    <div class="giftbox-confirm-header">
+                        <div class="giftbox-confirm-icon">
+                            <i class="fas fa-box-open"></i>
+                        </div>
+                        <div class="giftbox-confirm-title">
+                            <h2>完成訂購</h2>
+                            <span id="giftboxSizeLabel">6粒裝禮盒</span>
+                        </div>
+                    </div>
+
+                    <div class="giftbox-summary-card">
+                        <h4><i class="fas fa-list-check"></i> 禮盒內容總覽</h4>
+                        <div id="giftboxSummary" class="giftbox-summary-list"></div>
+                    </div>
+
+                    <div class="giftbox-form-section">
+                        <div class="giftbox-form-group">
+                            <label><i class="fas fa-layer-group"></i> 需要幾組禮盒</label>
+                            <input type="number" id="giftboxQuantity" value="1" min="1" oninput="updateGiftboxPrice()">
+                        </div>
+                        <div class="giftbox-form-group">
+                            <label><i class="fas fa-sticky-note"></i> 備註</label>
+                            <input type="text" id="giftboxNotes" placeholder="禮盒備註（選填）">
+                        </div>
+                    </div>
+
+                    <div class="giftbox-special-price-section">
+                        <label><i class="fas fa-tag"></i> 特價設定（每盒）</label>
+                        <input type="number" id="giftboxSpecialPriceInput" placeholder="留空使用原價" min="0" oninput="updateGiftboxPrice()" style="width: 100%; padding: 12px 16px; border: 2px solid #bfdbfe; border-radius: 10px; background: white; outline: none;">
+                        <div id="giftboxPriceComparison" style="display: none;" class="giftbox-price-comparison">
+                            <span class="original">原價：NT$ <span id="giftboxOriginalTotalText">0</span></span>
+                            <span class="special">特價：NT$ <span id="giftboxSpecialTotalText">0</span></span>
+                        </div>
+                    </div>
+
+                    <div class="giftbox-action-buttons">
+                        <button onclick="backToStep2()" class="btn-back"><i class="fas fa-arrow-left"></i> 上一步</button>
+                        <button onclick="addGiftboxToCart()" class="btn-add-cart"><i class="fas fa-cart-plus"></i> 加入購物車</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 搜尋頁 -->
+        <section id="search" class="content-section max-w-6xl mx-auto">
+            <div class="search-container">
+                <!-- 標題區 -->
+                <div class="search-header">
+                    <div class="search-header-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h2>訂單搜尋</h2>
+                </div>
+
+                <!-- 搜尋表單 -->
+                <div class="search-form">
+                    <div class="search-form-grid">
+                        <div class="search-form-group">
+                            <label><i class="fas fa-phone"></i> 電話</label>
+                            <input type="tel" id="searchPhone" placeholder="請輸入電話號碼">
+                        </div>
+                        <div class="search-form-group">
+                            <label><i class="fas fa-user"></i> 姓名</label>
+                            <input type="text" id="searchName" placeholder="請輸入客戶姓名">
+                        </div>
+                        <div class="search-form-group">
+                            <label><i class="fas fa-calendar-alt"></i> 日期</label>
+                            <input type="text" id="searchDate" placeholder="點擊選擇日期" readonly>
+                        </div>
+                    </div>
+                    <div class="search-actions">
+                        <button onclick="searchOrders()" class="btn-search">
+                            <i class="fas fa-search"></i> 搜尋訂單
+                        </button>
+                        <button onclick="clearSearch()" class="btn-clear">
+                            <i class="fas fa-eraser"></i> 清空條件
+                        </button>
+                        <button onclick="searchOverdueOrders()" class="btn-overdue">
+                            <i class="fas fa-exclamation-triangle"></i> 檢索過期訂單
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 搜尋結果 -->
+                <div id="searchResults"></div>
+            </div>
+        </section>
+
+        <!-- 設定頁 -->
+        <section id="settings" class="content-section max-w-6xl mx-auto">
+            <div class="settings-container">
+                <!-- 標題區 -->
+                <div class="settings-header">
+                    <div class="settings-header-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h2>系統設定</h2>
+                </div>
+
+                <div class="settings-layout">
+                    <!-- 側邊導航 -->
+                    <nav class="settings-nav">
+                        <button onclick="showSettingsSection('products', this)" class="settings-nav-btn active">
+                            <i class="fas fa-box-open"></i>
+                            商品管理
+                        </button>
+                        <button onclick="showSettingsSection('capacity', this)" class="settings-nav-btn">
+                            <i class="fas fa-tachometer-alt"></i>
+                            產能設定
+                        </button>
+                        <button onclick="showSettingsSection('demand', this)" class="settings-nav-btn">
+                            <i class="fas fa-clipboard-list"></i>
+                            需求統計
+                        </button>
+                        <button onclick="showSettingsSection('reports', this)" class="settings-nav-btn">
+                            <i class="fas fa-chart-bar"></i>
+                            營業報表
+                        </button>
+                        <button onclick="showSettingsSection('device', this)" class="settings-nav-btn">
+                            <i class="fas fa-laptop"></i>
+                            裝置資訊
+                        </button>
+                    </nav>
+
+                    <!-- 內容區 -->
+                    <div class="settings-content">
+                        <button class="settings-back-btn" onclick="settingsBack()">
+                            <i class="fas fa-arrow-left"></i> 返回設定
+                        </button>
+                        <!-- 商品管理 -->
+                        <div id="settingsProducts" class="settings-section active">
+                            <div class="settings-panel">
+                                <div class="settings-panel-header">
+                                    <div class="settings-panel-title">
+                                        <i class="fas fa-list-ul"></i>
+                                        商品管理
+                                    </div>
+                                    <button onclick="showAddProduct()" class="btn-add-product">
+                                        <i class="fas fa-plus"></i>
+                                        新增商品
+                                    </button>
+                                </div>
+                                <div id="productsFilterTabs" class="products-filter-tabs"></div>
+                                <div id="productsCardGrid" class="products-card-grid"></div>
+                            </div>
+                        </div>
+
+                        <!-- 產能設定 -->
+                        <div id="settingsCapacity" class="settings-section" style="display: none;">
+                            <div class="settings-panel">
+                                <div class="settings-panel-title" style="margin-bottom: 4px;">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    每日供應量上限
+                                </div>
+                                <div style="font-size: 0.78rem; color: #9ca3af; margin-bottom: 16px;">超過上限僅顯示警告，不阻擋訂單。留空或 0 = 不限制。日期覆寫優先於星期預設。</div>
+
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">星期預設</div>
+                                    <div id="weekdayAutoSaveStatus" style="font-size: 0.78rem; color: #9ca3af; min-height: 18px;"></div>
+                                </div>
+                                <div id="capacityWeekdayGrid" class="capacity-weekday-strip"></div>
+
+                                <hr class="capacity-section-divider">
+
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">日期覆寫</div>
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end;">
+                                    <div style="flex: 1; min-width: 130px;">
+                                        <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">日期</label>
+                                        <input type="text" id="overrideDate" placeholder="點擊選擇日期" readonly style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; cursor: pointer; background: white;">
+                                    </div>
+                                    <div style="width: 88px;">
+                                        <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">上限</label>
+                                        <input type="number" id="overrideMaxQty" min="0" placeholder="0" style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; text-align: center;">
+                                    </div>
+                                    <button onclick="addDateOverride()" style="padding: 7px 14px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; white-space: nowrap;">
+                                        <i class="fas fa-plus" style="margin-right: 4px;"></i>新增
+                                    </button>
+                                </div>
+                                <div style="border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb;">
+                                    <table class="capacity-override-table">
+                                        <thead>
+                                            <tr>
+                                                <th>日期</th>
+                                                <th>星期</th>
+                                                <th>上限</th>
+                                                <th>狀態</th>
+                                                <th style="text-align: center;">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="overrideTableBody">
+                                            <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 24px;">尚無日期覆寫設定</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 需求統計 -->
+                        <div id="settingsDemand" class="settings-section" style="display: none;">
+                            <div class="settings-panel">
+                                <div class="settings-panel-title" style="margin-bottom: 20px;">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    需求統計
+                                </div>
+                                <div class="report-form">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-calendar-alt"></i> 選擇日期或區間</label>
+                                        <input type="text" id="demandDatePicker" placeholder="點擊選擇日期" readonly>
+                                    </div>
+                                    <button onclick="generateDemandStats()" id="btnDemandStats" class="btn-generate-report">
+                                        <i class="fas fa-calculator"></i>
+                                        產生統計
+                                    </button>
+                                </div>
+                                <div id="demandResults"></div>
+                            </div>
+                        </div>
+
+                        <!-- 營業報表 -->
+                        <div id="settingsReports" class="settings-section" style="display: none;">
+                            <div class="settings-panel">
+                                <div class="settings-panel-title" style="margin-bottom: 20px;">
+                                    <i class="fas fa-chart-line"></i>
+                                    營業報表
+                                </div>
+                                <div class="report-form">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-calendar-alt"></i> 選擇日期</label>
+                                        <input type="text" id="reportDatePicker" placeholder="點擊選擇日期" readonly>
+                                    </div>
+                                    <button onclick="generateReport()" id="btnReport" class="btn-generate-report">
+                                        <i class="fas fa-file-export"></i>
+                                        產生報表
+                                    </button>
+                                </div>
+                                <div id="reportResults"></div>
+                            </div>
+                        </div>
+
+
+                        <!-- 裝置資訊 -->
+                        <div id="settingsDevice" class="settings-section" style="display: none;">
+                            <div class="settings-panel">
+                                <div class="settings-panel-title" style="margin-bottom: 20px;">
+                                    <i class="fas fa-info-circle"></i>
+                                    裝置資訊
+                                </div>
+                                <div class="device-info-grid">
+                                    <div class="device-info-item">
+                                        <label><i class="fas fa-desktop"></i> 作業系統</label>
+                                        <input type="text" id="deviceOs" readonly>
+                                    </div>
+                                    <div class="device-info-item">
+                                        <label><i class="fas fa-tv"></i> 顯示模式</label>
+                                        <input type="text" id="layoutMode" readonly>
+                                    </div>
+                                    <div class="device-info-item">
+                                        <label><i class="fas fa-code"></i> User Agent</label>
+                                        <textarea id="fullUserAgent" readonly rows="4"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
+        <footer class="footer">
+            <p>金家 POS 系統 &copy; 2025. All Rights Reserved.</p>
+            <p>Website content edited by yuyan2123. Version v.12.1</p>
+        </footer>
+
+    </main>
+
+    <!-- 浮動購物車按鈕 -->
+    <div class="fab-cart floating-cart" onclick="toggleCartModal()">
+        <i class="fas fa-shopping-cart text-2xl"></i>
+        <div class="cart-badge" id="cartCount">0</div>
+    </div>
+
+    <!-- 購物車側邊欄 -->
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCartModal()"></div>
+    <div class="cart-sidebar" id="cartModal">
+        <div class="flex justify-between items-center p-6 border-b">
+            <h2 class="text-2xl font-bold text-gray-800">購物車清單</h2>
+            <button onclick="toggleCartModal()" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6" id="cartModalBody">
+            <div class="text-center mt-20">
+                <i class="fas fa-shopping-basket text-6xl text-gray-200 mb-4"></i>
+                <p class="text-gray-400">購物車是空的</p>
+            </div>
+        </div>
+        <div class="border-t p-6">
+            <div class="flex justify-between text-xl font-bold mb-4 text-gray-800">
+                <span>總計</span>
+                <span>NT$ <span id="cartTotalAmount">0</span></span>
+            </div>
+            <button id="checkoutBtn" onclick="submitOrder()" class="checkout-not-ready w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg">建立訂單</button>
+        </div>
+    </div>
+
+    <!-- 產品詳情 Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content transform transition-all duration-300 scale-100" onclick="event.stopPropagation()">
+            <!-- Header -->
+            <div class="relative bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-t-2xl border-b border-blue-100">
+                <button class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-gray-600 shadow-sm transition hover:rotate-90" onclick="closeProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h3 id="modalProductName" class="text-2xl font-bold text-gray-800 pr-8">商品名稱</h3>
+                <p id="modalProductPrice" class="text-3xl font-bold text-blue-600 mt-2">NT$ 0</p>
+            </div>
+
+            <div class="p-6 overflow-y-auto flex-1 min-h-0">
+                <!-- Description -->
+                <div class="bg-gray-50 p-4 rounded-xl mb-6 text-gray-600 text-sm leading-relaxed flex gap-3">
+                    <i class="fas fa-info-circle text-blue-400 mt-1 flex-shrink-0"></i>
+                    <span id="modalProductDescription">商品描述</span>
+                </div>
+
+                <!-- Quantity -->
+                <div class="mb-8">
+                    <label class="block text-sm font-bold text-gray-700 mb-3">購買數量</label>
+                    <div class="flex items-center justify-between bg-white border-2 border-gray-100 rounded-xl p-1 shadow-sm">
+                        <button onclick="changeModalQuantity(-1)" class="w-14 h-12 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 active:scale-95 transition">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" id="modalQuantity" value="1" min="1" class="flex-1 text-center text-2xl font-bold text-gray-800 border-none focus:ring-0 p-0 outline-none" onchange="validateModalQuantity(this.value)">
+                        <button onclick="changeModalQuantity(1)" class="w-14 h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 active:scale-95 transition">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Special Price Section -->
+                <div class="border-t border-gray-100 pt-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <label class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fas fa-tag text-orange-500"></i> 特殊價格設定
+                        </label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="useSpecialPrice" onchange="toggleSpecialPrice()" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    
+                    <div id="specialPriceSection" class="transition-all duration-300 overflow-hidden" style="max-height: 0; opacity: 0;">
+                        <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                            <label class="block text-xs font-bold text-orange-700 mb-2">自訂單價</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-orange-400 font-bold">NT$</span>
+                                <input type="number" id="specialPriceInput" placeholder="0" min="0" class="w-full pl-12 pr-4 py-3 bg-white border border-orange-200 rounded-lg text-lg font-bold text-orange-600 focus:ring-2 focus:ring-orange-400 outline-none" onclick="activateSpecialPrice()" oninput="updateModalPrice()">
+                            </div>
+                            <div id="priceComparison" style="display: none;" class="mt-3 flex justify-between text-sm items-center bg-white/50 p-2 rounded-lg">
+                                <span class="text-gray-500 line-through text-xs">原價：NT$ <span id="originalPriceText">0</span></span>
+                                <span class="text-orange-600 font-bold">特價：NT$ <span id="specialPriceText">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t bg-gray-50 rounded-b-2xl">
+                <button onclick="addToCartFromModal()" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition flex items-center justify-center gap-2">
+                    <span>加入購物車</span>
+                    <i class="fas fa-shopping-cart"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 產品編輯 Modal -->
+    <div id="productEditModal" class="modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 id="productEditModalTitle" class="text-2xl font-bold text-gray-800">新增商品</h3>
+                <button class="text-gray-400 hover:text-gray-600" onclick="closeProductEditModal()">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <input type="hidden" id="editProductId">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">商品名稱</label>
+                            <input type="text" id="productName" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">類別</label>
+                            <div class="grove-btn-group" id="productCategoryGroup">
+                                <button type="button" data-value="伴手禮" onclick="selectProductOption('productCategory', this)">伴手禮</button>
+                                <button type="button" data-value="喜餅" onclick="selectProductOption('productCategory', this)">喜餅</button>
+                            </div>
+                            <input type="hidden" id="productCategory" value="伴手禮">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">價格</label>
+                            <input type="number" id="productPrice" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">特價</label>
+                            <input type="number" id="productSpecialPrice" placeholder="留空表示無特價" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">企業價</label>
+                        <input type="number" id="productCompanyPrice" placeholder="留空表示無企業價" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">狀態</label>
+                            <div class="grove-btn-group" id="productStatusGroup">
+                                <button type="button" data-value="啟用" onclick="selectProductOption('productStatus', this)">啟用</button>
+                                <button type="button" data-value="停用" onclick="selectProductOption('productStatus', this)">停用</button>
+                            </div>
+                            <input type="hidden" id="productStatus" value="啟用">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">可禮盒</label>
+                            <div class="grove-btn-group" id="productGiftBoxEnabledGroup">
+                                <button type="button" data-value="是" onclick="selectProductOption('productGiftBoxEnabled', this)">是</button>
+                                <button type="button" data-value="否" onclick="selectProductOption('productGiftBoxEnabled', this)">否</button>
+                            </div>
+                            <input type="hidden" id="productGiftBoxEnabled" value="是">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
+                        <textarea id="productDescription" rows="3" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex gap-3">
+                <button onclick="closeProductEditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">取消</button>
+                <button onclick="saveProduct()" class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認 Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="p-6 border-b">
+                <h3 class="text-2xl font-bold text-gray-800">確認操作</h3>
+            </div>
+            <div class="p-6">
+                <p id="confirmModalMessage" class="text-gray-700 text-lg">您確定要執行此操作嗎？</p>
+            </div>
+            <div class="p-6 border-t flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">取消</button>
+                <button id="confirmBtn" onclick="executeConfirmCallback()" class="flex-1 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 狀態更新確認 Modal -->
+    <div id="statusConfirmModal" class="modal status-confirm-modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="status-confirm-header">
+                <div class="icon"><i class="fas fa-check-circle"></i></div>
+                <h3>確認狀態更新</h3>
+                <button class="close-btn" onclick="closeStatusConfirmModal()">×</button>
+            </div>
+            <div class="status-confirm-body">
+                <div class="status-order-info">
+                    <div class="order-id" id="statusOrderId">訂單編號</div>
+                    <div class="status-change" id="statusUpdateInfo">即將更新訂單狀態</div>
+                </div>
+                <div class="slider-container status-slider">
+                    <div class="slider-track">
+                        <div class="slider-progress" id="statusSliderProgress"></div>
+                        <div class="slider-thumb" id="statusSliderThumb"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                </div>
+                <div id="statusUpdateStatus" class="status-update-status"></div>
+            </div>
+            <div class="status-confirm-footer">
+                <button class="btn-cancel" onclick="closeStatusConfirmModal()"><i class="fas fa-times"></i> 取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 刪除確認 Modal -->
+    <div id="deleteConfirmModal" class="modal delete-confirm-modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="delete-confirm-header">
+                <div class="icon"><i class="fas fa-trash-alt"></i></div>
+                <h3>刪除訂單確認</h3>
+                <button class="close-btn" onclick="closeDeleteConfirmModal()">×</button>
+            </div>
+            <div class="delete-confirm-body">
+                <div class="delete-order-info">
+                    <div class="order-id" id="deleteOrderId">訂單編號</div>
+                    <div class="customer-name" id="deleteCustomerName">客戶名稱</div>
+                </div>
+                <div class="slider-container">
+                    <div class="slider-track">
+                        <div class="slider-progress" id="deleteSliderProgress"></div>
+                        <div class="slider-thumb" id="deleteSliderThumb"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                </div>
+                <div id="deleteStatus" class="delete-status"></div>
+            </div>
+            <div class="delete-confirm-footer">
+                <button class="btn-cancel" onclick="closeDeleteConfirmModal()"><i class="fas fa-times"></i> 取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訂金設定 Modal -->
+    <div id="depositModal" class="modal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="p-6 border-b">
+                <h3 id="depositModalTitle" class="text-2xl font-bold text-gray-800">設定訂金</h3>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <span id="depositOrderInfo" class="text-gray-700">訂單編號 - 總金額</span>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">訂金金額</label>
+                    <input type="number" id="depositAmountInput" placeholder="請輸入訂金金額" min="0" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" oninput="updateDepositCalculation()">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">付款備註</label>
+                    <textarea id="paymentNotesInput" rows="2" placeholder="選填：付款方式、備註等" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div id="depositCalculationResult" style="display: none;" class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-600">已付訂金：</span>
+                            <span id="currentDepositText" class="font-bold text-green-600">NT$ 0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">剩餘金額：</span>
+                            <span id="remainingAmountText" class="font-bold text-red-600">NT$ 0</span>
+                        </div>
+                    </div>
+                    <div id="statusPreview" class="mt-3 text-center">
+                        <span class="text-sm text-gray-600">預計狀態：</span>
+                        <span id="newStatusText" class="font-bold px-3 py-1 rounded-lg bg-blue-600 text-white">已確認</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex gap-3">
+                <button onclick="closeDepositModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">取消</button>
+                <button id="confirmDepositBtn" onclick="confirmDepositUpdate()" class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">確認設定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert 容器 -->
+    <div id="alertContainer" class="alert-container"></div>
+
+    <!-- 送單處理中遮罩 -->
+    <div id="orderSubmitOverlay" class="submit-overlay">
+        <div class="submit-overlay-box">
+            <div class="submit-overlay-spinner"></div>
+            <div class="submit-overlay-text" id="orderSubmitOverlayText">訂單建立中...</div>
+            <div class="submit-overlay-sub">處理中請勿重複送出</div>
+        </div>
+    </div>
+
+
+</body>
+    <script src="/js/runtime-config.js" defer></script>
+    <script src="/js/rpc-bridge.js" defer></script>
+    <script src="/js/app.js" defer></script>
+
+    <!-- 產能超量警告 Modal -->
+    <div id="capacityWarningModal" class="modal" onclick="closeCapacityWarningModal()">
+        <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <h3><i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>每日供應量已達上限</h3>
+                <button class="close-btn" onclick="closeCapacityWarningModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="capacityWarningBody">
+            </div>
+            <div class="modal-footer" style="justify-content: stretch; gap: 12px;">
+                <button onclick="closeCapacityWarningModal()" class="btn" style="flex: 1; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">
+                    <i class="fas fa-arrow-left" style="margin-right: 6px;"></i>返回修改日期
+                </button>
+                <button onclick="confirmCapacityOverride()" id="btnCapacityConfirm" class="btn" style="flex: 1; background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                    <i class="fas fa-check" style="margin-right: 6px;"></i>確認送出訂單
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
