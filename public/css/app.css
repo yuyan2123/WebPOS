@@ -4050,6 +4050,7 @@ body #firebaseAccountBadge button {
 
 /* Account controls must never sit above transactional surfaces. */
 body:has(.cart-sidebar.active) #firebaseAccountBadge,
+body.cart-open #firebaseAccountBadge,
 body:has(.modal.active) #firebaseAccountBadge,
 body:has(.submit-overlay.active) #firebaseAccountBadge,
 body:has(#firebaseAuthOverlay.active) #firebaseAccountBadge,
@@ -4058,6 +4059,11 @@ body:has(#firebaseShopOverlay.active) #firebaseAccountBadge {
     visibility: hidden;
     transform: translateY(-8px);
     pointer-events: none;
+}
+
+/* Deterministic fallback for browsers where :has() is unavailable or delayed. */
+body.cart-open #firebaseAccountBadge {
+    display: none !important;
 }
 
 @supports selector(body:has(#firebaseAccountBadge.active)) {

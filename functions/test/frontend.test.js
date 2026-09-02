@@ -49,7 +49,17 @@ test("LINE is a no-input contact option and confirmation uses only the original 
   assert.match(html, /id="contactMethodLine"[^>]*class="name-title-btn"/);
   assert.match(app, /currentContactMethod === 'line' \? 'LINE'/);
   assert.match(app, /input\.readOnly = currentContactMethod === 'line'/);
+  assert.match(app, /contactMethodLine[\s\S]*addEventListener\('click'/);
   assert.doesNotMatch(html, /statusConfirmButton|deleteConfirmButton/);
   assert.match(app, /initConfirmSlider\('statusSliderThumb'/);
   assert.match(app, /initConfirmSlider\('deleteSliderThumb'/);
+});
+
+test("opening the cart explicitly hides the Firebase account badge", () => {
+  const app = read("public/js/app.js");
+  const css = read("public/css/app.css");
+
+  assert.match(app, /classList\.toggle\('cart-open'/);
+  assert.match(app, /classList\.remove\('cart-open'\)/);
+  assert.match(css, /body\.cart-open #firebaseAccountBadge[\s\S]*display: none !important/);
 });

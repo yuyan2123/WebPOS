@@ -277,6 +277,7 @@
 
         // 頁面載入時初始化
         document.addEventListener('DOMContentLoaded', function() {
+            initContactMethodToggle();
             initVisibleViewportFit();
             showSection('customer', document.querySelector('.nav-item'));
             setDefaultDate();
@@ -627,12 +628,13 @@
             document.getElementById('contactMethodPhone')?.classList.toggle('active', currentContactMethod === 'phone');
             document.getElementById('contactMethodLine')?.classList.toggle('active', currentContactMethod === 'line');
             if (input) {
-                if (clearValue || currentContactMethod === 'line') input.value = currentContactMethod === 'line' ? 'LINE' : '';
                 input.type = currentContactMethod === 'phone' ? 'tel' : 'text';
                 input.inputMode = currentContactMethod === 'phone' ? 'tel' : 'none';
                 input.placeholder = currentContactMethod === 'phone' ? '09xx-xxx-xxx' : '';
                 input.readOnly = currentContactMethod === 'line';
                 input.setAttribute('aria-label', currentContactMethod === 'phone' ? '客戶電話' : '聯絡方式 LINE');
+                if (currentContactMethod === 'line') input.value = 'LINE';
+                else if (clearValue) input.value = '';
             }
             if (label) label.textContent = '聯絡電話';
             if (hint) {
@@ -641,6 +643,19 @@
             }
             closeAllAcLists();
             scheduleDraftSave();
+        }
+
+        function initContactMethodToggle() {
+            const phoneButton = document.getElementById('contactMethodPhone');
+            const lineButton = document.getElementById('contactMethodLine');
+            phoneButton?.addEventListener('click', function(event) {
+                event.preventDefault();
+                selectContactMethod('phone');
+            });
+            lineButton?.addEventListener('click', function(event) {
+                event.preventDefault();
+                selectContactMethod('line');
+            });
         }
 
         // --- 客戶 Autocomplete ---
@@ -1378,6 +1393,7 @@
 
             cartModal.classList.toggle('active');
             cartOverlay.classList.toggle('active');
+            document.body.classList.toggle('cart-open', cartModal.classList.contains('active'));
 
             if (cartModal.classList.contains('active')) {
                 updateCartModalDisplay();
@@ -1387,6 +1403,7 @@
         function closeCartModal() {
             document.getElementById('cartModal').classList.remove('active');
             document.getElementById('cartOverlay').classList.remove('active');
+            document.body.classList.remove('cart-open');
         }
 
         function updateCartDisplay() {
