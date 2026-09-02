@@ -10,6 +10,7 @@ test("ships an installable PWA without the Tailwind CDN runtime", () => {
   const html = read("public/index.html");
   const manifest = JSON.parse(read("public/manifest.webmanifest"));
   const serviceWorker = read("public/sw.js");
+  const firebaseConfig = JSON.parse(read("firebase.json"));
 
   assert.match(html, /rel="manifest" href="\/manifest\.webmanifest"/);
   assert.match(html, /src="\/js\/pwa\.js"/);
@@ -18,6 +19,8 @@ test("ships an installable PWA without the Tailwind CDN runtime", () => {
   assert.ok(manifest.icons.some((icon) => icon.sizes === "192x192"));
   assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512"));
   assert.doesNotMatch(serviceWorker, /firebaseapp\.com|googleapis\.com|identitytoolkit/i);
+  const scriptStylesHeader = firebaseConfig.hosting.headers.find((entry) => entry.source === "**/*.@(css|js)");
+  assert.match(scriptStylesHeader.headers.find((header) => header.key === "Cache-Control").value, /no-cache/);
 });
 
 test("keeps order drafts and product fallbacks scoped to the signed-in shop", () => {

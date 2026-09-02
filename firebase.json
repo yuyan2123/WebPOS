@@ -35,7 +35,14 @@
         ]
       },
       {
-        "source": "**/*.@(css|js|png|svg|woff2)",
+        "source": "**/*.@(css|js)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
+        ]
+      },
+      {
+        "source": "**/*.@(png|svg|woff2)",
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
           { "key": "X-Content-Type-Options", "value": "nosniff" }
