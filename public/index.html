@@ -77,12 +77,14 @@
                     <div id="customerAcList" class="customer-ac-list"></div>
                 </div>
                 <div class="customer-ac-wrap">
-                    <label id="customerContactLabel" for="customerPhone" class="block text-base font-medium text-gray-700 mb-2">聯絡方式</label>
-                    <div class="contact-method-toggle" role="group" aria-label="聯絡方式">
-                        <button id="contactMethodPhone" type="button" class="active" onclick="selectContactMethod('phone')"><i class="fas fa-phone"></i> 電話</button>
-                        <button id="contactMethodLine" type="button" onclick="selectContactMethod('line')"><i class="fab fa-line"></i> LINE</button>
+                    <label id="customerContactLabel" for="customerPhone" class="block text-base font-medium text-gray-700 mb-2">聯絡電話</label>
+                    <div class="name-title-row">
+                        <input type="tel" id="customerPhone" aria-describedby="customerContactHint" class="name-title-input w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg" placeholder="09xx-xxx-xxx" autocomplete="off">
+                        <div class="name-title-group contact-method-toggle" role="group" aria-label="聯絡方式">
+                            <button id="contactMethodPhone" type="button" class="name-title-btn active" onclick="selectContactMethod('phone')">電話</button>
+                            <button id="contactMethodLine" type="button" class="name-title-btn" onclick="selectContactMethod('line')">LINE</button>
+                        </div>
                     </div>
-                    <input type="tel" id="customerPhone" aria-describedby="customerContactHint" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg" placeholder="09xx-xxx-xxx" autocomplete="off">
                     <p id="customerContactHint" class="field-hint">請輸入可聯絡的電話號碼</p>
                     <div id="customerAcListPhone" class="customer-ac-list"></div>
                 </div>
@@ -150,11 +152,11 @@
 
                 <div class="flex-1 flex flex-col max-w-2xl mx-auto w-full">
                     <div class="flex justify-between items-center mb-6 px-4 py-2 bg-gray-50 rounded-xl">
-                        <button onclick="changeMonth(-1)" class="p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition">
+                        <button onclick="changeMonth(-1)" class="calendar-month-nav p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition" aria-label="上一個月">
                             <i class="fas fa-chevron-left text-xl"></i>
                         </button>
                         <h3 id="calendar-month-year" class="text-2xl font-bold text-gray-800 tracking-wide">2023年 11月</h3>
-                        <button onclick="changeMonth(1)" class="p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition">
+                        <button onclick="changeMonth(1)" class="calendar-month-nav p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition" aria-label="下一個月">
                             <i class="fas fa-chevron-right text-xl"></i>
                         </button>
                     </div>
@@ -741,13 +743,12 @@
                     <div class="order-id" id="statusOrderId">訂單編號</div>
                     <div class="status-change" id="statusUpdateInfo">即將更新訂單狀態</div>
                 </div>
-                <div class="slider-container status-slider" aria-hidden="true">
+                <div class="slider-container status-slider">
                     <div class="slider-track">
                         <div class="slider-progress" id="statusSliderProgress"></div>
                         <div class="slider-thumb" id="statusSliderThumb"><i class="fas fa-chevron-right"></i></div>
                     </div>
                 </div>
-                <button id="statusConfirmButton" type="button" class="confirm-action-button" onclick="executeStatusUpdate()"><i class="fas fa-check"></i> 確認更新狀態</button>
                 <div id="statusUpdateStatus" class="status-update-status"></div>
             </div>
             <div class="status-confirm-footer">
@@ -769,13 +770,12 @@
                     <div class="order-id" id="deleteOrderId">訂單編號</div>
                     <div class="customer-name" id="deleteCustomerName">客戶名稱</div>
                 </div>
-                <div class="slider-container" aria-hidden="true">
+                <div class="slider-container">
                     <div class="slider-track">
                         <div class="slider-progress" id="deleteSliderProgress"></div>
                         <div class="slider-thumb" id="deleteSliderThumb"><i class="fas fa-chevron-right"></i></div>
                     </div>
                 </div>
-                <button id="deleteConfirmButton" type="button" class="confirm-action-button danger" onclick="executeDelete()"><i class="fas fa-trash-alt"></i> 確認刪除訂單</button>
                 <div id="deleteStatus" class="delete-status"></div>
             </div>
             <div class="delete-confirm-footer">

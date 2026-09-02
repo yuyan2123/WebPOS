@@ -117,7 +117,12 @@ export function customerReference(user, customerOrPhone) {
   const customer = customerOrPhone && typeof customerOrPhone === "object" ? customerOrPhone : { phone: customerOrPhone };
   const contactType = normalizeContactType(customer.contactType || (customer.lineId ? "line" : "phone"));
   const contactValue = text(customer.contactValue || (contactType === "line" ? customer.lineId : customer.phone));
-  return tenantCollection(user, COLLECTIONS.customers).doc(customerDocumentId(contactType, contactValue));
+  // LINE is an opt-out from entering a phone number, not a shared customer ID.
+  // Include the customer name so separate LINE customers do not overwrite one another.
+  const referenceValue = contactType === "line" && normalizeContactValue(contactType, contactValue) === "line"
+    ? `${contactValue}:${text(customer.name || customer.customerName)}`
+    : contactValue;
+  return tenantCollection(user, COLLECTIONS.customers).doc(customerDocumentId(contactType, referenceValue));
 }
 
 export function customerRecord(customer, timestamp = Timestamp.now(), existing = null) {

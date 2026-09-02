@@ -196,6 +196,7 @@
                 const element = document.getElementById(id);
                 if (element) element.value = fields[id] || '';
             });
+            if (currentContactMethod === 'line') document.getElementById('customerPhone').value = 'LINE';
             document.querySelectorAll('#nameTitleGroup .name-title-btn').forEach(function(button) {
                 button.classList.toggle('active', button.dataset.title === fields.selectedTitle);
             });
@@ -626,14 +627,18 @@
             document.getElementById('contactMethodPhone')?.classList.toggle('active', currentContactMethod === 'phone');
             document.getElementById('contactMethodLine')?.classList.toggle('active', currentContactMethod === 'line');
             if (input) {
-                if (clearValue) input.value = '';
+                if (clearValue || currentContactMethod === 'line') input.value = currentContactMethod === 'line' ? 'LINE' : '';
                 input.type = currentContactMethod === 'phone' ? 'tel' : 'text';
-                input.inputMode = currentContactMethod === 'phone' ? 'tel' : 'text';
-                input.placeholder = currentContactMethod === 'phone' ? '09xx-xxx-xxx' : '請輸入 LINE ID';
-                input.setAttribute('aria-label', currentContactMethod === 'phone' ? '客戶電話' : '客戶 LINE ID');
+                input.inputMode = currentContactMethod === 'phone' ? 'tel' : 'none';
+                input.placeholder = currentContactMethod === 'phone' ? '09xx-xxx-xxx' : '';
+                input.readOnly = currentContactMethod === 'line';
+                input.setAttribute('aria-label', currentContactMethod === 'phone' ? '客戶電話' : '聯絡方式 LINE');
             }
-            if (label) label.textContent = currentContactMethod === 'phone' ? '聯絡電話' : 'LINE ID';
-            if (hint) hint.textContent = currentContactMethod === 'phone' ? '請輸入可聯絡的電話號碼' : '請輸入顧客提供的 LINE ID（不是 LINE 顯示名稱）';
+            if (label) label.textContent = '聯絡電話';
+            if (hint) {
+                hint.textContent = '請輸入可聯絡的電話號碼';
+                hint.hidden = currentContactMethod === 'line';
+            }
             closeAllAcLists();
             scheduleDraftSave();
         }
@@ -703,7 +708,7 @@
                     + '<div class="customer-ac-icon"><i class="fas fa-user"></i></div>'
                     + '<div class="customer-ac-info">'
                     + '<div class="customer-ac-name">' + escapeHtml(c.name) + '</div>'
-                    + '<div class="customer-ac-phone">' + escapeHtml(c.contactType === 'line' ? 'LINE：' + (c.contactValue || c.lineId || '') : (c.contactValue || c.phone || '')) + (c.address ? ' / ' + escapeHtml(c.address) : '') + '</div>'
+                    + '<div class="customer-ac-phone">' + escapeHtml(c.contactType === 'line' ? 'LINE' : (c.contactValue || c.phone || '')) + (c.address ? ' / ' + escapeHtml(c.address) : '') + '</div>'
                     + '</div></div>';
             }).join('');
             list.classList.add('show');
@@ -723,7 +728,7 @@
             }
             document.getElementById('customerName').value = name;
             selectContactMethod(c.contactType === 'line' ? 'line' : 'phone', false);
-            document.getElementById('customerPhone').value = c.contactValue || c.lineId || c.phone || '';
+            document.getElementById('customerPhone').value = c.contactType === 'line' ? 'LINE' : (c.contactValue || c.phone || '');
             if (c.address) {
                 document.getElementById('customerAddress').value = c.address;
             }
@@ -789,7 +794,7 @@
             const rawName = document.getElementById('customerName').value.trim();
             const title = getSelectedTitle();
             const name = rawName ? rawName + title : '';
-            const contactValue = document.getElementById('customerPhone').value.trim();
+            const contactValue = currentContactMethod === 'line' ? 'LINE' : document.getElementById('customerPhone').value.trim();
             const address = document.getElementById('customerAddress').value.trim();
             const recipientName = document.getElementById('recipientName').value.trim();
             const recipientPhone = document.getElementById('recipientPhone').value.trim();
@@ -800,7 +805,7 @@
                 return;
             }
             if (!contactValue) {
-                showAlert(currentContactMethod === 'line' ? '請輸入 LINE ID' : '請輸入客戶電話', 'error');
+                showAlert('請輸入客戶電話', 'error');
                 return;
             }
 
@@ -1725,7 +1730,7 @@
             }
             document.getElementById('customerName').value = loadedName;
             selectContactMethod(currentCustomer.contactType, false);
-            document.getElementById('customerPhone').value = currentCustomer.contactValue;
+            document.getElementById('customerPhone').value = currentCustomer.contactType === 'line' ? 'LINE' : currentCustomer.contactValue;
             document.getElementById('customerAddress').value = currentCustomer.address;
             document.getElementById('recipientName').value = currentCustomer.recipientName;
             document.getElementById('recipientPhone').value = currentCustomer.recipientPhone;
@@ -2127,7 +2132,7 @@
 
                 const contactType = order.customerContactType || (order.customerLineId ? 'line' : 'phone');
                 const contactValue = order.customerContactValue || order.customerLineId || order.customerPhone || '-';
-                const contactDisplay = contactType === 'line' ? `LINE：${contactValue}` : contactValue;
+                const contactDisplay = contactType === 'line' ? 'LINE' : contactValue;
                 let cells = `
                     <td data-label="姓名">${escapeHtml(order.customerName)}</td>
                     <td data-label="聯絡方式">${escapeHtml(contactDisplay)}</td>
@@ -2478,7 +2483,7 @@
                     <div class="order-info-grid">
                         <div class="order-info-item">
                             <span class="order-info-label">客戶</span>
-                            <span class="order-info-value">${escapeHtml(details.customerName)} (${escapeHtml((details.customerContactType === 'line' || details.customerLineId) ? 'LINE：' + (details.customerContactValue || details.customerLineId) : (details.customerContactValue || details.customerPhone || '-'))})</span>
+                            <span class="order-info-value">${escapeHtml(details.customerName)} (${escapeHtml((details.customerContactType === 'line' || details.customerLineId) ? 'LINE' : (details.customerContactValue || details.customerPhone || '-'))})</span>
                         </div>
                         ${(details.recipientName || details.recipientPhone) && details.deliveryType !== '自取' ? `
                         <div class="order-info-item">
@@ -3534,23 +3539,22 @@
             document.getElementById('statusUpdateStatus').textContent = '';
             document.getElementById('statusUpdateStatus').className = 'status-update-status';
 
-            const confirmButton = document.getElementById('statusConfirmButton');
-            if (confirmButton) {
-                confirmButton.disabled = false;
-                setButtonLoading(confirmButton, false);
+            // 滑到底放開才執行更新。
+            if (!statusSliderCtrl) {
+                statusSliderCtrl = initConfirmSlider('statusSliderThumb', 'statusSliderProgress', function() {
+                    const statusEl = document.getElementById('statusUpdateStatus');
+                    statusEl.textContent = '已確認，正在更新...';
+                    statusEl.classList.add('success');
+                    setTimeout(executeStatusUpdate, 350);
+                });
             }
+            statusSliderCtrl.reset();
 
             document.getElementById('statusConfirmModal').classList.add('active');
         }
 
         function executeStatusUpdate() {
             if (!currentStatusOrderId || !currentStatusValue) return;
-            const button = document.getElementById('statusConfirmButton');
-            if (button?.disabled) return;
-            if (button) {
-                button.disabled = true;
-                setButtonLoading(button, true, '更新中...');
-            }
             updateOrderStatus(currentStatusOrderId, currentStatusValue);
             closeStatusConfirmModal();
         }
@@ -3574,11 +3578,13 @@
             status.textContent = '';
             status.classList.remove('show', 'success');
 
-            const confirmButton = document.getElementById('deleteConfirmButton');
-            if (confirmButton) {
-                confirmButton.disabled = false;
-                setButtonLoading(confirmButton, false);
+            // 滑到底放開才執行刪除。
+            if (!deleteSliderCtrl) {
+                deleteSliderCtrl = initConfirmSlider('deleteSliderThumb', 'deleteSliderProgress', function() {
+                    executeDelete();
+                });
             }
+            deleteSliderCtrl.reset();
 
             document.getElementById('deleteConfirmModal').classList.add('active');
         }
@@ -3694,12 +3700,6 @@
 
         function executeDelete() {
             if (!deleteOrderId) return;
-            const confirmButton = document.getElementById('deleteConfirmButton');
-            if (confirmButton?.disabled) return;
-            if (confirmButton) {
-                confirmButton.disabled = true;
-                setButtonLoading(confirmButton, true, '刪除中...');
-            }
 
             const orderId = deleteOrderId;
             const status = document.getElementById('deleteStatus');
@@ -3722,7 +3722,6 @@
                 currentSearchOrders = currentSearchOrders.filter(order => (order.id || order.orderId) !== orderId);
                 if (expandedSearchOrderId === orderId) expandedSearchOrderId = null;
                 closeDeleteConfirmModal();
-                if (confirmButton) setButtonLoading(confirmButton, false);
                 showAlert('訂單已刪除', 'success');
             };
 
@@ -3731,10 +3730,6 @@
                 status.textContent = '';
                 status.classList.remove('show');
                 if (deleteSliderCtrl) deleteSliderCtrl.reset();
-                if (confirmButton) {
-                    confirmButton.disabled = false;
-                    setButtonLoading(confirmButton, false);
-                }
                 handleError(error);
             };
 

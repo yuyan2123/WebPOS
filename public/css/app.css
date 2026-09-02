@@ -3438,6 +3438,29 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
     font-size: clamp(1.2rem, 2.2vw, 1.55rem) !important;
 }
 
+/* Keep the original compact month chevrons independent of global button styles. */
+.calendar-month-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 12px;
+    border: 0;
+    border-radius: 8px;
+    color: #4b5563;
+    background: transparent;
+    box-shadow: none;
+    transition: background-color .15s ease, box-shadow .15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .calendar-month-nav:hover {
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+    }
+}
+
 #calendar-grid {
     gap: clamp(5px, 1vw, 11px) !important;
 }
@@ -4406,30 +4429,15 @@ body .firebase-shop-option.active {
 
 /* 2026 resilience, PWA and touch UX layer */
 .contact-method-toggle {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding: 4px;
-    margin-bottom: 8px;
-    border: 1px solid var(--pos-line, #d8e2dd);
-    border-radius: 12px;
-    background: #f4f7f5;
+    flex: 0 0 auto;
+    margin: 0;
 }
 
 .contact-method-toggle button {
-    min-height: 40px;
-    border: 0;
-    border-radius: 9px;
-    color: #52645f;
-    font-weight: 700;
-    background: transparent;
+    min-height: 38px;
 }
 
-.contact-method-toggle button.active {
-    color: #fff;
-    background: var(--pos-primary, #1f6f5f);
-    box-shadow: 0 2px 8px rgba(31, 111, 95, .22);
-}
+#customerPhone[readonly] { color: #52645f; cursor: default; }
 
 .field-hint {
     margin: 7px 2px 0;
@@ -4499,28 +4507,7 @@ body .firebase-shop-option.active {
     padding: 18px 0 4px;
 }
 
-.confirm-action-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    width: 100%;
-    min-height: 52px;
-    margin-top: 16px;
-    border: 0;
-    border-radius: 12px;
-    color: #fff;
-    font-weight: 800;
-    background: var(--pos-primary, #1f6f5f);
-}
-
-.confirm-action-button.danger { background: #b4232c; }
-.confirm-action-button:disabled { opacity: .6; cursor: wait; }
-.status-confirm-modal .slider-container,
-.delete-confirm-modal .slider-container { display: none !important; }
-
-.connection-banner,
-.pwa-banner {
+.connection-banner {
     position: fixed;
     right: 16px;
     bottom: 16px;
@@ -4535,11 +4522,51 @@ body .firebase-shop-option.active {
 }
 
 .connection-banner { color: #7c2d12; border-color: #fdba74; background: #fff7ed; }
-.pwa-banner { display: none; align-items: center; gap: 10px; }
-.pwa-banner.active { display: flex; }
-.pwa-banner button { min-height: 36px; padding: 6px 11px; border: 0; border-radius: 8px; white-space: nowrap; }
+
+.pwa-banner {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 920;
+    display: none;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    width: min(470px, calc(100vw - 36px));
+    padding: 12px;
+    border: 1px solid #d8e2dd;
+    border-radius: 14px;
+    color: var(--pos-ink, #263832);
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 10px 28px rgba(20, 42, 35, .14);
+}
+
+.pwa-banner.active { display: grid; }
+.pwa-banner-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    color: var(--pos-primary, #1f6f5f);
+    background: var(--pos-primary-soft, #e4f2ed);
+}
+.pwa-banner-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.pwa-banner-copy strong { font-size: .88rem; line-height: 1.3; }
+.pwa-banner-message { color: #64748b; font-size: .76rem; line-height: 1.4; }
+.pwa-banner-actions { display: flex; align-items: center; gap: 5px; }
+.pwa-banner button {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 8px;
+    white-space: nowrap;
+    font-size: .78rem;
+    font-weight: 700;
+}
 #pwaInstall, #pwaUpdate { color: #fff; background: var(--pos-primary, #1f6f5f); }
-#pwaDismiss { color: #475569; background: #eef2f0; }
+#pwaDismiss { color: #52645f; background: transparent; }
 
 body[data-shop-role="viewer"] .floating-cart,
 body[data-shop-role="viewer"] #customer > .flex.gap-4,
@@ -4654,9 +4681,13 @@ textarea:focus-visible {
     body > header .nav-item i { margin: 0 !important; font-size: 17px; }
     body > header .nav-item span { display: block !important; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
     body > main { padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important; }
-    .connection-banner,
-    .pwa-banner { right: 10px; bottom: calc(72px + env(safe-area-inset-bottom)); left: 10px; max-width: none; }
-    .pwa-banner { flex-wrap: wrap; }
+    .connection-banner { right: 10px; bottom: calc(72px + env(safe-area-inset-bottom)); left: 10px; max-width: none; }
+    .pwa-banner {
+        right: 10px;
+        bottom: calc(72px + env(safe-area-inset-bottom));
+        left: 10px;
+        width: auto;
+    }
 }
 
 @media (min-width: 768px) and (max-width: 1100px) {

@@ -40,3 +40,16 @@ test("viewer role blocks mutation controls as well as backend calls", () => {
   assert.match(css, /data-shop-role="viewer"/);
   assert.match(css, /button\[onclick\^="addDateOverride"\]/);
 });
+
+test("LINE is a no-input contact option and confirmation uses only the original sliders", () => {
+  const html = read("public/index.html");
+  const app = read("public/js/app.js");
+
+  assert.match(html, /id="contactMethodPhone"[^>]*class="name-title-btn active"/);
+  assert.match(html, /id="contactMethodLine"[^>]*class="name-title-btn"/);
+  assert.match(app, /currentContactMethod === 'line' \? 'LINE'/);
+  assert.match(app, /input\.readOnly = currentContactMethod === 'line'/);
+  assert.doesNotMatch(html, /statusConfirmButton|deleteConfirmButton/);
+  assert.match(app, /initConfirmSlider\('statusSliderThumb'/);
+  assert.match(app, /initConfirmSlider\('deleteSliderThumb'/);
+});
