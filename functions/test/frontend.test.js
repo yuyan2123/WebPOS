@@ -66,3 +66,14 @@ test("opening the cart explicitly hides the Firebase account badge", () => {
   assert.match(app, /classList\.remove\('cart-open'\)/);
   assert.match(css, /body\.cart-open #firebaseAccountBadge[\s\S]*display: none !important/);
 });
+
+test("order search uses the same phone and LINE button pattern", () => {
+  const html = read("public/index.html");
+  const app = read("public/js/app.js");
+
+  assert.doesNotMatch(html, /id="searchContactType"/);
+  assert.match(html, /id="searchContactPhone"[^>]*class="name-title-btn active"/);
+  assert.match(html, /id="searchContactLine"[^>]*class="name-title-btn"/);
+  assert.match(app, /currentSearchContactMethod === 'line' \? 'LINE'/);
+  assert.match(app, /selectSearchContactMethod\('phone', false\)/);
+});

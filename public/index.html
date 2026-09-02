@@ -306,12 +306,12 @@
                     <div class="search-form-grid">
                         <div class="search-form-group">
                             <label for="searchPhone"><i class="fas fa-address-card"></i> 電話／LINE</label>
-                            <div class="search-contact-row">
-                                <select id="searchContactType" aria-label="聯絡方式類型">
-                                    <option value="phone">電話</option>
-                                    <option value="line">LINE</option>
-                                </select>
-                                <input type="search" id="searchPhone" placeholder="輸入電話號碼">
+                            <div class="name-title-row search-contact-row">
+                                <input type="tel" id="searchPhone" class="name-title-input" placeholder="輸入電話號碼">
+                                <div class="name-title-group contact-method-toggle" role="group" aria-label="搜尋聯絡方式">
+                                    <button id="searchContactPhone" type="button" class="name-title-btn active">電話</button>
+                                    <button id="searchContactLine" type="button" class="name-title-btn">LINE</button>
+                                </div>
                             </div>
                         </div>
                         <div class="search-form-group">

@@ -40,6 +40,7 @@
         let currentSearchOrders = [];
         let currentOrderTableType = null;
         let currentContactMethod = 'phone';
+        let currentSearchContactMethod = 'phone';
         let searchNextCursor = null;
         let lastSearchCriteria = null;
         let isLoadingMoreOrders = false;
@@ -278,6 +279,7 @@
         // 頁面載入時初始化
         document.addEventListener('DOMContentLoaded', function() {
             initContactMethodToggle();
+            initSearchContactMethodToggle();
             initVisibleViewportFit();
             showSection('customer', document.querySelector('.nav-item'));
             setDefaultDate();
@@ -289,12 +291,6 @@
             initEscapeToClose();
             initAccessibleDialogs();
             initOrderDraftPersistence();
-            document.getElementById('searchContactType')?.addEventListener('change', function() {
-                const input = document.getElementById('searchPhone');
-                if (!input) return;
-                input.placeholder = this.value === 'line' ? '輸入 LINE ID' : '輸入電話號碼';
-                input.inputMode = this.value === 'line' ? 'text' : 'tel';
-            });
             // 初始化配送方式相關欄位顯示
             toggleShippingField();
             // 初始化日曆 (新UI)
@@ -655,6 +651,32 @@
             lineButton?.addEventListener('click', function(event) {
                 event.preventDefault();
                 selectContactMethod('line');
+            });
+        }
+
+        function selectSearchContactMethod(method, clearValue = true) {
+            currentSearchContactMethod = method === 'line' ? 'line' : 'phone';
+            const input = document.getElementById('searchPhone');
+            document.getElementById('searchContactPhone')?.classList.toggle('active', currentSearchContactMethod === 'phone');
+            document.getElementById('searchContactLine')?.classList.toggle('active', currentSearchContactMethod === 'line');
+            if (!input) return;
+            input.type = currentSearchContactMethod === 'phone' ? 'tel' : 'text';
+            input.inputMode = currentSearchContactMethod === 'phone' ? 'tel' : 'none';
+            input.placeholder = currentSearchContactMethod === 'phone' ? '輸入電話號碼' : '';
+            input.readOnly = currentSearchContactMethod === 'line';
+            input.setAttribute('aria-label', currentSearchContactMethod === 'phone' ? '搜尋客戶電話' : '搜尋 LINE 訂單');
+            if (currentSearchContactMethod === 'line') input.value = 'LINE';
+            else if (clearValue) input.value = '';
+        }
+
+        function initSearchContactMethodToggle() {
+            document.getElementById('searchContactPhone')?.addEventListener('click', function(event) {
+                event.preventDefault();
+                selectSearchContactMethod('phone');
+            });
+            document.getElementById('searchContactLine')?.addEventListener('click', function(event) {
+                event.preventDefault();
+                selectSearchContactMethod('line');
             });
         }
 
@@ -2031,10 +2053,10 @@
 
         function searchOrders() {
             const searchBtn = document.querySelector('.btn-search');
-            const rawContact = document.getElementById('searchPhone').value.trim();
+            const rawContact = currentSearchContactMethod === 'line' ? 'LINE' : document.getElementById('searchPhone').value.trim();
             const criteria = {
                 contact: rawContact,
-                contactType: document.getElementById('searchContactType')?.value || 'phone',
+                contactType: currentSearchContactMethod,
                 name: document.getElementById('searchName').value.trim(),
                 date: document.getElementById('searchDate').value,
                 status: document.getElementById('searchStatus')?.value || '',
@@ -2342,9 +2364,7 @@
             document.getElementById('searchResults').innerHTML = '';
             const status = document.getElementById('searchStatus');
             if (status) status.value = '';
-            const contactType = document.getElementById('searchContactType');
-            if (contactType) contactType.value = 'phone';
-            document.getElementById('searchPhone').placeholder = '輸入電話號碼';
+            selectSearchContactMethod('phone', false);
             searchNextCursor = null;
             lastSearchCriteria = null;
         }
