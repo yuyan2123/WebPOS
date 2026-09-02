@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "金家訂單管理系統",
+  "short_name": "金家 POS",
+  "description": "金家店鋪訂單、商品與產能管理",
+  "lang": "zh-TW",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f7faf8",
+  "theme_color": "#1f6f5f",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "新增訂單", "short_name": "新增訂單", "url": "/?section=customer", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "搜尋訂單", "short_name": "搜尋", "url": "/?section=search", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

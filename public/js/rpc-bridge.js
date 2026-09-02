@@ -23,18 +23,18 @@
             #firebaseAuthOverlay.active { display: grid; }
             .firebase-auth-card { width: min(420px, 100%); padding: 32px; border-radius: 22px; background: #fff;
                 box-shadow: 0 24px 70px rgba(15, 23, 42, .3); text-align: center; font-family: inherit; }
-            .firebase-auth-card i { color: #2563eb; font-size: 2.4rem; margin-bottom: 16px; }
+            .firebase-auth-card i { color: #1f6f5f; font-size: 2.4rem; margin-bottom: 16px; }
             .firebase-auth-card h2 { margin: 0 0 10px; color: #1f2937; font-size: 1.5rem; }
             .firebase-auth-card p { margin: 0 0 22px; color: #64748b; line-height: 1.6; }
             #firebaseGoogleSignIn { width: 100%; border: 0; border-radius: 12px; padding: 14px 18px;
-                color: #fff; background: #2563eb; font-size: 1rem; font-weight: 700; cursor: pointer; }
+                color: #fff; background: #1f6f5f; font-size: 1rem; font-weight: 700; cursor: pointer; }
             #firebaseEmailAuth { display: grid; gap: 9px; margin-bottom: 14px; }
             #firebaseEmailAuth input { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 11px;
                 padding: 12px 13px; color: #1f2937; background: #fff; font: 500 .95rem/1.2 inherit; }
             .firebase-auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
             .firebase-auth-primary { border: 0; border-radius: 11px; padding: 12px 14px; color: #fff;
-                background: #2563eb; font-size: .94rem; font-weight: 700; cursor: pointer; }
-            .firebase-auth-primary.firebase-auth-create { color: #1d4ed8; background: #dbeafe; }
+                background: #1f6f5f; font-size: .94rem; font-weight: 700; cursor: pointer; }
+            .firebase-auth-primary.firebase-auth-create { color: #175448; background: #e4f1ec; }
             #firebaseResetPassword { border: 0; padding: 2px; color: #64748b; background: transparent;
                 font: 600 .82rem/1.2 inherit; cursor: pointer; }
             .firebase-auth-divider { display: flex; align-items: center; gap: 10px; margin: 13px 0; color: #94a3b8; font-size: .8rem; }
@@ -42,7 +42,7 @@
             #firebaseVerificationActions { display: none; gap: 9px; }
             #firebaseVerificationActions.active { display: grid; }
             .firebase-auth-secondary { width: 100%; border: 0; border-radius: 12px; padding: 12px 16px;
-                color: #1d4ed8; background: #dbeafe; font-size: .94rem; font-weight: 700; cursor: pointer; }
+                color: #175448; background: #e4f1ec; font-size: .94rem; font-weight: 700; cursor: pointer; }
             .firebase-auth-secondary.firebase-auth-muted { color: #475569; background: #f1f5f9; }
             .firebase-auth-card button:disabled { opacity: .58; cursor: wait; }
             #firebaseAuthError { min-height: 22px; margin-top: 12px; color: #dc2626; font-size: .9rem; }
@@ -54,8 +54,8 @@
             #firebaseAccountEmail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             #firebaseSignOut { border: 0; border-radius: 999px; padding: 6px 9px; color: #475569;
                 background: #f1f5f9; font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
-            #firebaseShopButton { border: 0; border-radius: 999px; padding: 6px 9px; color: #1d4ed8;
-                background: #dbeafe; font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
+            #firebaseShopButton { border: 0; border-radius: 999px; padding: 6px 9px; color: #175448;
+                background: #e4f1ec; font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
             #firebaseShopOverlay { position: fixed; inset: 0; z-index: 100001; display: none; place-items: center;
                 padding: 20px; background: rgba(15,23,42,.72); backdrop-filter: blur(8px); }
             #firebaseShopOverlay.active { display: grid; }
@@ -70,13 +70,13 @@
             .firebase-shop-option { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
                 padding: 13px 15px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #334155;
                 text-align: left; cursor: pointer; }
-            .firebase-shop-option.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+            .firebase-shop-option.active { border-color: #1f6f5f; background: #f1f8f5; color: #175448; }
             .firebase-shop-role { flex: none; padding: 3px 8px; border-radius: 999px; background: #f1f5f9; font-size: .72rem; }
             .firebase-shop-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
             .firebase-shop-form input, .firebase-shop-form select { min-width: 0; padding: 10px 12px; border: 1px solid #cbd5e1;
                 border-radius: 9px; background: #fff; color: #334155; }
             .firebase-shop-form button, .firebase-shop-action { border: 0; border-radius: 9px; padding: 10px 14px;
-                background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; }
+                background: #1f6f5f; color: #fff; font-weight: 700; cursor: pointer; }
             #firebaseShopAdmin { display: none; margin-top: 22px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
             #firebaseShopAdmin.active { display: block; }
             .firebase-shop-meta { margin: 4px 0 14px; color: #64748b; font-size: .78rem; word-break: break-all; }
@@ -169,7 +169,7 @@
         if (description) {
             description.textContent = verificationMode
                 ? `驗證信已寄到 ${user?.email || '您的信箱'}。完成驗證前，系統不會讀取任何店鋪資料。`
-                : '請使用已授權的 Google 帳號登入，才能存取訂單與客戶資料。';
+                : '請使用 Email 或 Google 帳號登入。完成 Email 驗證後才能存取店鋪資料。';
         }
         if (emailAuth) emailAuth.style.display = verificationMode ? 'none' : 'grid';
         if (divider) divider.style.display = verificationMode ? 'none' : 'flex';
@@ -253,12 +253,23 @@
         if (button) button.textContent = activeShop ? activeShop.name : '選擇店鋪';
     }
 
-    function activateShop(shop, reloadWhenChanged) {
+    async function activateShop(shop, reloadWhenChanged) {
         const changed = Boolean(activeShop && activeShop.shopId !== shop.shopId);
+        if (changed && typeof window.saveOrderDraftNow === 'function') {
+            try { await window.saveOrderDraftNow(); } catch (error) { console.warn('切換店鋪前保存草稿失敗', error); }
+        }
         activeShop = shop;
         document.body.dataset.shopRole = shop.role || 'viewer';
+        document.body.dataset.shopId = shop.shopId;
         localStorage.setItem(shopStorageKey(), shop.shopId);
         updateShopBadge();
+        window.posCapabilities = Object.freeze({
+            role: shop.role || 'viewer',
+            canRead: true,
+            canEdit: shop.role === 'owner' || shop.role === 'editor',
+            canManageShop: shop.role === 'owner',
+        });
+        window.dispatchEvent(new CustomEvent('pos:shop-changed', { detail: { shop: { ...shop } } }));
         document.getElementById('firebaseShopOverlay')?.classList.remove('active');
         if (resolveShopSelection) {
             resolveShopSelection(shop);
@@ -310,7 +321,7 @@
             const savedId = localStorage.getItem(shopStorageKey());
             const preferred = shops.find((shop) => shop.shopId === savedId) || (shops.length === 1 ? shops[0] : null);
             if (preferred) {
-                activateShop(preferred, false);
+                await activateShop(preferred, false);
                 shopSelectionPromise = null;
                 return preferred;
             }
@@ -583,12 +594,14 @@
                             return;
                         }
                         activeUid = user.uid;
+                        document.body.dataset.userId = user.uid;
                         hideAuthOverlay();
                         document.getElementById('firebaseAccountEmail').textContent = `✓ ${user.email || user.uid}`;
                         document.getElementById('firebaseAccountBadge').classList.add('active');
                         authWaiters.splice(0).forEach((waiter) => waiter.resolve(user));
                     } else if (user) {
                         activeUid = user.uid;
+                        document.body.dataset.userId = user.uid;
                         activeShop = null;
                         availableShops = [];
                         updateShopBadge();
@@ -596,6 +609,9 @@
                         showAuthOverlay('', 'verify', user);
                     } else {
                         activeUid = null;
+                        delete document.body.dataset.userId;
+                        delete document.body.dataset.shopId;
+                        delete document.body.dataset.shopRole;
                         activeShop = null;
                         availableShops = [];
                         updateShopBadge();

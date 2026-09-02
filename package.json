@@ -2,12 +2,16 @@
   "name": "gin-jia-pos-firebase",
   "private": true,
   "scripts": {
-    "build": "npm run check && npm test",
+    "build:css": "tailwindcss -c tailwind.config.cjs -i ./src/tailwind.css -o ./public/css/tailwind.generated.css --minify",
+    "build": "npm run build:css && npm run check && npm test",
     "emulators": "firebase emulators:start",
     "deploy": "firebase deploy",
     "deploy:hosting": "firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
     "test": "npm --prefix functions test",
-    "check": "npm --prefix functions run check"
+    "check": "npm --prefix functions run check && node --check public/js/app.js && node --check public/js/rpc-bridge.js && node --check public/js/pwa.js"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
   }
 }

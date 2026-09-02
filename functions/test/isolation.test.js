@@ -70,7 +70,5 @@ test("services never access a root-level business collection", async () => {
 test("public JavaScript bundle contains no mock business or customer records", async () => {
   const source = await readFile(resolve(import.meta.dirname, "../../public/js/app.js"), "utf8");
   assert.doesNotMatch(source, /09\d{8}/, "public bundle contains a Taiwanese mobile number");
-  assert.match(source, /const mockProducts = \[\];/);
-  assert.match(source, /const mockOrders = \[\];/);
-  assert.match(source, /const mockOrderDetails = \{\};/);
+  assert.doesNotMatch(source, /mockProducts|mockOrders|mockOrderDetails/);
 });

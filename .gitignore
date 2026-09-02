@@ -3,6 +3,7 @@ firebase-debug.log
 firebase-debug.*.log
 .firebaserc
 functions/node_modules/
+node_modules/
 functions/.env
 functions/.env.*
 !functions/.env.example
@@ -13,3 +14,4 @@ legacy-apps-script/
 .agents/
 .claude/
 skills-lock.json
+.codex/
