@@ -50,9 +50,10 @@ rules/indexes, Functions and Hosting together.
 
 For the live workflow, the GitHub deployment service account needs Firebase Hosting Admin,
 Firebase Rules Admin, Datastore Index Admin, Cloud Functions Admin, Secret Manager Viewer and
-Service Usage Consumer on the project. Grant Service Account User only on the Functions runtime
-service account (`PROJECT_ID@appspot.gserviceaccount.com`), rather than on every service account
-in the project. Secret Manager Viewer exposes metadata required for deployment, not secret values.
+Service Usage Consumer on the project. Grant Service Account User only on the runtime identities
+reported by the Firebase CLI (this project uses both its App Engine and Gen 2 Compute runtime
+accounts), rather than on every service account in the project. Secret Manager Viewer exposes
+metadata required for deployment, not secret values.
 
 For the local emulator, create the ignored file `functions/.secret.local` containing
 `SECURITY_HASH_SALT=` followed by a development-only random value of at least 32 characters.
