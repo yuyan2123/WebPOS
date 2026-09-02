@@ -48,6 +48,12 @@ The root build runs local Tailwind generation, syntax checks and the complete te
 pull requests build before creating a Hosting preview; merges to `main` build and deploy Firestore
 rules/indexes, Functions and Hosting together.
 
+For the live workflow, the GitHub deployment service account needs Firebase Hosting Admin,
+Firebase Rules Admin, Datastore Index Admin, Cloud Functions Admin, Secret Manager Viewer and
+Service Usage Consumer on the project. Grant Service Account User only on the Functions runtime
+service account (`PROJECT_ID@appspot.gserviceaccount.com`), rather than on every service account
+in the project. Secret Manager Viewer exposes metadata required for deployment, not secret values.
+
 For the local emulator, create the ignored file `functions/.secret.local` containing
 `SECURITY_HASH_SALT=` followed by a development-only random value of at least 32 characters.
 Customize the verification and password-reset messages under Authentication → Templates before launch.
