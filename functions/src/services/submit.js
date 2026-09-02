@@ -1,15 +1,17 @@
 import { boolean, text } from "../lib/values.js";
+import { orderDocumentId } from "../lib/ids.js";
 import { checkCapacityBeforeOrder } from "./capacity.js";
 import { createOrder, updateOrder } from "./orders.js";
 
 export async function submitOrder(shop, orderData = {}, options = {}) {
   const orderId = text(options.orderId || orderData.orderId);
+  const capacityOrderId = orderId || (text(orderData.clientRequestId) ? orderDocumentId(orderData.clientRequestId) : null);
   const confirmed = boolean(options.confirmed || orderData.capacityOverrideConfirmed);
   const capacity = await checkCapacityBeforeOrder(
     shop,
     orderData.deliveryDate,
     orderData.items,
-    orderId || null,
+    capacityOrderId,
     confirmed,
   );
   if (!capacity.allowed) return capacity;

@@ -7,10 +7,11 @@
     "node": "22"
   },
   "scripts": {
-    "check": "node --check src/index.js && node --check src/lib/auth.js && node --check src/lib/tenant.js && node --check src/lib/order-units.js && node --check src/services/shops.js && node --check src/services/security.js && node --check src/services/bootstrap.js && node --check src/services/submit.js && node --check src/services/orders.js && node --check src/services/catalog.js && node --check src/services/reports.js && node --check src/services/capacity.js && node --check scripts/import-data.js && node --check scripts/backfill-capacity.js",
+    "check": "node --check src/index.js && node --check src/lib/auth.js && node --check src/lib/tenant.js && node --check src/lib/order-units.js && node --check src/lib/ids.js && node --check src/services/shops.js && node --check src/services/security.js && node --check src/services/bootstrap.js && node --check src/services/submit.js && node --check src/services/orders.js && node --check src/services/catalog.js && node --check src/services/reports.js && node --check src/services/capacity.js && node --check scripts/import-data.js && node --check scripts/backfill-capacity.js && node --check scripts/backfill-contacts.js",
     "test": "node test/run.js",
     "import:data": "node scripts/import-data.js",
-    "backfill:capacity": "node scripts/backfill-capacity.js"
+    "backfill:capacity": "node scripts/backfill-capacity.js",
+    "backfill:contacts": "node scripts/backfill-contacts.js"
   },
   "dependencies": {
     "firebase-admin": "14.3.0",

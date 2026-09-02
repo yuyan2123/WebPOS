@@ -39,6 +39,240 @@
         let orderItemsTransitionTimer = null;
         let currentSearchOrders = [];
         let currentOrderTableType = null;
+        let currentContactMethod = 'phone';
+        let searchNextCursor = null;
+        let lastSearchCriteria = null;
+        let isLoadingMoreOrders = false;
+        let draftSaveTimer = null;
+        let restoredDraftKey = null;
+        let suppressDraftSave = false;
+        let posLocalDbPromise = null;
+        let currentOrderRequestId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : generateUniqueId('REQ');
+
+        function openPosLocalDb() {
+            if (!('indexedDB' in window)) return Promise.resolve(null);
+            if (posLocalDbPromise) return posLocalDbPromise;
+            posLocalDbPromise = new Promise(function(resolve, reject) {
+                const request = indexedDB.open('ginJiaPosLocal', 1);
+                request.onupgradeneeded = function() {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts');
+                    if (!db.objectStoreNames.contains('catalogs')) db.createObjectStore('catalogs');
+                };
+                request.onsuccess = function() { resolve(request.result); };
+                request.onerror = function() { reject(request.error); };
+            }).catch(function(error) {
+                console.warn('無法開啟本機草稿資料庫', error);
+                return null;
+            });
+            return posLocalDbPromise;
+        }
+
+        async function localDbOperation(storeName, mode, operation) {
+            const db = await openPosLocalDb();
+            if (!db) return null;
+            return new Promise(function(resolve, reject) {
+                const tx = db.transaction(storeName, mode);
+                const request = operation(tx.objectStore(storeName));
+                request.onsuccess = function() { resolve(request.result); };
+                request.onerror = function() { reject(request.error); };
+            });
+        }
+
+        function localDbGet(store, key) { return localDbOperation(store, 'readonly', function(s) { return s.get(key); }); }
+        function localDbPut(store, key, value) { return localDbOperation(store, 'readwrite', function(s) { return s.put(value, key); }); }
+        function localDbDelete(store, key) { return localDbOperation(store, 'readwrite', function(s) { return s.delete(key); }); }
+
+        function currentLocalScope() {
+            const uid = document.body.dataset.userId;
+            const shopId = document.body.dataset.shopId;
+            return uid && shopId ? `${uid}:${shopId}` : '';
+        }
+
+        function draftStorageKey() {
+            const scope = currentLocalScope();
+            return scope ? `order:${scope}` : '';
+        }
+
+        function catalogStorageKey() {
+            const scope = currentLocalScope();
+            return scope ? `products:${scope}` : '';
+        }
+
+        function captureOrderDraft() {
+            return {
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                currentCustomer,
+                currentContactMethod,
+                currentDeliveryDate,
+                giftCart,
+                cakeCart,
+                giftboxCart,
+                isCompanyCustomer,
+                isEditingOrder,
+                editingOrderId,
+                currentOrderRequestId,
+                fields: {
+                    customerName: document.getElementById('customerName')?.value || '',
+                    customerPhone: document.getElementById('customerPhone')?.value || '',
+                    customerAddress: document.getElementById('customerAddress')?.value || '',
+                    recipientName: document.getElementById('recipientName')?.value || '',
+                    recipientPhone: document.getElementById('recipientPhone')?.value || '',
+                    deliveryType: document.getElementById('deliveryTypeValue')?.value || '外送',
+                    shippingOption: document.getElementById('shippingOption')?.value || 'free',
+                    shippingFee: document.getElementById('shippingFee')?.value || '',
+                    selectedTitle: getSelectedTitle(),
+                },
+            };
+        }
+
+        function hasMeaningfulDraft(draft) {
+            return Boolean(
+                draft?.currentCustomer?.name || draft?.currentCustomer?.contactValue || draft?.currentCustomer?.phone ||
+                draft?.fields?.customerName || draft?.fields?.customerPhone || draft?.currentDeliveryDate ||
+                draft?.giftCart?.length || draft?.cakeCart?.length || draft?.giftboxCart?.length || draft?.isEditingOrder
+            );
+        }
+
+        function scheduleDraftSave() {
+            if (suppressDraftSave) return;
+            clearTimeout(draftSaveTimer);
+            draftSaveTimer = setTimeout(async function() {
+                const key = draftStorageKey();
+                if (!key) return;
+                const draft = captureOrderDraft();
+                try {
+                    if (hasMeaningfulDraft(draft)) {
+                        await localDbPut('drafts', key, draft);
+                        document.body.dataset.draftDirty = 'true';
+                    } else {
+                        await localDbDelete('drafts', key);
+                        document.body.dataset.draftDirty = 'false';
+                    }
+                } catch (error) {
+                    console.warn('訂單草稿保存失敗', error);
+                }
+            }, 250);
+        }
+
+        async function clearOrderDraft() {
+            clearTimeout(draftSaveTimer);
+            const key = draftStorageKey();
+            document.body.dataset.draftDirty = 'false';
+            if (key) await localDbDelete('drafts', key).catch(function(error) { console.warn('草稿清除失敗', error); });
+        }
+
+        window.saveOrderDraftNow = async function() {
+            clearTimeout(draftSaveTimer);
+            const key = draftStorageKey();
+            const draft = captureOrderDraft();
+            if (key && hasMeaningfulDraft(draft)) await localDbPut('drafts', key, draft);
+        };
+
+        function applyRoleCapabilities() {
+            const viewer = document.body.dataset.shopRole === 'viewer';
+            document.querySelectorAll('.requires-editor').forEach(function(element) {
+                element.hidden = viewer;
+                element.setAttribute('aria-hidden', String(viewer));
+            });
+            if (viewer) document.body.dataset.permissionNotice = 'readonly';
+            else delete document.body.dataset.permissionNotice;
+            document.querySelectorAll('#settingsCapacity input, #settingsCapacity button').forEach(function(element) {
+                element.disabled = viewer;
+                element.setAttribute('aria-disabled', String(viewer));
+            });
+            if (allProducts.length) renderProductCards();
+            if (currentSearchOrders.length) displayOrderTable(currentSearchOrders, 'searchResults', 'search');
+            updateCartDisplay();
+        }
+
+        function applyDraft(draft) {
+            const fields = draft.fields || {};
+            suppressDraftSave = true;
+            currentContactMethod = draft.currentContactMethod === 'line' ? 'line' : 'phone';
+            selectContactMethod(currentContactMethod, false);
+            ['customerName', 'customerPhone', 'customerAddress', 'recipientName', 'recipientPhone', 'shippingFee'].forEach(function(id) {
+                const element = document.getElementById(id);
+                if (element) element.value = fields[id] || '';
+            });
+            document.querySelectorAll('#nameTitleGroup .name-title-btn').forEach(function(button) {
+                button.classList.toggle('active', button.dataset.title === fields.selectedTitle);
+            });
+            currentCustomer = draft.currentCustomer || {};
+            currentDeliveryDate = draft.currentDeliveryDate || '';
+            giftCart = Array.isArray(draft.giftCart) ? draft.giftCart : [];
+            cakeCart = Array.isArray(draft.cakeCart) ? draft.cakeCart : [];
+            giftboxCart = Array.isArray(draft.giftboxCart) ? draft.giftboxCart : [];
+            isCompanyCustomer = Boolean(draft.isCompanyCustomer);
+            isEditingOrder = Boolean(draft.isEditingOrder);
+            editingOrderId = draft.editingOrderId || null;
+            currentOrderRequestId = draft.currentOrderRequestId || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : generateUniqueId('REQ'));
+            selectCustomerType(document.getElementById(isCompanyCustomer ? 'customerCompany' : 'customerNormal'), isCompanyCustomer);
+            selectDeliveryType(document.getElementById({ '寄貨': 'deliveryShipping', '自取': 'deliveryPickup' }[fields.deliveryType] || 'deliveryHome'), fields.deliveryType || '外送');
+            selectShippingFee(document.getElementById(fields.shippingOption === 'charge' ? 'chargeShipping' : 'freeShipping'), fields.shippingOption || 'free');
+            if (currentDeliveryDate) {
+                document.getElementById('deliveryDate').value = currentDeliveryDate;
+                calendarState.selectedDateStr = currentDeliveryDate;
+            }
+            updateCartDisplay();
+            renderCalendar();
+            suppressDraftSave = false;
+            document.body.dataset.draftDirty = 'true';
+            showAlert('已恢復上次未完成的訂單草稿', 'success');
+        }
+
+        async function restoreOrderDraftOnce() {
+            const key = draftStorageKey();
+            if (!key || restoredDraftKey === key) return;
+            restoredDraftKey = key;
+            const draft = await localDbGet('drafts', key).catch(function() { return null; });
+            if (!hasMeaningfulDraft(draft)) return;
+            const age = Date.now() - new Date(draft.updatedAt || 0).getTime();
+            if (!Number.isFinite(age) || age > 30 * 24 * 60 * 60 * 1000) {
+                await localDbDelete('drafts', key);
+                return;
+            }
+            if (confirm('找到上次未完成的訂單草稿，是否繼續？')) applyDraft(draft);
+            else await clearOrderDraft();
+        }
+
+        function initOrderDraftPersistence() {
+            const form = document.getElementById('customer');
+            form?.addEventListener('input', scheduleDraftSave);
+            form?.addEventListener('change', scheduleDraftSave);
+            window.addEventListener('pos:shop-changed', function() {
+                restoredDraftKey = null;
+                restoreOrderDraftOnce();
+                applyRoleCapabilities();
+            });
+        }
+
+        function initAccessibleDialogs() {
+            document.querySelectorAll('.modal').forEach(function(modal) {
+                modal.setAttribute('role', 'dialog');
+                modal.setAttribute('aria-modal', 'true');
+            });
+            document.querySelectorAll('label:not([for])').forEach(function(label) {
+                const control = label.parentElement?.querySelector('input[id], select[id], textarea[id]');
+                if (control) label.htmlFor = control.id;
+            });
+            document.querySelectorAll('input:not([aria-label]), select:not([aria-label]), textarea:not([aria-label])').forEach(function(control) {
+                if (!control.labels?.length) control.setAttribute('aria-label', control.placeholder || control.id || '輸入欄位');
+            });
+            document.querySelectorAll('button').forEach(function(button) {
+                if (!button.getAttribute('aria-label') && !button.textContent.trim()) {
+                    const icon = button.querySelector('i');
+                    if (icon?.classList.contains('fa-plus')) button.setAttribute('aria-label', '增加數量');
+                    else if (icon?.classList.contains('fa-minus')) button.setAttribute('aria-label', '減少數量');
+                    else if (icon?.classList.contains('fa-trash-alt')) button.setAttribute('aria-label', '刪除');
+                    else if (icon?.classList.contains('fa-times')) button.setAttribute('aria-label', '關閉');
+                    else if (icon?.classList.contains('fa-chevron-left')) button.setAttribute('aria-label', '上一個月');
+                    else if (icon?.classList.contains('fa-chevron-right')) button.setAttribute('aria-label', '下一個月');
+                    else if (button.textContent.trim() === '×') button.setAttribute('aria-label', '關閉');
+                }
+            });
+        }
 
         // 頁面載入時初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -51,12 +285,22 @@
             initializeModalCloseHandlers();
             initCustomerAutocomplete();
             initEscapeToClose();
+            initAccessibleDialogs();
+            initOrderDraftPersistence();
+            document.getElementById('searchContactType')?.addEventListener('change', function() {
+                const input = document.getElementById('searchPhone');
+                if (!input) return;
+                input.placeholder = this.value === 'line' ? '輸入 LINE ID' : '輸入電話號碼';
+                input.inputMode = this.value === 'line' ? 'text' : 'tel';
+            });
             // 初始化配送方式相關欄位顯示
             toggleShippingField();
             // 初始化日曆 (新UI)
             renderCalendar(true);
             // 商品與目前月份產能合併載入；客戶只在使用者輸入時查詢。
             loadInitialShopData();
+            const requestedSection = new URLSearchParams(location.search).get('section');
+            if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);
         });
 
         // ==========================================
@@ -149,10 +393,8 @@
 
             if (isMobile) {
                 body.classList.add('mobile-device');
-                console.log('Detected mobile device');
             } else {
                 body.classList.add('desktop-device');
-                console.log('Detected desktop device');
             }
 
             // 填入裝置資訊
@@ -373,6 +615,27 @@
             }
             document.querySelectorAll('#nameTitleGroup .name-title-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            scheduleDraftSave();
+        }
+
+        function selectContactMethod(method, clearValue = true) {
+            currentContactMethod = method === 'line' ? 'line' : 'phone';
+            const input = document.getElementById('customerPhone');
+            const label = document.getElementById('customerContactLabel');
+            const hint = document.getElementById('customerContactHint');
+            document.getElementById('contactMethodPhone')?.classList.toggle('active', currentContactMethod === 'phone');
+            document.getElementById('contactMethodLine')?.classList.toggle('active', currentContactMethod === 'line');
+            if (input) {
+                if (clearValue) input.value = '';
+                input.type = currentContactMethod === 'phone' ? 'tel' : 'text';
+                input.inputMode = currentContactMethod === 'phone' ? 'tel' : 'text';
+                input.placeholder = currentContactMethod === 'phone' ? '09xx-xxx-xxx' : '請輸入 LINE ID';
+                input.setAttribute('aria-label', currentContactMethod === 'phone' ? '客戶電話' : '客戶 LINE ID');
+            }
+            if (label) label.textContent = currentContactMethod === 'phone' ? '聯絡電話' : 'LINE ID';
+            if (hint) hint.textContent = currentContactMethod === 'phone' ? '請輸入可聯絡的電話號碼' : '請輸入顧客提供的 LINE ID（不是 LINE 顯示名稱）';
+            closeAllAcLists();
+            scheduleDraftSave();
         }
 
         // --- 客戶 Autocomplete ---
@@ -385,10 +648,10 @@
             const phoneInput = document.getElementById('customerPhone');
 
             nameInput.addEventListener('input', function() {
-                debounceAcSearch(this.value.trim(), 'customerAcList');
+                debounceAcSearch(this.value.trim(), 'customerAcList', 'name');
             });
             phoneInput.addEventListener('input', function() {
-                debounceAcSearch(this.value.trim(), 'customerAcListPhone');
+                debounceAcSearch(this.value.trim(), 'customerAcListPhone', 'contact');
             });
 
             // 點擊外部關閉
@@ -403,14 +666,15 @@
             phoneInput.addEventListener('keydown', function(e) { acKeyNav(e, 'customerAcListPhone'); });
         }
 
-        function debounceAcSearch(keyword, listId) {
+        function debounceAcSearch(keyword, listId, mode) {
             clearTimeout(acDebounceTimer);
             if (!keyword || keyword.length < 2) {
                 document.getElementById(listId).classList.remove('show');
                 return;
             }
-            if (customerSearchCache.has(keyword)) {
-                renderAcList(customerSearchCache.get(keyword), listId);
+            const cacheKey = `${mode}:${currentContactMethod}:${keyword.toLocaleLowerCase()}`;
+            if (customerSearchCache.has(cacheKey)) {
+                renderAcList(customerSearchCache.get(cacheKey), listId);
                 return;
             }
             // 只查前綴並快取結果，避免下載整個客戶集合。
@@ -418,10 +682,10 @@
                 if (typeof google !== 'undefined' && google.script && google.script.run) {
                     google.script.run
                         .withSuccessHandler(function(results) {
-                            customerSearchCache.set(keyword, results || []);
+                            customerSearchCache.set(cacheKey, results || []);
                             renderAcList(results, listId);
                         })
-                        .searchCustomers(keyword);
+                        .searchCustomers({ keyword, mode, contactType: currentContactMethod });
                 }
             }, 300);
         }
@@ -439,7 +703,7 @@
                     + '<div class="customer-ac-icon"><i class="fas fa-user"></i></div>'
                     + '<div class="customer-ac-info">'
                     + '<div class="customer-ac-name">' + escapeHtml(c.name) + '</div>'
-                    + '<div class="customer-ac-phone">' + escapeHtml(c.phone) + (c.address ? ' / ' + escapeHtml(c.address) : '') + '</div>'
+                    + '<div class="customer-ac-phone">' + escapeHtml(c.contactType === 'line' ? 'LINE：' + (c.contactValue || c.lineId || '') : (c.contactValue || c.phone || '')) + (c.address ? ' / ' + escapeHtml(c.address) : '') + '</div>'
                     + '</div></div>';
             }).join('');
             list.classList.add('show');
@@ -458,7 +722,8 @@
                 if (btn) btn.classList.add('active');
             }
             document.getElementById('customerName').value = name;
-            document.getElementById('customerPhone').value = c.phone || '';
+            selectContactMethod(c.contactType === 'line' ? 'line' : 'phone', false);
+            document.getElementById('customerPhone').value = c.contactValue || c.lineId || c.phone || '';
             if (c.address) {
                 document.getElementById('customerAddress').value = c.address;
             }
@@ -520,44 +785,48 @@
         }
 
         function saveCustomer() {
-            const saveBtn = event.target;
+            const saveBtn = window.event?.currentTarget || window.event?.target;
             const rawName = document.getElementById('customerName').value.trim();
             const title = getSelectedTitle();
             const name = rawName ? rawName + title : '';
-            const phone = document.getElementById('customerPhone').value.trim();
+            const contactValue = document.getElementById('customerPhone').value.trim();
             const address = document.getElementById('customerAddress').value.trim();
             const recipientName = document.getElementById('recipientName').value.trim();
             const recipientPhone = document.getElementById('recipientPhone').value.trim();
             const deliveryType = document.getElementById('deliveryTypeValue').value;
 
-            if (!name && !phone) {
-                showAlert('請至少填寫客戶姓名或電話', 'error');
+            if (!name) {
+                showAlert('請輸入客戶姓名', 'error');
+                return;
+            }
+            if (!contactValue) {
+                showAlert(currentContactMethod === 'line' ? '請輸入 LINE ID' : '請輸入客戶電話', 'error');
                 return;
             }
 
-            setButtonLoading(saveBtn, true, '儲存中...');
-
-            setTimeout(() => {
-                currentCustomer = {
-                    name,
-                    phone,
-                    address,
-                    recipientName,
-                    recipientPhone,
-                    deliveryType,
-                    isCompanyCustomer: isCompanyCustomer
-                };
-                updateCartDisplay(); // 更新購物車按鈕狀態
-                showAlert('客戶資訊已儲存', 'success');
-                setButtonLoading(saveBtn, false);
-                setTimeout(() => showSectionById('date'), 300);
-            }, 500); // 模擬網路延遲
+            currentCustomer = {
+                name,
+                contactType: currentContactMethod,
+                contactValue,
+                phone: currentContactMethod === 'phone' ? contactValue : '',
+                lineId: currentContactMethod === 'line' ? contactValue : '',
+                address,
+                recipientName,
+                recipientPhone,
+                deliveryType,
+                isCompanyCustomer: isCompanyCustomer
+            };
+            updateCartDisplay();
+            showAlert('客戶資訊已儲存', 'success');
+            if (saveBtn) setButtonLoading(saveBtn, false);
+            showSectionById('date');
         }
 
         function clearCustomerForm() {
             document.getElementById('customerName').value = '';
             document.querySelectorAll('#nameTitleGroup .name-title-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('customerPhone').value = '';
+            selectContactMethod('phone', false);
             document.getElementById('customerAddress').value = '';
             // 清空收件人資訊
             document.getElementById('recipientName').value = '';
@@ -589,30 +858,21 @@
         }
 
         function setDeliveryDate() {
-            const dateBtn = event.target;
+            const dateBtn = window.event?.currentTarget || window.event?.target;
             const date = document.getElementById('deliveryDate').value;
             if (!date) {
                 showAlert('請選擇交貨日期', 'error');
                 return;
             }
 
-            setButtonLoading(dateBtn, true, '確認中...');
-
-            setTimeout(() => {
-                currentDeliveryDate = date;
-                updateCartDisplay(); // 更新購物車按鈕狀態
-                showAlert(`交貨日期已設定: ${date}`, 'success');
-                setButtonLoading(dateBtn, false);
-                setTimeout(() => showSectionById('gift'), 300);
-            }, 300);
+            currentDeliveryDate = date;
+            updateCartDisplay();
+            showAlert(`交貨日期已設定: ${date}`, 'success');
+            if (dateBtn) setButtonLoading(dateBtn, false);
+            showSectionById('gift');
         }
 
         // Public builds never bundle catalog, customer, or order data.
-        const mockProducts = [];
-
-        // Public builds never bundle customer or order examples.
-        const mockOrders = [];
-        const mockOrderDetails = {};
         function loadProducts() {
             // 顯示載入狀態
             const giftContainer = document.getElementById('giftProducts');
@@ -625,21 +885,40 @@
                 google.script.run
                     .withSuccessHandler(handleProductsLoaded)
                     .withFailureHandler(function(error) {
-                        console.warn('無法連線 Google Apps Script，使用模擬資料', error);
-                        handleProductsLoaded(mockProducts);
+                        showProductLoadFailure(error);
                     })
                     .getProducts();
             } else {
-                // 不在 Google Apps Script 環境中，使用模擬資料
-                console.info('使用模擬產品資料');
-                setTimeout(() => handleProductsLoaded(mockProducts), 300);
+                showProductLoadFailure(new Error('尚未連接 Firebase'));
             }
+        }
+
+        async function cacheProducts(products) {
+            const key = catalogStorageKey();
+            if (!key) return;
+            await localDbPut('catalogs', key, { products, updatedAt: new Date().toISOString() }).catch(function() {});
+        }
+
+        async function showProductLoadFailure(error) {
+            console.warn('商品資料載入失敗', error);
+            const key = catalogStorageKey();
+            const cached = key ? await localDbGet('catalogs', key).catch(function() { return null; }) : null;
+            if (cached?.products?.length) {
+                handleProductsLoaded(cached.products, { skipCache: true });
+                document.querySelectorAll('#giftProducts, #cakeProducts').forEach(function(container) {
+                    container.insertAdjacentHTML('afterbegin', `<div class="product-stale-banner col-span-full"><i class="fas fa-cloud-slash"></i> 無法連線，顯示 ${formatDisplayDate(cached.updatedAt)} 的商品資料 <button type="button" onclick="loadProducts()">重試</button></div>`);
+                });
+                return;
+            }
+            const message = `<div class="product-load-error col-span-full" role="alert"><i class="fas fa-wifi"></i><strong>商品載入失敗</strong><span>${escapeHtml(error?.message || '請檢查網路連線')}</span><button type="button" onclick="loadProducts()">重新載入</button></div>`;
+            document.getElementById('giftProducts').innerHTML = message;
+            document.getElementById('cakeProducts').innerHTML = message;
         }
 
         function loadInitialShopData() {
             const now = new Date();
             if (typeof google === 'undefined' || !google.script || !google.script.run) {
-                handleProductsLoaded(mockProducts);
+                showProductLoadFailure(new Error('尚未連接 Firebase'));
                 renderCalendar();
                 return;
             }
@@ -652,7 +931,7 @@
                     renderCalendar();
                 })
                 .withFailureHandler(function(error) {
-                    console.warn('初始資料載入失敗，改用個別請求', error);
+                    console.warn('初始資料載入失敗，改用商品重試流程', error);
                     loadProducts();
                     renderCalendar();
                 })
@@ -661,11 +940,13 @@
 
         let currentProductFilter = '全部';
 
-        function handleProductsLoaded(products) {
-            allProducts = products;
+        function handleProductsLoaded(products, options = {}) {
+            allProducts = Array.isArray(products) ? products : [];
+            if (!options.skipCache) cacheProducts(allProducts);
             renderProductCards();
             updateProductDisplays();
             updateNavVisibility();
+            restoreOrderDraftOnce();
         }
 
         function updateNavVisibility() {
@@ -745,14 +1026,14 @@
                             ${companyPriceDisplay}
                         </div>
                     </div>
-                    <div class="product-card-actions">
+                    ${document.body.dataset.shopRole === 'viewer' ? '' : `<div class="product-card-actions requires-editor">
                         <button class="btn-card-edit" onclick="editProduct('${p.productId}')">
                             <i class="fas fa-edit"></i> 編輯
                         </button>
                         <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${p.productId}')">
                             <i class="fas fa-trash-alt"></i> 刪除
                         </button>
-                    </div>
+                    </div>`}
                 </div>`;
             }).join('');
         }
@@ -823,7 +1104,7 @@
             // 防止事件冒泡觸發卡片點擊
             event.stopPropagation();
 
-            const btn = event.currentTarget;
+            const btn = window.event?.currentTarget || window.event?.target;
 
             // 防止快速重複點擊導致狀態錯亂
             if (btn.dataset.animating === 'true') {
@@ -977,7 +1258,7 @@
         }
         
         function updateProductSpecialPrice(productId, specialPrice) {
-            // 異步更新商品特價到Google Sheets
+            // 透過已驗證的 Firebase RPC 更新商品特價。
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withFailureHandler(function(error) {
@@ -985,24 +1266,15 @@
                     })
                     .updateProductSpecialPrice(productId, specialPrice);
             } else {
-                console.info('模擬模式：跳過更新特價到資料庫');
+                showAlert('尚未連接 Firebase，特價未儲存', 'error');
             }
         }
 
         function changeModalQuantity(change) {
-            // 防止快速連續點擊
-            if (event.target.classList.contains('loading')) return;
-
-            const btn = event.target;
-            setButtonLoading(btn, true);
-
-            setTimeout(() => {
-                const qtyInput = document.getElementById('modalQuantity');
-                let val = parseInt(qtyInput.value) + change;
-                if (val < 1) val = 1;
-                qtyInput.value = val;
-                setButtonLoading(btn, false);
-            }, 100);
+            const qtyInput = document.getElementById('modalQuantity');
+            let val = parseInt(qtyInput.value) + change;
+            if (val < 1) val = 1;
+            qtyInput.value = val;
         }
 
         function validateModalQuantity(newQuantity) {
@@ -1018,8 +1290,7 @@
         function updateCartItemDirectly(index, newQuantity) {
             const qty = parseInt(newQuantity) || 1;
             if (qty < 1) {
-                // 如果輸入的數量小於1，設回1
-                setTimeout(() => updateCartModalDisplay(), 100);
+                updateCartModalDisplay();
                 return;
             }
 
@@ -1045,11 +1316,10 @@
         function addToCartFromModal() {
             if (!currentModalProduct) return;
 
-            const addBtn = event.target;
+            const addBtn = window.event?.currentTarget || window.event?.target;
             setButtonLoading(addBtn, true, '加入中...');
 
-            setTimeout(() => {
-                const quantity = parseInt(document.getElementById('modalQuantity').value);
+            const quantity = parseInt(document.getElementById('modalQuantity').value);
                 const useSpecialPrice = document.getElementById('useSpecialPrice').checked;
                 const specialPrice = parseFloat(document.getElementById('specialPriceInput').value) || 0;
                 
@@ -1094,8 +1364,7 @@
                 }
                 
                 setButtonLoading(addBtn, false);
-                closeProductModal();
-            }, 300);
+            closeProductModal();
         }
 
         function toggleCartModal() {
@@ -1139,7 +1408,7 @@
             // 更新建立訂單按鈕：不使用 disabled（disabled 不會觸發 click，無法提示缺少什麼），
             // 改用樣式 class 標記，點擊時由 submitOrder 顯示具體原因
             const checkoutBtn = document.getElementById('checkoutBtn');
-            const notReady = totalCount === 0 || (!currentCustomer.name && !currentCustomer.phone) || !currentDeliveryDate;
+            const notReady = totalCount === 0 || !currentCustomer.name || (!currentCustomer.contactValue && !currentCustomer.phone) || !currentDeliveryDate || !navigator.onLine || document.body.dataset.shopRole === 'viewer';
             checkoutBtn.classList.toggle('checkout-not-ready', notReady);
 
             // 根據是否為編輯模式更新按鈕文字
@@ -1150,6 +1419,7 @@
             }
 
             updateCartModalDisplay();
+            scheduleDraftSave();
         }
 
         // 生成禮盒細項顯示的輔助函數
@@ -1274,58 +1544,37 @@
         }
 
         function updateCartItemQuantity(index, change) {
-            // 防止快速連續點擊
-            if (event.target.classList.contains('loading')) return;
+            const allItems = [...giftCart, ...cakeCart, ...giftboxCart];
+            const item = allItems[index];
+            if (!item) return;
 
-            const btn = event.target;
-            setButtonLoading(btn, true);
-
-            setTimeout(() => {
-                const allItems = [...giftCart, ...cakeCart, ...giftboxCart];
-                const item = allItems[index];
-
-                if (item.type === 'giftbox') {
-                    const originalItem = giftboxCart.find(i => i.id === item.id);
-                    if (originalItem) {
-                        originalItem.quantity += change;
-                        if (originalItem.quantity < 1) removeFromCartModal(index);
-                        else updateCartDisplay();
-                    }
-                } else {
-                    const cart = item.category === '伴手禮' ? giftCart : cakeCart;
-                    const originalItem = cart.find(i => i.productId === item.productId);
-                    if (originalItem) {
-                        originalItem.quantity += change;
-                        if (originalItem.quantity < 1) removeFromCartModal(index);
-                        else updateCartDisplay();
-                    }
+            if (item.type === 'giftbox') {
+                const originalItem = giftboxCart.find(i => i.id === item.id);
+                if (originalItem) {
+                    originalItem.quantity += change;
+                    if (originalItem.quantity < 1) removeFromCartModal(index);
+                    else updateCartDisplay();
                 }
-
-                setButtonLoading(btn, false);
-            }, 200);
+            } else {
+                const cart = item.category === '伴手禮' ? giftCart : cakeCart;
+                const originalItem = cart.find(i => i.productId === item.productId);
+                if (originalItem) {
+                    originalItem.quantity += change;
+                    if (originalItem.quantity < 1) removeFromCartModal(index);
+                    else updateCartDisplay();
+                }
+            }
         }
 
         function removeFromCartModal(index) {
-            // 防止快速連續點擊
-            if (event.target.classList.contains('loading')) return;
+            const allItems = [...giftCart, ...cakeCart, ...giftboxCart];
+            const item = allItems[index];
+            if (!item) return;
 
-            const btn = event.target;
-            setButtonLoading(btn, true, '移除中...');
-
-            setTimeout(() => {
-                const allItems = [...giftCart, ...cakeCart, ...giftboxCart];
-                const item = allItems[index];
-
-                if (item.type === 'giftbox') {
-                    giftboxCart = giftboxCart.filter(i => i.id !== item.id);
-                } else if (item.category === '伴手禮') {
-                    giftCart = giftCart.filter(i => i.productId !== item.productId);
-                } else {
-                    cakeCart = cakeCart.filter(i => i.productId !== item.productId);
-                }
-                updateCartDisplay();
-                setButtonLoading(btn, false);
-            }, 200);
+            if (item.type === 'giftbox') giftboxCart = giftboxCart.filter(i => i.id !== item.id);
+            else if (item.category === '伴手禮') giftCart = giftCart.filter(i => i.productId !== item.productId);
+            else cakeCart = cakeCart.filter(i => i.productId !== item.productId);
+            updateCartDisplay();
         }
 
         function submitOrder() {
@@ -1338,8 +1587,12 @@
             }
 
             if (checkoutBtn.classList.contains('checkout-not-ready')) {
-                if (!currentCustomer.name && !currentCustomer.phone) {
+                if (!currentCustomer.name || (!currentCustomer.contactValue && !currentCustomer.phone)) {
                     showAlert('請先儲存客戶資訊', 'error');
+                } else if (!navigator.onLine) {
+                    showAlert('目前離線，草稿已保存；恢復連線後才能送出訂單', 'error');
+                } else if (document.body.dataset.shopRole === 'viewer') {
+                    showAlert('僅檢視成員不能建立或修改訂單', 'error');
                 } else if (!currentDeliveryDate) {
                     showAlert('請先設定交貨日期', 'error');
                 } else {
@@ -1369,6 +1622,7 @@
             };
 
             const orderData = {
+                clientRequestId: currentOrderRequestId,
                 customer: customerData,
                 deliveryDate: currentDeliveryDate,
                 items: [...giftCart, ...cakeCart, ...giftboxCart],
@@ -1450,7 +1704,10 @@
 
             currentCustomer = {
                 name: orderDetails.customerName,
-                phone: orderDetails.customerPhone,
+                contactType: orderDetails.customerContactType || (orderDetails.customerLineId ? 'line' : 'phone'),
+                contactValue: orderDetails.customerContactValue || orderDetails.customerLineId || orderDetails.customerPhone || '',
+                phone: orderDetails.customerPhone || '',
+                lineId: orderDetails.customerLineId || '',
                 address: orderDetails.customerAddress || '',
                 recipientName: orderDetails.recipientName || '',
                 recipientPhone: orderDetails.recipientPhone || '',
@@ -1467,7 +1724,8 @@
                 if (btn) btn.classList.add('active');
             }
             document.getElementById('customerName').value = loadedName;
-            document.getElementById('customerPhone').value = currentCustomer.phone;
+            selectContactMethod(currentCustomer.contactType, false);
+            document.getElementById('customerPhone').value = currentCustomer.contactValue;
             document.getElementById('customerAddress').value = currentCustomer.address;
             document.getElementById('recipientName').value = currentCustomer.recipientName;
             document.getElementById('recipientPhone').value = currentCustomer.recipientPhone;
@@ -1565,22 +1823,19 @@
                             giftBoxEnabled: '是'
                         };
                         giftCart.push(tempProduct);
-                        console.log('建立臨時產品項目:', tempProduct);
                     }
                 }
             });
 
             // 確保購物車顯示正確更新
-            setTimeout(() => {
-                updateCartDisplay();
-                showAlert(`已載入訂單 ${orderDetails.orderId} 進行編輯`, 'success');
-                showSectionById('customer');
-            }, 100);
+            updateCartDisplay();
+            showAlert(`已載入訂單 ${orderDetails.orderId} 進行編輯`, 'success');
+            showSectionById('customer');
         }
 
         function updateOrderStatus(orderId, newStatus) {
             // 由按鈕觸發時顯示按鈕載入狀態；由滑動元件觸發時 event.target 不是按鈕
-            const updateBtn = (typeof event !== 'undefined' && event && event.target && event.target.tagName === 'BUTTON') ? event.target : null;
+            const updateBtn = window.event?.currentTarget?.tagName === 'BUTTON' ? window.event.currentTarget : null;
             if (updateBtn) setButtonLoading(updateBtn, true, '更新中...');
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -1598,12 +1853,8 @@
                     })
                     .updateOrderStatus(orderId, newStatus);
             } else {
-                // 模擬模式
-                setTimeout(function() {
-                    if (updateBtn) setButtonLoading(updateBtn, false);
-                    showAlert(`訂單狀態已更新為: ${newStatus}`, 'success');
-                    refreshOrderDisplays(orderId, newStatus);
-                }, 300);
+                if (updateBtn) setButtonLoading(updateBtn, false);
+                showAlert('尚未連接 Firebase，無法更新訂單', 'error');
             }
         }
 
@@ -1661,19 +1912,6 @@
                 case '完成': return 'pill-deep-green';
                 case '取消': return 'pill-red';
                 default: return 'pill-gray';
-            }
-        }
-
-        // 新增函數：根據狀態返回對應顏色
-        function getStatusColor(status) {
-            switch(status) {
-                case '已確認': return '#2980b9'; // 藍色
-                case '已付訂金': return '#f39c12'; // 橘色
-                case '已付清': return '#27ae60'; // 綠色
-                case '已付款': return '#27ae60'; // 綠色（向下相容）
-                case '完成': return '#1e8449'; // 深綠色
-                case '取消': return '#c66b6b'; // 紅色
-                default: return 'var(--text-color)';
             }
         }
 
@@ -1759,95 +1997,78 @@
                 giftboxSelection = {};
                 currentGiftboxCombo = null;
                 editingGiftboxIndex = -1;
+                currentOrderRequestId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : generateUniqueId('REQ');
 
                 updateCartDisplay();
+                clearOrderDraft();
             } catch (e) {
                 console.error('重置訂單表單失敗:', e);
                 showAlert('訂單已建立，但表單重置失敗，請重新整理頁面', 'warning');
             }
         }
 
-        function autoSearchNewOrder(orderId, customer) {
-            // 清空之前的搜尋結果和搜尋條件
-            document.getElementById('searchResults').innerHTML = '';
-            document.getElementById('searchPhone').value = '';
-            document.getElementById('searchName').value = '';
-            if (searchDatepickerInstance) {
-                searchDatepickerInstance.clear();
-            } else {
-                document.getElementById('searchDate').value = '';
-            }
-            
-            // 直接用訂單編號搜尋，最精準最快速
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(orders) {
-                        if (orders && orders.length > 0) {
-                            displayOrderTable(orders, 'searchResults', 'search');
-                            // 自動打開訂單詳情
-                            setTimeout(() => {
-                                viewOrderDetails(orderId);
-                            }, 500);
-                        } else {
-                            document.getElementById('searchResults').innerHTML = '<p>未找到剛建立的訂單</p>';
-                        }
-                    })
-                    .withFailureHandler(function(error) {
-                        console.log('自動搜尋訂單錯誤:', error);
-                        document.getElementById('searchResults').innerHTML = '<p>搜尋訂單時發生錯誤</p>';
-                    })
-                    .searchOrderById(orderId);
-            } else {
-                // 模擬模式：無後端可查，顯示提示即可
-                document.getElementById('searchResults').innerHTML = '<p>模擬模式：訂單 ' + orderId + ' 已建立</p>';
-            }
-        }
-
         function searchOrders() {
-            const searchBtn = event.target;
+            const searchBtn = document.querySelector('.btn-search');
+            const rawContact = document.getElementById('searchPhone').value.trim();
             const criteria = {
-                phone: document.getElementById('searchPhone').value.trim(),
+                contact: rawContact,
+                contactType: document.getElementById('searchContactType')?.value || 'phone',
                 name: document.getElementById('searchName').value.trim(),
-                date: document.getElementById('searchDate').value
+                date: document.getElementById('searchDate').value,
+                status: document.getElementById('searchStatus')?.value || '',
+                pageSize: 30,
+                cursor: null,
+                paginated: true,
             };
-            if (!criteria.phone && !criteria.name && !criteria.date) {
+            if (!criteria.contact && !criteria.name && !criteria.date && !criteria.status) {
                 showAlert('請至少提供一個搜尋條件', 'error');
                 return;
             }
-
+            lastSearchCriteria = criteria;
+            searchNextCursor = null;
             setButtonLoading(searchBtn, true, '搜尋中...');
-
-            // 檢查是否在 Google Apps Script 環境中
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(function(orders) {
+                    .withSuccessHandler(function(result) {
                         setButtonLoading(searchBtn, false);
-                        handleSearchResults(orders);
+                        const page = Array.isArray(result) ? { orders: result, pagination: {} } : result;
+                        searchNextCursor = page?.pagination?.nextCursor || null;
+                        handleSearchResults(page?.orders || []);
                     })
                     .withFailureHandler(function(error) {
                         setButtonLoading(searchBtn, false);
-                        handleError(error);
+                        renderSearchError(error);
                     })
                     .searchOrders(criteria);
             } else {
-                // 本地測試：使用模擬資料進行搜尋
-                console.info('使用模擬訂單資料進行搜尋');
-                setTimeout(() => {
-                    const results = mockOrders.filter(order => {
-                        let match = true;
-                        if (criteria.phone && !order.customerPhone.includes(criteria.phone)) match = false;
-                        if (criteria.name && !order.customerName.includes(criteria.name)) match = false;
-                        if (criteria.date && order.deliveryDate !== criteria.date) match = false;
-                        return match;
-                    }).map(order => ({
-                        ...order,
-                        ...(mockOrderDetails[order.orderId] || {}),
-                        items: (mockOrderDetails[order.orderId] && mockOrderDetails[order.orderId].items) || []
-                    }));
-                    setButtonLoading(searchBtn, false);
-                    handleSearchResults(results);
-                }, 300);
+                setButtonLoading(searchBtn, false);
+                renderSearchError(new Error('尚未連接 Firebase'));
             }
+        }
+
+        function renderSearchError(error) {
+            document.getElementById('searchResults').innerHTML = `<div class="search-error" role="alert"><i class="fas fa-wifi"></i><strong>無法取得訂單</strong><span>${escapeHtml(error?.message || '請檢查連線後重試')}</span><button type="button" onclick="searchOrders()">重新搜尋</button></div>`;
+        }
+
+        function loadMoreOrders() {
+            if (!lastSearchCriteria || !searchNextCursor || isLoadingMoreOrders) return;
+            isLoadingMoreOrders = true;
+            const button = document.getElementById('searchLoadMore');
+            if (button) setButtonLoading(button, true, '載入中...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    isLoadingMoreOrders = false;
+                    const page = Array.isArray(result) ? { orders: result, pagination: {} } : result;
+                    searchNextCursor = page?.pagination?.nextCursor || null;
+                    currentSearchOrders = currentSearchOrders.concat(page?.orders || []);
+                    displayOrderTable(currentSearchOrders, 'searchResults', 'search');
+                })
+                .withFailureHandler(function(error) {
+                    isLoadingMoreOrders = false;
+                    if (button) setButtonLoading(button, false);
+                    showAlert(error?.message || '載入下一頁失敗', 'error');
+                })
+                .searchOrders({ ...lastSearchCriteria, cursor: searchNextCursor });
         }
 
         function handleSearchResults(orders) {
@@ -1885,7 +2106,7 @@
             }
 
             // 動態生成表頭
-            let tableHeaders = '<th>姓名</th><th>電話</th><th>交貨日</th>';
+            let tableHeaders = '<th>姓名</th><th>聯絡方式</th><th>交貨日</th>';
             if (type === 'overdue') {
                 tableHeaders += '<th>逾期天數</th>';
             }
@@ -1904,10 +2125,13 @@
                     rowClasses.push(overdueDays > 7 ? 'row-overdue-severe' : 'row-overdue-mild');
                 }
 
+                const contactType = order.customerContactType || (order.customerLineId ? 'line' : 'phone');
+                const contactValue = order.customerContactValue || order.customerLineId || order.customerPhone || '-';
+                const contactDisplay = contactType === 'line' ? `LINE：${contactValue}` : contactValue;
                 let cells = `
-                    <td>${escapeHtml(order.customerName)}</td>
-                    <td>${escapeHtml(order.customerPhone)}</td>
-                    <td>${formatDisplayDate(order.deliveryDate)}</td>`;
+                    <td data-label="姓名">${escapeHtml(order.customerName)}</td>
+                    <td data-label="聯絡方式">${escapeHtml(contactDisplay)}</td>
+                    <td data-label="交貨日">${formatDisplayDate(order.deliveryDate)}</td>`;
 
                 if (isOverdue) {
                     cells += `
@@ -1931,14 +2155,14 @@
                                          (order.shippingNotes === '免運' || order.deliveryType === '自取') ? '免運' : '-';
 
                 cells += `
-                    <td class="td-fee${hasFee ? ' has-fee' : ''}">${shippingFeeDisplay}</td>
-                    <td class="td-amount">NT$ ${order.totalAmount}</td>
-                    <td class="td-deposit${depositAmount > 0 ? ' paid' : ''}">NT$ ${depositAmount}</td>
-                    <td class="td-remaining ${remainingAmount > 0 ? 'due' : 'clear'}">NT$ ${remainingAmount}</td>
-                    <td><span class="status-pill ${getStatusPillClass(order.status)}">${escapeHtml(order.status)}</span></td>
-                    <td>
+                    <td data-label="運費" class="td-fee${hasFee ? ' has-fee' : ''}">${shippingFeeDisplay}</td>
+                    <td data-label="總金額" class="td-amount">NT$ ${order.totalAmount}</td>
+                    <td data-label="已付訂金" class="td-deposit${depositAmount > 0 ? ' paid' : ''}">NT$ ${depositAmount}</td>
+                    <td data-label="剩餘金額" class="td-remaining ${remainingAmount > 0 ? 'due' : 'clear'}">NT$ ${remainingAmount}</td>
+                    <td data-label="狀態"><span class="status-pill ${getStatusPillClass(order.status)}">${escapeHtml(order.status)}</span></td>
+                    <td data-label="操作">
                         <button class="btn-table btn-table-view" data-oid="${escapeAttr(orderId)}" onclick="event.stopPropagation(); viewOrderDetails(this.dataset.oid)">詳情</button>
-                        <button class="btn-table btn-table-delete" data-oid="${escapeAttr(orderId)}" data-cname="${escapeAttr(order.customerName)}" onclick="event.stopPropagation(); showDeleteConfirm(this.dataset.oid, this.dataset.cname)">刪除</button>
+                        ${document.body.dataset.shopRole === 'viewer' ? '' : `<button class="btn-table btn-table-delete requires-editor" data-oid="${escapeAttr(orderId)}" data-cname="${escapeAttr(order.customerName)}" onclick="event.stopPropagation(); showDeleteConfirm(this.dataset.oid, this.dataset.cname)">刪除</button>`}
                     </td>`;
 
                 const rowClassAttr = rowClasses.length ? ` class="${rowClasses.join(' ')}"` : '';
@@ -1957,7 +2181,8 @@
                         <thead><tr>${tableHeaders}</tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table>
-                </div>`;
+                </div>
+                ${type === 'search' && searchNextCursor ? '<div class="search-pagination"><button id="searchLoadMore" type="button" onclick="loadMoreOrders()">載入更多訂單</button></div>' : ''}`;
         }
 
         function toggleOrderItems(orderId) {
@@ -2093,10 +2318,17 @@
                 document.getElementById('searchDate').value = '';
             }
             document.getElementById('searchResults').innerHTML = '';
+            const status = document.getElementById('searchStatus');
+            if (status) status.value = '';
+            const contactType = document.getElementById('searchContactType');
+            if (contactType) contactType.value = 'phone';
+            document.getElementById('searchPhone').placeholder = '輸入電話號碼';
+            searchNextCursor = null;
+            lastSearchCriteria = null;
         }
 
         function searchOverdueOrders() {
-            const searchBtn = event.target;
+            const searchBtn = window.event?.currentTarget || document.querySelector('.btn-overdue');
             setButtonLoading(searchBtn, true, '檢索中...');
 
             // 檢查是否在 Google Apps Script 環境中
@@ -2117,18 +2349,8 @@
                     })
                     .searchOverdueOrders();
             } else {
-                // 本地測試：使用模擬資料檢索過期訂單
-                console.info('使用模擬訂單資料檢索過期訂單');
-                setTimeout(() => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const overdueOrders = mockOrders.filter(order => {
-                        const deliveryDate = new Date(order.deliveryDate);
-                        return deliveryDate < today && order.status !== '已完成' && order.status !== '已取消';
-                    });
-                    setButtonLoading(searchBtn, false);
-                    handleOverdueResults(overdueOrders);
-                }, 300);
+                setButtonLoading(searchBtn, false);
+                renderSearchError(new Error('尚未連接 Firebase'));
             }
         }
 
@@ -2147,7 +2369,7 @@
                 return;
             }
 
-            const detailBtn = event.target;
+            const detailBtn = window.event?.currentTarget || window.event?.target;
             setButtonLoading(detailBtn, true, '載入中...');
 
             // 檢查是否在 Google Apps Script 環境中
@@ -2163,23 +2385,16 @@
                     })
                     .getOrderDetails(orderId);
             } else {
-                // 本地測試：使用模擬訂單明細資料
-                console.info('使用模擬訂單明細資料');
-                setTimeout(() => {
-                    setButtonLoading(detailBtn, false);
-                    const details = mockOrderDetails[orderId];
-                    if (details) {
-                        handleOrderDetails(details);
-                    } else {
-                        showAlert('找不到訂單明細', 'error');
-                    }
-                }, 300);
+                setButtonLoading(detailBtn, false);
+                showAlert('尚未連接 Firebase，無法讀取訂單明細', 'error');
             }
         }
 
         function handleOrderDetails(details) {
             const detailModal = document.createElement('div');
             detailModal.className = 'modal active';
+            detailModal.setAttribute('role', 'dialog');
+            detailModal.setAttribute('aria-modal', 'true');
             // 設定 no-op onclick：避免點背景誤關，也讓 initializeModalCloseHandlers 不套用預設關閉行為
             detailModal.onclick = function() {};
 
@@ -2249,7 +2464,8 @@
             
             // 只有在未完成的情況下才顯示完成按鈕
             // 支援所有付款狀態：已確認、已付訂金、已付清、已付款（舊版）
-            if (details.status !== '完成') {
+            const canEditOrders = document.body.dataset.shopRole !== 'viewer';
+            if (canEditOrders && details.status !== '完成') {
                 statusButtons += `<button class="btn btn-success" onclick="showStatusConfirm('${details.orderId}', '完成'); this.closest('.modal').remove();">完成</button>`;
             }
 
@@ -2262,7 +2478,7 @@
                     <div class="order-info-grid">
                         <div class="order-info-item">
                             <span class="order-info-label">客戶</span>
-                            <span class="order-info-value">${details.customerName} (${details.customerPhone})</span>
+                            <span class="order-info-value">${escapeHtml(details.customerName)} (${escapeHtml((details.customerContactType === 'line' || details.customerLineId) ? 'LINE：' + (details.customerContactValue || details.customerLineId) : (details.customerContactValue || details.customerPhone || '-'))})</span>
                         </div>
                         ${(details.recipientName || details.recipientPhone) && details.deliveryType !== '自取' ? `
                         <div class="order-info-item">
@@ -2320,7 +2536,7 @@
                                 <span class="payment-value info">${details.shippingFee > 0 ? `NT$ ${details.shippingFee}` : '免運'}</span>
                             </div>` : ''}
                         </div>
-                        ${details.status !== '完成' ? `
+                        ${canEditOrders && details.status !== '完成' ? `
                         <div class="deposit-action">
                             <button class="btn btn-deposit" onclick="showDepositModal('${details.orderId}', ${details.totalAmount}, ${details.depositAmount || 0}); this.closest('.modal').remove();">
                                 <i class="fas fa-coins"></i> 設定訂金
@@ -2334,7 +2550,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-edit" onclick="editOrder('${details.orderId}'); this.closest('.modal').remove();"><i class="fas fa-edit"></i> 編輯</button>
+                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" onclick="editOrder('${details.orderId}'); this.closest('.modal').remove();"><i class="fas fa-edit"></i> 編輯</button>` : ''}
                     ${statusButtons}
                     <button class="btn btn-close-modal" onclick="this.closest('.modal').remove()">關閉</button>
                 </div>
@@ -2384,7 +2600,7 @@
         }
 
         function saveProduct() {
-            const saveBtn = event.target;
+            const saveBtn = window.event?.currentTarget || window.event?.target;
             const specialPriceValue = document.getElementById('productSpecialPrice').value.trim();
             const data = {
                 productId: document.getElementById('editProductId').value,
@@ -2761,7 +2977,7 @@
 
         // === 禮盒功能函數 ===
         function selectGiftboxSize(size, btnElement) {
-            const sizeBtn = btnElement || event.currentTarget || event.target.closest('button');
+            const sizeBtn = btnElement || window.event?.currentTarget || window.event?.target?.closest('button');
 
             // 防止重複點擊
             if (sizeBtn.classList.contains('loading')) return;
@@ -2778,15 +2994,12 @@
             });
             sizeBtn.classList.add('selected');
 
-            // 延遲切換到步驟2
-            setTimeout(() => {
-                document.getElementById('giftboxStep1').classList.remove('active');
-                document.getElementById('giftboxStep2').classList.add('active');
-                document.getElementById('giftboxStep2Title').textContent = `步驟2: 選擇商品組合 (${size}粒裝)`;
-                document.getElementById('targetCount').textContent = size;
-                loadGiftboxProducts();
-                setButtonLoading(sizeBtn, false);
-            }, 500);
+            document.getElementById('giftboxStep1').classList.remove('active');
+            document.getElementById('giftboxStep2').classList.add('active');
+            document.getElementById('giftboxStep2Title').textContent = `步驟2: 選擇商品組合 (${size}粒裝)`;
+            document.getElementById('targetCount').textContent = size;
+            loadGiftboxProducts();
+            setButtonLoading(sizeBtn, false);
         }
 
         function loadGiftboxProducts() {
@@ -2935,11 +3148,10 @@
             const proceedBtn = document.getElementById('proceedStep3');
             setButtonLoading(proceedBtn, true, '計算中...');
 
-            setTimeout(() => {
-                document.getElementById('giftboxStep2').classList.remove('active');
-                document.getElementById('giftboxStep3').classList.add('active');
-                updateGiftboxSummary();
-                setButtonLoading(proceedBtn, false);
+            document.getElementById('giftboxStep2').classList.remove('active');
+            document.getElementById('giftboxStep3').classList.add('active');
+            updateGiftboxSummary();
+            setButtonLoading(proceedBtn, false);
 
                 // 編輯模式時更新按鈕文字
                 const addBtn = document.querySelector('.btn-add-cart');
@@ -2950,7 +3162,6 @@
                         addBtn.innerHTML = '<i class="fas fa-cart-plus"></i> 加入購物車';
                     }
                 }
-            }, 300);
         }
 
         function updateGiftboxSummary() {
@@ -3004,7 +3215,7 @@
         }
 
         function addGiftboxToCart() {
-            const addBtn = event.target.closest('button') || event.target;
+            const addBtn = window.event?.currentTarget || window.event?.target?.closest('button') || window.event?.target;
             const quantity = parseInt(document.getElementById('giftboxQuantity').value) || 1;
             const notes = document.getElementById('giftboxNotes').value.trim();
             const isEditing = editingGiftboxIndex >= 0;
@@ -3029,8 +3240,7 @@
             const loadingText = isEditing ? '更新中...' : '加入中...';
             setButtonLoading(addBtn, true, loadingText);
 
-            setTimeout(() => {
-                if (isEditing) {
+            if (isEditing) {
                     // 編輯模式：更新現有禮盒
                     const existingItem = giftboxCart[editingGiftboxIndex];
                     giftboxCart[editingGiftboxIndex] = {
@@ -3067,8 +3277,7 @@
                 setButtonLoading(addBtn, false);
 
                 // 重置禮盒狀態
-                resetGiftboxState();
-            }, 300);
+            resetGiftboxState();
         }
 
         function resetGiftboxState() {
@@ -3133,8 +3342,7 @@
             document.querySelectorAll('.giftbox-size-btn').forEach(btn => btn.classList.remove('selected'));
 
             // 直接跳到步驟2
-            setTimeout(() => {
-                document.querySelectorAll('.giftbox-step').forEach(step => step.classList.remove('active'));
+            document.querySelectorAll('.giftbox-step').forEach(step => step.classList.remove('active'));
                 document.getElementById('giftboxStep2').classList.add('active');
                 document.getElementById('giftboxStep2Title').textContent = `步驟2: 選擇商品組合 (${item.size}粒裝)`;
                 document.getElementById('targetCount').textContent = item.size;
@@ -3151,8 +3359,7 @@
                     document.getElementById('giftboxSpecialPriceInput').value = item.price;
                 }
 
-                showAlert('正在編輯禮盒，修改後請點擊「更新禮盒」', 'info');
-            }, 100);
+            showAlert('正在編輯禮盒，修改後請點擊「更新禮盒」', 'info');
         }
 
         function loadGiftboxProductsForEdit(existingProducts) {
@@ -3327,24 +3534,23 @@
             document.getElementById('statusUpdateStatus').textContent = '';
             document.getElementById('statusUpdateStatus').className = 'status-update-status';
 
-            // 初始化並重置滑動元件（滑到底放開即執行更新）
-            if (!statusSliderCtrl) {
-                statusSliderCtrl = initConfirmSlider('statusSliderThumb', 'statusSliderProgress', function() {
-                    const statusEl = document.getElementById('statusUpdateStatus');
-                    statusEl.textContent = '已確認，正在更新...';
-                    statusEl.classList.add('success');
-                    // 短暫停留讓使用者看到完成狀態
-                    setTimeout(executeStatusUpdate, 350);
-                });
+            const confirmButton = document.getElementById('statusConfirmButton');
+            if (confirmButton) {
+                confirmButton.disabled = false;
+                setButtonLoading(confirmButton, false);
             }
-            statusSliderCtrl.reset();
 
             document.getElementById('statusConfirmModal').classList.add('active');
         }
 
         function executeStatusUpdate() {
             if (!currentStatusOrderId || !currentStatusValue) return;
-
+            const button = document.getElementById('statusConfirmButton');
+            if (button?.disabled) return;
+            if (button) {
+                button.disabled = true;
+                setButtonLoading(button, true, '更新中...');
+            }
             updateOrderStatus(currentStatusOrderId, currentStatusValue);
             closeStatusConfirmModal();
         }
@@ -3368,13 +3574,11 @@
             status.textContent = '';
             status.classList.remove('show', 'success');
 
-            // 初始化並重置滑動元件（滑到底放開即執行刪除）
-            if (!deleteSliderCtrl) {
-                deleteSliderCtrl = initConfirmSlider('deleteSliderThumb', 'deleteSliderProgress', function() {
-                    executeDelete();
-                });
+            const confirmButton = document.getElementById('deleteConfirmButton');
+            if (confirmButton) {
+                confirmButton.disabled = false;
+                setButtonLoading(confirmButton, false);
             }
-            deleteSliderCtrl.reset();
 
             document.getElementById('deleteConfirmModal').classList.add('active');
         }
@@ -3428,7 +3632,7 @@
                 const remainingAmount = currentDepositTotalAmount - newDepositAmount;
 
                 let newStatus = '已確認';
-                let statusColor = '#2980b9';
+                let statusColor = '#1f6f5f';
                 if (newDepositAmount > 0 && newDepositAmount < currentDepositTotalAmount) {
                     newStatus = '已付訂金';
                     statusColor = '#f39c12';
@@ -3490,6 +3694,12 @@
 
         function executeDelete() {
             if (!deleteOrderId) return;
+            const confirmButton = document.getElementById('deleteConfirmButton');
+            if (confirmButton?.disabled) return;
+            if (confirmButton) {
+                confirmButton.disabled = true;
+                setButtonLoading(confirmButton, true, '刪除中...');
+            }
 
             const orderId = deleteOrderId;
             const status = document.getElementById('deleteStatus');
@@ -3512,6 +3722,7 @@
                 currentSearchOrders = currentSearchOrders.filter(order => (order.id || order.orderId) !== orderId);
                 if (expandedSearchOrderId === orderId) expandedSearchOrderId = null;
                 closeDeleteConfirmModal();
+                if (confirmButton) setButtonLoading(confirmButton, false);
                 showAlert('訂單已刪除', 'success');
             };
 
@@ -3520,6 +3731,10 @@
                 status.textContent = '';
                 status.classList.remove('show');
                 if (deleteSliderCtrl) deleteSliderCtrl.reset();
+                if (confirmButton) {
+                    confirmButton.disabled = false;
+                    setButtonLoading(confirmButton, false);
+                }
                 handleError(error);
             };
 
@@ -3529,8 +3744,7 @@
                     .withFailureHandler(onDeleteFailure)
                     .deleteOrder(orderId);
             } else {
-                // 模擬模式
-                setTimeout(onDeleteSuccess, 600);
+                onDeleteFailure(new Error('尚未連接 Firebase'));
             }
         }
 
@@ -3905,64 +4119,13 @@
                     })
                     .withFailureHandler(function(error) {
                         setButtonLoading(btn, false);
-                        console.warn('無法連線，使用模擬資料', error);
-                        const result = getMockDemandStats(startDate, endDate);
-                        renderDemandResults(result, startDate, endDate);
+                        handleError(error);
                     })
                     .getDemandStats(startDate, endDate);
             } else {
-                console.info('使用模擬需求統計資料');
-                setTimeout(() => {
-                    setButtonLoading(btn, false);
-                    const result = getMockDemandStats(startDate, endDate);
-                    renderDemandResults(result, startDate, endDate);
-                }, 300);
+                setButtonLoading(btn, false);
+                showAlert('尚未連接 Firebase，無法產生需求統計', 'error');
             }
-        }
-
-        function getMockDemandStats(startDate, endDate) {
-            // 從 mockOrders + mockOrderDetails 模擬計算
-            const matched = mockOrders.filter(o => o.deliveryDate >= startDate && o.deliveryDate <= endDate);
-            if (matched.length === 0) return { productStats: [], giftboxStats: [], orderCount: 0 };
-
-            const productTotals = {};
-            const giftboxTotals = {};
-
-            matched.forEach(order => {
-                const details = mockOrderDetails[order.orderId];
-                if (!details || !details.items) return;
-                details.items.forEach(item => {
-                    const qty = parseInt(item.quantity) || 0;
-                    if (item.isGiftBox && item.giftBoxDetails) {
-                        const size = item.giftBoxDetails.size || 0;
-                        const sizeKey = size + '粒裝';
-                        giftboxTotals[sizeKey] = (giftboxTotals[sizeKey] || 0) + qty;
-
-                        const products = item.giftBoxDetails.products || {};
-                        for (const [pid, pqty] of Object.entries(products)) {
-                            const actualQty = (parseInt(pqty) || 0) * qty;
-                            const product = allProducts.find(p => p.productId === pid);
-                            const name = product ? product.productName : '未知商品';
-                            if (!productTotals[name]) productTotals[name] = { loose: 0, inbox: 0 };
-                            productTotals[name].inbox += actualQty;
-                        }
-                    } else {
-                        const name = item.productName;
-                        if (!productTotals[name]) productTotals[name] = { loose: 0, inbox: 0 };
-                        productTotals[name].loose += qty;
-                    }
-                });
-            });
-
-            const productStats = Object.entries(productTotals).map(([name, c]) => ({
-                name, loose: c.loose, inbox: c.inbox, total: c.loose + c.inbox
-            })).sort((a, b) => b.total - a.total);
-
-            const giftboxStats = Object.entries(giftboxTotals).map(([size, count]) => ({
-                size, count
-            })).sort((a, b) => (parseInt(a.size) || 0) - (parseInt(b.size) || 0));
-
-            return { productStats, giftboxStats, orderCount: matched.length };
         }
 
         function renderDemandResults(result, startDate, endDate) {
@@ -4092,34 +4255,18 @@
                         renderCapacitySettingsUI();
                     })
                     .withFailureHandler(function(error) {
-                        console.warn('載入產能設定失敗，使用預設值', error);
-                        capacitySettings = getMockCapacitySettings();
+                        console.warn('載入產能設定失敗', error);
+                        capacitySettings = { weekday: {}, dateOverrides: [] };
                         capacitySettingsLoaded = true;
                         renderCapacitySettingsUI();
+                        showAlert('產能設定載入失敗，請重新整理後再試', 'error');
                     })
                     .getCapacitySettings();
             } else {
-                capacitySettings = getMockCapacitySettings();
+                capacitySettings = { weekday: {}, dateOverrides: [] };
                 capacitySettingsLoaded = true;
                 renderCapacitySettingsUI();
             }
-        }
-
-        function getMockCapacitySettings() {
-            return {
-                weekday: {
-                    '0': { id: 'mock0', dayOfWeek: 0, maxQuantity: '', enabled: false },
-                    '1': { id: 'mock1', dayOfWeek: 1, maxQuantity: 200, enabled: true },
-                    '2': { id: 'mock2', dayOfWeek: 2, maxQuantity: 200, enabled: true },
-                    '3': { id: 'mock3', dayOfWeek: 3, maxQuantity: 200, enabled: true },
-                    '4': { id: 'mock4', dayOfWeek: 4, maxQuantity: 200, enabled: true },
-                    '5': { id: 'mock5', dayOfWeek: 5, maxQuantity: 250, enabled: true },
-                    '6': { id: 'mock6', dayOfWeek: 6, maxQuantity: 300, enabled: true }
-                },
-                dateOverrides: [
-                    { id: 'mockOvr1', date: '2026-06-10', maxQuantity: 350, enabled: true, createTime: '2026-05-30', updateTime: '2026-05-30' }
-                ]
-            };
         }
 
         function renderCapacitySettingsUI() {
@@ -4157,6 +4304,7 @@
             });
 
             renderOverrideTable();
+            applyRoleCapabilities();
         }
 
         function renderOverrideTable() {
@@ -4196,16 +4344,16 @@
                     statusBadge = '<span style="color: #9ca3af;">停用</span>';
                 }
                 var rowStyle = isExpired ? ' style="opacity: 0.5;"' : '';
+                var deleteButton = document.body.dataset.shopRole === 'viewer' ? '' :
+                    '<button class="requires-editor" aria-label="刪除 ' + escapeAttr(o.date) + ' 日期覆寫" onclick="deleteDateOverrideById(\'' + escapeAttr(o.id) + '\')" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
+                    '<i class="fas fa-trash-alt" aria-hidden="true"></i>' +
+                    '</button>';
                 return '<tr' + rowStyle + '>' +
                     '<td>' + escapeHtml(o.date) + '</td>' +
                     '<td>' + dayStr + '</td>' +
                     '<td style="font-weight: 600;">' + maxStr + '</td>' +
                     '<td>' + statusBadge + '</td>' +
-                    '<td style="text-align: center;">' +
-                    '<button onclick="deleteDateOverrideById(\'' + o.id + '\')" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
-                    '<i class="fas fa-trash-alt"></i>' +
-                    '</button>' +
-                    '</td></tr>';
+                    '<td style="text-align: center;">' + deleteButton + '</td></tr>';
             }).join('');
         }
 
@@ -4220,6 +4368,10 @@
         }
 
         function saveWeekdayCapacitySettings() {
+            if (document.body.dataset.shopRole === 'viewer') {
+                showAlert('此帳號只有檢視權限', 'error');
+                return;
+            }
             var statusEl = document.getElementById('weekdayAutoSaveStatus');
             var settings = [];
             for (var i = 0; i < 7; i++) {
@@ -4249,10 +4401,7 @@
                     })
                     .saveWeekdayCapacity(settings);
             } else {
-                setTimeout(function() {
-                    if (statusEl) statusEl.textContent = '已自動儲存（模擬）';
-                    setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
-                }, 500);
+                if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = '尚未連接 Firebase，未儲存'; }
             }
         }
 
@@ -4281,6 +4430,10 @@
         }
 
         function addDateOverride() {
+            if (document.body.dataset.shopRole === 'viewer') {
+                showAlert('此帳號只有檢視權限', 'error');
+                return;
+            }
             var dateInput = document.getElementById('overrideDate');
             var qtyInput = document.getElementById('overrideMaxQty');
             var raw = dateInput.value.trim();
@@ -4324,28 +4477,15 @@
                     })
                     .saveDateOverrideCapacityBatch(settings);
             } else {
-                var now = new Date().toISOString();
-                settings.forEach(function(s) {
-                    capacitySettings.dateOverrides.push({
-                        id: 'mock_' + Date.now() + '_' + s.date,
-                        date: s.date,
-                        maxQuantity: s.maxQuantity,
-                        enabled: true,
-                        createTime: now,
-                        updateTime: now
-                    });
-                });
-                renderOverrideTable();
-                if (overrideDatepickerInstance) overrideDatepickerInstance.clear();
-                qtyInput.value = '';
-                var msg = dates.length === 1
-                    ? '日期覆寫設定已新增（模擬）'
-                    : '已新增 ' + dates.length + ' 天覆寫設定（模擬）';
-                showAlert(msg, 'success');
+                showAlert('尚未連接 Firebase，設定未儲存', 'error');
             }
         }
 
         function deleteDateOverrideById(id) {
+            if (document.body.dataset.shopRole === 'viewer') {
+                showAlert('此帳號只有檢視權限', 'error');
+                return;
+            }
             if (!confirm('確定要刪除此日期覆寫設定？')) return;
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -4361,9 +4501,7 @@
                     })
                     .deleteDateOverrideCapacity(id);
             } else {
-                capacitySettings.dateOverrides = capacitySettings.dateOverrides.filter(function(o) { return o.id !== id; });
-                renderOverrideTable();
-                showAlert('已刪除日期覆寫設定（模擬）', 'success');
+                showAlert('尚未連接 Firebase，設定未刪除', 'error');
             }
         }
 
@@ -4406,11 +4544,11 @@
                     })
                     .withFailureHandler(function(error) {
                         console.warn('載入月產能失敗', error);
-                        resolveCallbacks(getMockMonthCapacity(year, month));
+                        resolveCallbacks({});
                     })
                     .getMonthCapacityStatus(year, month);
             } else {
-                resolveCallbacks(getMockMonthCapacity(year, month));
+                resolveCallbacks({});
             }
         }
 
@@ -4419,47 +4557,6 @@
          */
         function invalidateCapacityCache() {
             monthCapacityCache = {};
-        }
-
-        function getMockMonthCapacity(year, month) {
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const result = {};
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                const dateObj = new Date(year, month - 1, d);
-                const dow = dateObj.getDay();
-                const setting = capacitySettings.weekday[dow.toString()];
-
-                if (setting && setting.enabled && setting.maxQuantity && parseInt(setting.maxQuantity) > 0) {
-                    const limit = parseInt(setting.maxQuantity);
-                    const used = Math.floor(Math.random() * limit * 1.1);
-                    const rate = Math.round((used / limit) * 100);
-                    let status = 'available';
-                    if (used >= limit) status = 'full';
-                    else if (rate >= 90) status = 'nearFull';
-                    else if (rate >= 70) status = 'warning';
-
-                    result[dateStr] = { limit: limit, currentQuantity: used, usageRate: rate, status: status, source: 'weeklyDefault', hasLimit: true };
-                } else {
-                    result[dateStr] = { limit: 0, currentQuantity: 0, usageRate: 0, status: 'unlimited', source: 'none', hasLimit: false };
-                }
-            }
-
-            // 套用覆寫
-            if (capacitySettings.dateOverrides) {
-                capacitySettings.dateOverrides.forEach(function(ov) {
-                    if (ov.date && ov.date.startsWith(year + '-' + String(month).padStart(2, '0')) && ov.enabled) {
-                        const limit = parseInt(ov.maxQuantity) || 0;
-                        if (limit > 0) {
-                            const used = Math.floor(Math.random() * limit * 0.8);
-                            result[ov.date] = { limit: limit, currentQuantity: used, usageRate: Math.round((used / limit) * 100), status: 'available', source: 'dateOverride', hasLimit: true };
-                        } else {
-                            result[ov.date] = { limit: 0, currentQuantity: 0, usageRate: 0, status: 'unlimited', source: 'dateOverride', hasLimit: false };
-                        }
-                    }
-                });
-            }
-            return result;
         }
 
         function getCapacityIndicatorHtml(info) {
@@ -4533,26 +4630,8 @@
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 submitOrderRequest(orderData, false);
             } else {
-                // 模擬檢查
-                const items = orderData.items;
-                const date = orderData.deliveryDate;
-                const units = calculateOrderUnits(items);
-                const mockStatus = {
-                    date: date,
-                    limit: 200,
-                    currentQuantity: 180,
-                    newOrderQuantity: units,
-                    projectedQuantity: 180 + units,
-                    exceededQuantity: Math.max(0, 180 + units - 200),
-                    usageRate: 90,
-                    status: (180 + units > 200) ? 'exceeded' : 'available',
-                    source: 'weeklyDefault'
-                };
-                if (mockStatus.exceededQuantity > 0) {
-                    showCapacityWarningModal(mockStatus, orderData);
-                } else {
-                    doSubmitOrder(orderData);
-                }
+                finishOrderSubmit();
+                showAlert('尚未連接 Firebase，訂單草稿已保留但不會送出', 'error');
             }
         }
 
@@ -4582,7 +4661,7 @@
                 '</div>' +
                 '<div style="display: flex; flex-direction: column;">' +
                 '<span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">本次訂單</span>' +
-                '<span style="font-size: 1rem; font-weight: 700; color: #2563eb;">' + cs.newOrderQuantity + ' 件</span>' +
+                '<span style="font-size: 1rem; font-weight: 700; color: #1f6f5f;">' + cs.newOrderQuantity + ' 件</span>' +
                 '</div>' +
                 '</div>' +
                 '</div>' +
@@ -4637,13 +4716,6 @@
         }
 
         function doSubmitOrder(orderData) {
-            // 僅供沒有 Firebase 的本地展示模式使用。
-            beginOrderSubmit();
-            setTimeout(function() {
-                finishOrderSubmit();
-                invalidateCapacityCache();
-                const mockId = 'O' + Date.now().toString().slice(-6) + Math.random().toString(36).substr(2, 3);
-                if (isEditingOrder) handleOrderUpdated({ success: true, orderId: editingOrderId });
-                else handleOrderSubmitted({ success: true, orderId: mockId });
-            }, 500);
+            finishOrderSubmit();
+            showAlert('尚未連接 Firebase，訂單草稿已保留但不會送出', 'error');
         }

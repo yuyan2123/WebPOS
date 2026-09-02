@@ -11,15 +11,20 @@ Google Sheets at runtime.
 public/                    Firebase Hosting site
   index.html               POS markup
   css/app.css              UI styles
+  css/tailwind.generated.css  Build-time utility CSS (no CDN runtime)
   js/app.js                POS behavior
+  js/pwa.js                Install, offline and update lifecycle
   js/runtime-config.js     Public App Check site-key setting
   js/rpc-bridge.js         Apps Script-compatible Firebase RPC bridge
+  manifest.webmanifest     iOS/iPadOS/Android PWA metadata
+  sw.js                    Same-origin app-shell offline fallback
 functions/
   src/index.js             Authenticated POS RPC entry point
   src/services/            Products, orders, reports, capacity
   src/lib/                 Auth, tenant isolation, validation, IDs, serialization
   scripts/import-data.js   One-time Firestore importer
   scripts/backfill-capacity.js  Existing-shop capacity counter migration
+  scripts/backfill-contacts.js  Phone/LINE contact schema migration
 migration/
   ExportForFirebase.gs     One-time Google Sheets exporter
 legacy-apps-script/        Local-only source snapshot (ignored by Git)
@@ -37,7 +42,11 @@ firestore.rules            Denies direct browser access to POS records
 6. Copy `.firebaserc.example` to `.firebaserc` and replace the project ID.
 7. In `functions`, copy `.env.example` to `.env` and list the staff Google account emails.
 8. Create the HMAC key used for pseudonymous device/network audit records with `firebase functions:secrets:set SECURITY_HASH_SALT`. Use at least 32 random characters and never commit it.
-9. Run `npm install` inside `functions`, then deploy from the project root with `firebase deploy`.
+9. Run `npm ci` at the project root and `npm ci --prefix functions`, then deploy from the project root with `firebase deploy`.
+
+The root build runs local Tailwind generation, syntax checks and the complete test suite. GitHub
+pull requests build before creating a Hosting preview; merges to `main` build and deploy Firestore
+rules/indexes, Functions and Hosting together.
 
 For the local emulator, create the ignored file `functions/.secret.local` containing
 `SECURITY_HASH_SALT=` followed by a development-only random value of at least 32 characters.
@@ -101,6 +110,25 @@ The script rebuilds `capacityUsage` from existing non-cancelled orders and then 
 reads for that shop. Do not create or edit orders while it is running. Verify the calendar totals,
 then deploy the Functions, Hosting, Firestore indexes, and rules together with `firebase deploy`.
 
+To add phone/LINE contact searching to existing shops, first review a dry run and then apply it:
+
+```powershell
+$env:SHOP_ID = 'your-shop-id'
+npm --prefix functions run backfill:contacts
+npm --prefix functions run backfill:contacts -- --apply
+```
+
+Omit `SHOP_ID` only when you intentionally want to process every shop. Deploy the new indexes
+before exposing the updated search UI.
+
+## Install on iPhone, iPad and Android
+
+- Android/Chrome shows the native install prompt when supported.
+- iPhone/iPad users open the site in Safari, tap Share, then **Add to Home Screen**.
+- The app shell can reopen during a connection failure, while order drafts stay in IndexedDB.
+- Authentication, Functions responses and business records are never stored in the service-worker cache.
+- An available PWA update waits when an unfinished order draft exists.
+
 ## Local testing
 
 Run `firebase emulators:start` from the root, then open `http://127.0.0.1:5000`.
@@ -114,7 +142,7 @@ when the host is `localhost` or `127.0.0.1`.
 - `users/{uid}/shops/{shopId}` — each account's shop selector index
 - `users/{uid}/securityDevices/{deviceHash}` — server-only pseudonymous login/device history
 - `shops/{shopId}/products/{productId}` — collaborative catalog and prices
-- `shops/{shopId}/customers/{normalizedPhone}` — collaborative customer data
+- `shops/{shopId}/customers/{normalizedContact}` — collaborative customer data; legacy phones keep their numeric ID and LINE IDs use an opaque hash
 - `shops/{shopId}/orders/{orderId}` — collaborative orders and gift-box composition
 - `shops/{shopId}/settings/capacity` — all seven recurring weekday limits and counter schema version
 - `shops/{shopId}/capacityOverrides/{YYYY-MM-DD}` — collaborative date overrides
@@ -145,6 +173,8 @@ has created its account record; the shop owner can then add its email from the s
 - Capacity validation and order creation/update share one authenticated callable request through `submitOrder`.
 - Product mutations update the browser cache from the returned record instead of reloading the catalog.
 - Device audit uses an atomic increment, avoiding a read-before-write transaction.
+- Order search is bounded and cursor-paginated; opening a result already containing its items does not make a second detail request.
+- Successful product catalogs and unfinished orders are stored per `uid:shopId` in IndexedDB, preventing cross-account/shop cache leakage.
 
 Shop membership is deliberately checked on every callable request. This security read is not cached or
 trusted from the browser because it is the boundary that prevents one shop from accessing another shop's data.
