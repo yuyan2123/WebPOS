@@ -1350,3 +1350,306 @@ body[data-ms-shell] .search-empty-state span { font-size: .84rem; opacity: .82; 
     body[data-ms-shell] .search-overdue-row { align-items: stretch; flex-direction: column; }
     body[data-ms-shell] .search-overdue-row .btn-overdue { width: 100%; }
 }
+
+/* -------------------------------------------------------------------------
+   Standalone shell recovery
+
+   This is deliberately last.  A previously active service worker can retain
+   an old app.css while the newer adapter has already arrived.  These complete
+   MirrorStack tokens and shell primitives mean that combination remains a
+   coherent UI instead of exposing the retired green navigation rail.
+   ------------------------------------------------------------------------- */
+:root {
+    color-scheme: light;
+    --color-primary: #006973;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #28bdce;
+    --color-on-primary-container: #00262b;
+    --color-primary-fixed: #c7e7ff;
+    --color-on-primary-fixed: #001e2e;
+    --color-secondary: #39656b;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #beecf3;
+    --color-on-secondary-container: #224f55;
+    --color-secondary-fixed-dim: #b4dfe6;
+    --color-tertiary: #7a4a97;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #cb97eb;
+    --color-on-tertiary-container: #360254;
+    --color-tertiary-fixed: #e9ddff;
+    --color-tertiary-container-dim: #b57dd4;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #410002;
+    --color-success: #1b6d2f;
+    --color-on-success: #ffffff;
+    --color-success-container: #a4f5a8;
+    --color-on-success-container: #002108;
+    --color-warning: #7c5800;
+    --color-on-warning: #ffffff;
+    --color-warning-container: #ffdea6;
+    --color-on-warning-container: #271900;
+    --color-background: #ffffff;
+    --color-on-background: #000000;
+    --color-surface: #f5fafb;
+    --color-on-surface: #171d1e;
+    --color-surface-variant: #d7e5e7;
+    --color-on-surface-variant: #3c494b;
+    --color-outline: #6c797b;
+    --color-outline-variant: #bbc9cb;
+    --color-surface-dim: #d5dbdc;
+    --color-surface-bright: #f5fafb;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #eff5f5;
+    --color-surface-container: #e9eff0;
+    --color-surface-container-high: #e3e9ea;
+    --color-surface-container-highest: #dee3e4;
+    --color-inverse-primary: #50d8e8;
+    --color-inverse-surface: #2b3132;
+    --color-inverse-on-surface: #ecf2f3;
+}
+
+html.dark {
+    color-scheme: dark;
+    --color-primary: #93cdf6;
+    --color-on-primary: #00344c;
+    --color-primary-container: #004c6d;
+    --color-on-primary-container: #c7e7ff;
+    --color-primary-fixed: #c7e7ff;
+    --color-on-primary-fixed: #001e2e;
+    --color-secondary: #b6c9d8;
+    --color-on-secondary: #21323e;
+    --color-secondary-container: #384956;
+    --color-on-secondary-container: #d2e5f5;
+    --color-secondary-fixed-dim: #154a51;
+    --color-tertiary: #cdc0e9;
+    --color-on-tertiary: #342b4b;
+    --color-tertiary-container: #4b4263;
+    --color-on-tertiary-container: #e9ddff;
+    --color-tertiary-fixed: #e9ddff;
+    --color-tertiary-container-dim: #b57dd4;
+    --color-error: #ffb4ab;
+    --color-on-error: #690005;
+    --color-error-container: #93000a;
+    --color-on-error-container: #ffdad6;
+    --color-success: #89d98d;
+    --color-on-success: #003913;
+    --color-success-container: #005320;
+    --color-on-success-container: #a4f5a8;
+    --color-warning: #f5bf48;
+    --color-on-warning: #412d00;
+    --color-warning-container: #5e4200;
+    --color-on-warning-container: #ffdea6;
+    --color-background: #14110f;
+    --color-on-background: #f1ece2;
+    --color-surface: #1a1815;
+    --color-on-surface: #e8e2d7;
+    --color-surface-variant: #3a342c;
+    --color-on-surface-variant: #b7ab99;
+    --color-outline: #968a78;
+    --color-outline-variant: #3a342c;
+    --color-surface-dim: #14110f;
+    --color-surface-bright: #3a342d;
+    --color-surface-container-lowest: #0e0c0a;
+    --color-surface-container-low: #1c1915;
+    --color-surface-container: #211d18;
+    --color-surface-container-high: #2a251f;
+    --color-surface-container-highest: #332d26;
+    --color-inverse-primary: #006973;
+    --color-inverse-surface: #e8e2d7;
+    --color-inverse-on-surface: #1a1815;
+}
+
+body[data-ms-shell] {
+    display: block !important;
+    min-height: 100%;
+    color: var(--color-on-background) !important;
+    background: var(--color-background) !important;
+}
+
+body[data-ms-shell] > header.app-floating-nav {
+    position: fixed !important;
+    top: max(18px, calc(var(--vp-top, 0px) + 18px)) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    z-index: 950 !important;
+    display: block !important;
+    width: min(calc(100% - 40px), 1220px) !important;
+    min-width: 0 !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: translateX(-50%) !important;
+}
+
+body[data-ms-shell] > header.app-floating-nav > .app-floating-nav__surface {
+    display: flex !important;
+    box-sizing: border-box;
+    width: 100% !important;
+    height: 72px !important;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border: 1px solid color-mix(in srgb, var(--color-inverse-on-surface) 16%, transparent);
+    border-radius: 28px;
+    color: var(--color-inverse-on-surface);
+    background: color-mix(in srgb, var(--color-inverse-surface) 94%, transparent);
+    box-shadow: var(--ms-elevation-2);
+}
+
+body[data-ms-shell] .app-floating-nav__brand {
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding-right: 12px;
+    color: inherit;
+}
+
+body[data-ms-shell] .app-floating-nav__mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    place-items: center;
+    border-radius: 15px;
+    color: var(--color-on-primary-container);
+    background: var(--color-primary-container);
+    font-weight: 800;
+}
+
+body[data-ms-shell] .app-floating-nav__wordmark {
+    display: grid;
+    gap: 1px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+body[data-ms-shell] .app-floating-nav__wordmark strong { color: var(--color-inverse-on-surface); }
+body[data-ms-shell] .app-floating-nav__wordmark small { color: color-mix(in srgb, var(--color-inverse-on-surface) 64%, transparent); }
+
+body[data-ms-shell] .app-floating-nav__links {
+    display: flex !important;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+body[data-ms-shell] .app-floating-nav__links::-webkit-scrollbar { display: none; }
+
+body[data-ms-shell] > header.app-floating-nav .nav-item {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: 48px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0 7px !important;
+    border-radius: 18px !important;
+    color: color-mix(in srgb, var(--color-inverse-on-surface) 75%, transparent) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-decoration: none;
+}
+
+body[data-ms-shell] .material-symbols-rounded {
+    display: inline-block !important;
+    direction: ltr;
+    font-family: "Material Symbols Rounded" !important;
+    font-size: 1.22rem;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    -webkit-font-feature-settings: "liga";
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: "FILL" 0, "wght" 520, "GRAD" 0, "opsz" 24;
+}
+
+body[data-ms-shell] > header.app-floating-nav .nav-item > .material-symbols-rounded {
+    display: grid !important;
+    width: 42px;
+    height: 32px;
+    place-items: center;
+    border-radius: 999px;
+    font-size: 1.24rem;
+    transition: color var(--ms-motion), background-color var(--ms-motion);
+}
+
+body[data-ms-shell] > header.app-floating-nav .nav-item > span:last-child {
+    padding-right: 5px;
+    font-size: .76rem;
+    font-weight: 650;
+}
+
+body[data-ms-shell] > header.app-floating-nav .nav-item.bg-blue-100,
+body[data-ms-shell] > header.app-floating-nav .nav-item[aria-current="page"] {
+    color: var(--color-inverse-on-surface) !important;
+    background: transparent !important;
+}
+
+body[data-ms-shell] > header.app-floating-nav .nav-item.bg-blue-100 > .material-symbols-rounded,
+body[data-ms-shell] > header.app-floating-nav .nav-item[aria-current="page"] > .material-symbols-rounded {
+    color: var(--color-on-primary-container);
+    background: var(--color-primary-container);
+}
+
+body[data-ms-shell] > header.app-floating-nav .nav-item:hover {
+    color: var(--color-inverse-on-surface) !important;
+    background: color-mix(in srgb, var(--color-inverse-on-surface) 9%, transparent) !important;
+    transform: none !important;
+}
+
+body[data-ms-shell] > main {
+    width: 100% !important;
+    min-width: 0;
+    min-height: 100vh;
+    margin: 0 !important;
+    padding: 118px 20px 28px !important;
+}
+
+@media (max-width: 899px) {
+    body[data-ms-shell] > main {
+        padding-top: 24px !important;
+        padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+    }
+
+    body[data-ms-shell] > header.app-floating-nav {
+        top: auto !important;
+        right: 12px !important;
+        bottom: max(12px, calc(var(--vp-bottom, 0px) + 12px)) !important;
+        left: 12px !important;
+        width: auto !important;
+        height: 66px !important;
+        min-height: 66px !important;
+        transform: none !important;
+    }
+
+    body[data-ms-shell] > header.app-floating-nav > .app-floating-nav__surface {
+        height: 66px !important;
+        padding: 6px 8px;
+        border-radius: 22px;
+    }
+
+    body[data-ms-shell] .app-floating-nav__brand { display: none !important; }
+}
