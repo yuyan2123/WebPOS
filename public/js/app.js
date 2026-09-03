@@ -50,210 +50,6 @@
         let posLocalDbPromise = null;
         let currentOrderRequestId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : generateUniqueId('REQ');
 
-        // ── 亮／暗色主題（初始值在 index.html 預先套用） ──
-        const POS_THEME_STORAGE_KEY = 'ginJiaPosTheme';
-        const POS_THEME_META_COLOR = { light: '#006973', dark: '#14110f' };
-        const POS_THEME_ORDER = ['auto', 'light', 'dark'];
-        const POS_THEME_ICON = { auto: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
-        const POS_THEME_LABEL = { auto: '自動', light: '亮色', dark: '暗色' };
-
-        function systemPrefersDark() {
-            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        }
-
-        function savedThemePreference() {
-            try {
-                const saved = localStorage.getItem(POS_THEME_STORAGE_KEY);
-                return POS_THEME_ORDER.includes(saved) ? saved : 'auto';
-            } catch (error) {
-                return null;
-            }
-        }
-
-        function currentTheme() {
-            return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-        }
-
-        function currentThemePreference() {
-            const preference = document.documentElement.dataset.themePreference;
-            return POS_THEME_ORDER.includes(preference) ? preference : savedThemePreference();
-        }
-
-        function updateThemeToggle() {
-            const preference = currentThemePreference();
-            const nextTheme = POS_THEME_ORDER[(POS_THEME_ORDER.indexOf(preference) + 1) % POS_THEME_ORDER.length];
-            const toggle = document.getElementById('themeToggle');
-            const icon = document.getElementById('themeToggleIcon');
-            const label = document.getElementById('themeToggleLabel');
-            const actionLabel = `切換為${POS_THEME_LABEL[nextTheme]}模式`;
-            if (toggle) {
-                toggle.setAttribute('aria-label', actionLabel);
-                toggle.title = actionLabel;
-                toggle.dataset.theme = preference;
-            }
-            if (icon) icon.textContent = POS_THEME_ICON[preference];
-            if (label) label.textContent = POS_THEME_LABEL[preference];
-        }
-
-        function applyTheme(preference, persist) {
-            const normalizedPreference = POS_THEME_ORDER.includes(preference) ? preference : 'auto';
-            const resolvedTheme = normalizedPreference === 'auto'
-                ? (systemPrefersDark() ? 'dark' : 'light')
-                : normalizedPreference;
-            document.documentElement.dataset.theme = resolvedTheme;
-            document.documentElement.dataset.themePreference = normalizedPreference;
-            document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-            document.querySelector('meta[name="theme-color"]')?.setAttribute('content', POS_THEME_META_COLOR[resolvedTheme]);
-            if (persist) {
-                try { localStorage.setItem(POS_THEME_STORAGE_KEY, normalizedPreference); } catch (error) { /* 儲存被封鎖時仍可在本次使用 */ }
-            }
-            updateThemeToggle();
-        }
-
-        function initTheme() {
-            applyTheme(savedThemePreference(), false);
-            const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
-            mediaQuery?.addEventListener?.('change', function(event) {
-                if (currentThemePreference() === 'auto') applyTheme('auto', false);
-            });
-        }
-
-        function toggleTheme() {
-            const preference = currentThemePreference();
-            const nextTheme = POS_THEME_ORDER[(POS_THEME_ORDER.indexOf(preference) + 1) % POS_THEME_ORDER.length];
-            applyTheme(nextTheme, true);
-        }
-
-        // ── MirrorStack component adapter ──
-        // This native application keeps its Firebase/POS behavior, but every
-        // rendered control is assigned one semantic component role. Dynamic
-        // product, cart, report, and auth markup is handled by the observer too.
-        function mirrorStackElements(root, selector) {
-            const elements = [];
-            if (root instanceof Element && root.matches(selector)) elements.push(root);
-            if (root?.querySelectorAll) elements.push(...root.querySelectorAll(selector));
-            return elements;
-        }
-
-        function applyMirrorStackComponents(root = document) {
-            mirrorStackElements(root, 'section.content-section').forEach(function(section) {
-                section.classList.add('ms-page');
-            });
-            mirrorStackElements(root, 'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea').forEach(function(control) {
-                control.classList.add('ms-input');
-            });
-            mirrorStackElements(root, 'input[type="checkbox"], input[type="radio"]').forEach(function(control) {
-                control.classList.add('ms-choice-control');
-            });
-            mirrorStackElements(root, 'input[type="range"]').forEach(function(control) {
-                control.classList.add('ms-slider');
-            });
-            mirrorStackElements(root, '.calendar-day').forEach(function(cell) {
-                cell.classList.add('ms-date-cell');
-            });
-            mirrorStackElements(root, '.customer-ac-list').forEach(function(list) {
-                list.classList.add('ms-listbox');
-            });
-            mirrorStackElements(root, '.customer-ac-item').forEach(function(item) {
-                item.classList.add('ms-list-item');
-            });
-            mirrorStackElements(root, '.giftbox-workflow__header, .giftbox-workflow-summary, .giftbox-summary-list, .giftbox-form-group, .giftbox-special-price-section, .report-form, .capacity-weekday-strip, .device-info-item, .settings-workspace-intro, .search-advanced-filters, .search-overdue-row, .submit-overlay-box, #depositCalculationResult, #specialPriceSection > div, #priceComparison').forEach(function(surface) {
-                surface.classList.add('ms-container-surface');
-            });
-            mirrorStackElements(root, '.giftbox-progress, .status-order-info, .delete-order-info, #statusUpdateStatus, #deleteStatus').forEach(function(status) {
-                status.classList.add('ms-status-container');
-            });
-            mirrorStackElements(root, '.fab-cart').forEach(function(fab) {
-                fab.classList.add('ms-fab');
-            });
-            mirrorStackElements(root, '.cart-overlay').forEach(function(scrim) {
-                scrim.classList.add('ms-scrim');
-            });
-            mirrorStackElements(root, '.grove-btn-group, .name-title-group, .products-filter-tabs').forEach(function(group) {
-                group.classList.add('ms-segmented-button-set');
-            });
-            mirrorStackElements(root, '.modal-content, .cart-sidebar, .firebase-auth-card, .firebase-shop-card').forEach(function(surface) {
-                surface.classList.add('ms-dialog-surface');
-            });
-            mirrorStackElements(root, '.product-card, #giftProducts > div:not(.company-mode-banner), #cakeProducts > div:not(.company-mode-banner), .cart-item-card, .giftbox-product-card, .giftbox-summary-card, .report-summary-card, .demand-summary-card, .settings-panel, .search-form, .search-results-container, .payment-status-box').forEach(function(card) {
-                card.classList.add('ms-card');
-            });
-            mirrorStackElements(root, 'table').forEach(function(table) {
-                table.classList.add('ms-data-table');
-            });
-            mirrorStackElements(root, '.alert, .search-error, .search-empty-state, .product-load-error, .product-stale-banner, .connection-banner, .pwa-banner, .company-mode-banner, .result-banner, .products-empty, .order-items-empty').forEach(function(feedback) {
-                feedback.classList.add('ms-feedback');
-            });
-            mirrorStackElements(root, '.capacity-day-col, .giftbox-summary-product, .order-info-item, .payment-item').forEach(function(surface) {
-                surface.classList.add('ms-container-surface');
-            });
-            mirrorStackElements(root, '.table-responsive, .order-items-scroll').forEach(function(tableContainer) {
-                tableContainer.classList.add('ms-table-container');
-            });
-            mirrorStackElements(root, '.settings-nav, .products-filter-tabs').forEach(function(nav) {
-                nav.classList.add('ms-navigation-list');
-            });
-
-            mirrorStackElements(root, 'button').forEach(function(button) {
-                const context = `${button.id} ${button.className} ${button.getAttribute('onclick') || ''} ${button.textContent || ''}`.toLowerCase();
-                const isNavigation = button.classList.contains('nav-item') || button.classList.contains('settings-nav-btn') || button.closest('.products-filter-tabs');
-                const isDateCell = button.classList.contains('calendar-day');
-                const isListItem = button.classList.contains('customer-ac-item');
-                const isSelectionCard = button.closest('#giftboxStep1');
-                const isFab = button.classList.contains('fab-cart');
-                const isCardAction = button.classList.contains('ms-card-action');
-                const isSearchFilterToggle = button.id === 'searchFiltersToggle';
-                const isIconOnly = button.classList.contains('close-btn') || button.classList.contains('calendar-month-nav') || button.classList.contains('giftbox-qty-btn') || button.classList.contains('cart-qty-btn') || button.classList.contains('cart-delete-btn') || button.classList.contains('cart-edit-btn') || button.id === 'themeToggle' || (!button.textContent.trim() && button.querySelector('i, .material-symbols-rounded'));
-                if (isFab) {
-                    button.classList.add('ms-fab');
-                    return;
-                }
-                if (isDateCell) {
-                    button.classList.add('ms-date-cell');
-                    return;
-                }
-                if (isListItem) {
-                    button.classList.add('ms-list-item');
-                    return;
-                }
-                if (isCardAction) return;
-                if (isSearchFilterToggle) {
-                    button.classList.add('ms-button', 'ms-button--outlined');
-                    return;
-                }
-                if (isSelectionCard) {
-                    button.classList.add('ms-selection-card');
-                    return;
-                }
-                if (isNavigation) {
-                    button.classList.add('ms-navigation-item');
-                    return;
-                }
-                if (isIconOnly) {
-                    button.classList.add('ms-icon-button');
-                    return;
-                }
-                button.classList.add('ms-button');
-                button.classList.remove('ms-button--filled', 'ms-button--tonal', 'ms-button--outlined', 'ms-button--error');
-                if (/delete|刪除|取消訂單|overdue/.test(context)) button.classList.add('ms-button--error');
-                else if (/clear|取消|返回|重選|close|關閉|稍後/.test(context)) button.classList.add('ms-button--outlined');
-                else if (/save|儲存|confirm|確認|checkout|建立訂單|add|新增|search|搜尋|generate|產生|proceed|加入購物車|登入/.test(context)) button.classList.add('ms-button--filled');
-                else button.classList.add('ms-button--tonal');
-            });
-        }
-
-        function initMirrorStackComponentModel() {
-            applyMirrorStackComponents(document);
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    mutation.addedNodes.forEach(function(node) {
-                        if (node.nodeType === Node.ELEMENT_NODE) applyMirrorStackComponents(node);
-                    });
-                });
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        }
-
         function openPosLocalDb() {
             if (!('indexedDB' in window)) return Promise.resolve(null);
             if (posLocalDbPromise) return posLocalDbPromise;
@@ -482,8 +278,6 @@
 
         // 頁面載入時初始化
         document.addEventListener('DOMContentLoaded', function() {
-            initTheme();
-            initMirrorStackComponentModel();
             initContactMethodToggle();
             initSearchContactMethodToggle();
             initVisibleViewportFit();
@@ -942,12 +736,12 @@
             }
             acResultsCache = results;
             list.innerHTML = results.map(function(c, i) {
-                return '<button type="button" class="customer-ac-item" data-index="' + i + '" onmousedown="selectAcCustomer(' + i + ')" aria-label="選擇客戶 ' + escapeAttr(c.name) + '">'
+                return '<div class="customer-ac-item" data-index="' + i + '" onmousedown="selectAcCustomer(' + i + ')">'
                     + '<div class="customer-ac-icon"><i class="fas fa-user"></i></div>'
                     + '<div class="customer-ac-info">'
                     + '<div class="customer-ac-name">' + escapeHtml(c.name) + '</div>'
                     + '<div class="customer-ac-phone">' + escapeHtml(c.contactType === 'line' ? 'LINE' : (c.contactValue || c.phone || '')) + (c.address ? ' / ' + escapeHtml(c.address) : '') + '</div>'
-                    + '</div></button>';
+                    + '</div></div>';
             }).join('');
             list.classList.add('show');
         }
@@ -1314,9 +1108,9 @@
                 const isCompanyPriceActive = isCompanyCustomer && p.companyPrice && parseFloat(p.companyPrice) > 0 && parseFloat(p.companyPrice) !== parseFloat(p.price);
 
                 return `
-                <div class="ms-card bg-white rounded-xl shadow-sm overflow-hidden flex flex-col border ${hoverBorderClass} transition group relative h-full">
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col border ${hoverBorderClass} transition group relative h-full">
                     <!-- 上半部：點擊查看詳情/特價 -->
-                    <button type="button" class="ms-card-action cursor-pointer flex-1 flex flex-col" onclick="showProductDetail('${p.productId}')" aria-label="查看 ${escapeAttr(p.productName)} 詳情">
+                    <div class="cursor-pointer flex-1 flex flex-col" onclick="showProductDetail('${p.productId}')">
                         <div class="h-32 ${bgClass} flex items-center justify-center relative overflow-hidden">
                             <i class="fas ${iconClass} text-5xl transform group-hover:scale-110 transition-transform duration-300"></i>
                             ${isCompanyPriceActive ? '<div class="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">企業價</div>' : ''}
@@ -1325,7 +1119,7 @@
                             <h3 class="font-bold text-lg mb-1 text-gray-800 line-clamp-2 h-14">${p.productName}</h3>
                             <p class="text-red-500 font-bold text-xl">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + '</span>' : ''}NT$ ${effectivePrice}${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</p>
                         </div>
-                    </button>
+                    </div>
 
                     <!-- 下半部：操作按鈕 -->
                     <div class="p-4 pt-0 mt-auto">
@@ -2554,26 +2348,6 @@
             }
         }
 
-        function toggleSearchFilters(forceOpen) {
-            const advanced = document.getElementById('searchAdvancedFilters');
-            const toggle = document.getElementById('searchFiltersToggle');
-            if (!advanced || !toggle) return;
-            const open = typeof forceOpen === 'boolean' ? forceOpen : advanced.hidden;
-            advanced.hidden = !open;
-            advanced.classList.toggle('is-open', open);
-            advanced.setAttribute('aria-hidden', String(!open));
-            toggle.setAttribute('aria-expanded', String(open));
-            toggle.innerHTML = open
-                ? '<i class="fas fa-chevron-up"></i> 收合條件'
-                : '<i class="fas fa-sliders-h"></i> 更多條件';
-        }
-
-        function renderSearchEmptyState() {
-            const container = document.getElementById('searchResults');
-            if (!container) return;
-            container.innerHTML = '<div class="search-empty-state ms-feedback"><i class="fas fa-search"></i><strong>開始搜尋訂單</strong><span>輸入電話或 LINE，可最快找到客戶訂單。</span></div>';
-        }
-
         function clearSearch() {
             document.getElementById('searchPhone').value = '';
             document.getElementById('searchName').value = '';
@@ -2582,13 +2356,12 @@
             } else {
                 document.getElementById('searchDate').value = '';
             }
-            renderSearchEmptyState();
+            document.getElementById('searchResults').innerHTML = '';
             const status = document.getElementById('searchStatus');
             if (status) status.value = '';
             selectSearchContactMethod('phone', false);
             searchNextCursor = null;
             lastSearchCriteria = null;
-            toggleSearchFilters(false);
         }
 
         function searchOverdueOrders() {
@@ -3240,37 +3013,6 @@
         }
 
         // === 禮盒功能函數 ===
-        function updateGiftboxWorkflow(step) {
-            const activeStep = Number(step) || 1;
-            const selectedCount = Object.values(giftboxSelection).reduce((sum, qty) => sum + qty, 0);
-            const selectedPrice = Object.entries(giftboxSelection).reduce((sum, [productId, quantity]) => {
-                const product = allProducts.find(p => p.productId === productId);
-                return sum + (product ? getEffectivePrice(product) * quantity : 0);
-            }, 0);
-            const content = {
-                1: ['從規格開始建立禮盒', '依序選擇入數、組合內容，再確認數量與備註。', '尚未選擇規格', '選擇入數後，即可配置禮盒內容。'],
-                2: [`配置 ${currentGiftboxSize} 入禮盒`, '調整每個品項的數量，完成所選規格。', `${selectedCount}／${currentGiftboxSize} 件已選取`, selectedCount === currentGiftboxSize ? '組合已完成，可以前往確認。' : `還需要 ${Math.max(currentGiftboxSize - selectedCount, 0)} 件商品。`],
-                3: [`確認 ${currentGiftboxSize} 入禮盒`, '確認組數、備註與每盒售價後加入購物車。', `${currentGiftboxSize} 入禮盒已完成`, '可設定組數與選填備註，再加入購物車。']
-            }[activeStep];
-
-            document.querySelectorAll('.giftbox-stepper [data-giftbox-step]').forEach(function(item) {
-                const itemStep = Number(item.dataset.giftboxStep);
-                item.classList.toggle('active', itemStep === activeStep);
-                item.classList.toggle('complete', itemStep < activeStep);
-                item.toggleAttribute('aria-current', itemStep === activeStep);
-            });
-            const title = document.getElementById('giftboxWorkflowTitle');
-            const description = document.getElementById('giftboxWorkflowDescription');
-            const summaryTitle = document.getElementById('giftboxWorkflowSummaryTitle');
-            const summaryText = document.getElementById('giftboxWorkflowSummaryText');
-            const summaryPrice = document.getElementById('giftboxWorkflowSummaryPrice');
-            if (title) title.textContent = content[0];
-            if (description) description.textContent = content[1];
-            if (summaryTitle) summaryTitle.textContent = content[2];
-            if (summaryText) summaryText.textContent = content[3];
-            if (summaryPrice) summaryPrice.textContent = selectedPrice > 0 ? `NT$ ${selectedPrice.toLocaleString()}` : '—';
-        }
-
         function selectGiftboxSize(size, btnElement) {
             const sizeBtn = btnElement || window.event?.currentTarget || window.event?.target?.closest('button');
 
@@ -3291,10 +3033,9 @@
 
             document.getElementById('giftboxStep1').classList.remove('active');
             document.getElementById('giftboxStep2').classList.add('active');
-            document.getElementById('giftboxStep2Title').textContent = `選擇商品組合（${size} 入）`;
+            document.getElementById('giftboxStep2Title').textContent = `步驟2: 選擇商品組合 (${size}粒裝)`;
             document.getElementById('targetCount').textContent = size;
             loadGiftboxProducts();
-            updateGiftboxWorkflow(2);
             setButtonLoading(sizeBtn, false);
         }
 
@@ -3407,10 +3148,18 @@
         function updateGiftboxProgress() {
             const totalSelected = Object.values(giftboxSelection).reduce((sum, qty) => sum + qty, 0);
             document.getElementById('selectedCount').textContent = totalSelected;
-            const progress = document.querySelector('.giftbox-progress');
-            if (progress) progress.dataset.state = totalSelected > currentGiftboxSize ? 'over' : (totalSelected === currentGiftboxSize ? 'complete' : 'pending');
-            const step = document.getElementById('giftboxStep3')?.classList.contains('active') ? 3 : (document.getElementById('giftboxStep2')?.classList.contains('active') ? 2 : 1);
-            updateGiftboxWorkflow(step);
+
+            // 移除按鈕鎖定，改為顏色提示
+            if (totalSelected > currentGiftboxSize) {
+                document.querySelector('.giftbox-progress').style.color = '#c66b6b';
+                document.querySelector('.giftbox-progress').style.borderLeftColor = '#c66b6b';
+            } else if (totalSelected === currentGiftboxSize) {
+                document.querySelector('.giftbox-progress').style.color = '#2ecc71';
+                document.querySelector('.giftbox-progress').style.borderLeftColor = '#2ecc71';
+            } else {
+                document.querySelector('.giftbox-progress').style.color = 'var(--primary-dark)';
+                document.querySelector('.giftbox-progress').style.borderLeftColor = 'var(--primary-color)';
+            }
         }
 
         function proceedToStep3() {
@@ -3439,7 +3188,6 @@
             document.getElementById('giftboxStep2').classList.remove('active');
             document.getElementById('giftboxStep3').classList.add('active');
             updateGiftboxSummary();
-            updateGiftboxWorkflow(3);
             setButtonLoading(proceedBtn, false);
 
                 // 編輯模式時更新按鈕文字
@@ -3595,7 +3343,6 @@
             if (addBtn) {
                 addBtn.innerHTML = '<i class="fas fa-cart-plus"></i> 加入購物車';
             }
-            updateGiftboxWorkflow(1);
         }
 
         function editGiftboxItem(cartIndex) {
@@ -3634,12 +3381,11 @@
             // 直接跳到步驟2
             document.querySelectorAll('.giftbox-step').forEach(step => step.classList.remove('active'));
                 document.getElementById('giftboxStep2').classList.add('active');
-                document.getElementById('giftboxStep2Title').textContent = `選擇商品組合（${item.size} 入）`;
+                document.getElementById('giftboxStep2Title').textContent = `步驟2: 選擇商品組合 (${item.size}粒裝)`;
                 document.getElementById('targetCount').textContent = item.size;
 
                 // 載入產品並填入已選擇的數量
                 loadGiftboxProductsForEdit(item.products);
-                updateGiftboxWorkflow(2);
 
                 // 填入數量和備註
                 document.getElementById('giftboxQuantity').value = item.quantity;
@@ -3703,7 +3449,6 @@
         function backToStep2() {
             document.getElementById('giftboxStep3').classList.remove('active');
             document.getElementById('giftboxStep2').classList.add('active');
-            updateGiftboxWorkflow(2);
         }
 
         // ==========================================
@@ -4160,9 +3905,8 @@
             }
 
             for (let i = 1; i <= daysInMonth; i++) {
-                const dayBtn = document.createElement('button');
-                dayBtn.type = 'button';
-                dayBtn.className = 'calendar-day ms-date-cell';
+                const dayBtn = document.createElement('div');
+                dayBtn.className = 'calendar-day';
 
                 const thisDateStr = `${calendarState.currYear}-${String(calendarState.currMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
@@ -4171,8 +3915,6 @@
                 dayBtn.appendChild(dayNum);
 
                 dayBtn.dataset.date = thisDateStr;
-                dayBtn.setAttribute('aria-label', `${calendarState.currYear}年${calendarState.currMonth + 1}月${i}日`);
-                dayBtn.setAttribute('aria-pressed', thisDateStr === calendarState.selectedDateStr ? 'true' : 'false');
 
                 if (thisDateStr === calendarState.selectedDateStr) {
                     dayBtn.classList.add('selected');
@@ -4182,7 +3924,6 @@
                 checkDate.setHours(23,59,59);
                 if (checkDate < new Date().setHours(0,0,0,0)) {
                     dayBtn.classList.add('disabled');
-                    dayBtn.disabled = true;
                 } else {
                     dayBtn.onclick = () => selectCalendarDate(i);
                 }
@@ -4268,14 +4009,11 @@
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('bg-blue-100', 'text-blue-700');
                 item.classList.add('text-gray-600');
-                item.removeAttribute('aria-current');
             });
             if (navElement) {
                 navElement.classList.remove('text-gray-600');
                 navElement.classList.add('bg-blue-100', 'text-blue-700');
-                navElement.setAttribute('aria-current', 'page');
             }
-            document.body.dataset.activeSection = sectionName;
 
             const floatingCart = document.querySelector('.floating-cart');
             if (floatingCart) {
@@ -4466,29 +4204,6 @@
             container.innerHTML = html;
         }
 
-        const SETTINGS_WORKSPACE_COPY = {
-            products: ['商品目錄', '維護販售品項與可用狀態，商品變更會反映在點單頁面。'],
-            capacity: ['產能與日期', '設定每週供應量與指定日期覆寫，避免接單後才發現產能不足。'],
-            demand: ['需求分析', '從日期區間查看品項與禮盒需求，協助備貨規劃。'],
-            reports: ['銷售報表', '依指定日期彙整訂單、營收與客單表現。'],
-            device: ['系統與裝置', '查看目前裝置與版面資訊，作為支援與排錯依據。']
-        };
-
-        function updateSettingsWorkspaceCopy(sectionName) {
-            const copy = SETTINGS_WORKSPACE_COPY[sectionName] || SETTINGS_WORKSPACE_COPY.products;
-            const title = document.getElementById('settingsWorkspaceTitle');
-            const description = document.getElementById('settingsWorkspaceDescription');
-            const picker = document.getElementById('settingsSectionPicker');
-            if (title) title.textContent = copy[0];
-            if (description) description.textContent = copy[1];
-            if (picker) picker.value = sectionName;
-        }
-
-        function selectSettingsWorkspace(sectionName) {
-            const nav = document.querySelector(`.settings-nav-btn[data-settings-section="${sectionName}"]`);
-            showSettingsSection(sectionName, nav);
-        }
-
         function showSettingsSection(sectionName, navElement) {
             document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
             const target = document.getElementById('settings' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1));
@@ -4501,8 +4216,6 @@
             if (navElement) {
                 navElement.classList.add('active');
             }
-
-            updateSettingsWorkspaceCopy(sectionName);
 
             document.querySelector('.settings-layout').classList.add('drilled-in');
 

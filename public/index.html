@@ -4,83 +4,54 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#006973">
+    <meta name="theme-color" content="#1f6f5f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="金家 POS">
     <title>金家訂單管理系統</title>
-    <script>
-        // 在樣式載入前套用儲存的偏好，避免亮暗模式切換時閃白。
-        (function () {
-            try {
-                var savedTheme = localStorage.getItem('ginJiaPosTheme');
-                var themePreference = ['auto', 'light', 'dark'].indexOf(savedTheme) >= 0 ? savedTheme : 'auto';
-                var useDark = themePreference === 'dark' || (themePreference === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                document.documentElement.dataset.theme = useDark ? 'dark' : 'light';
-                document.documentElement.dataset.themePreference = themePreference;
-                document.documentElement.classList.toggle('dark', useDark);
-            } catch (error) {
-                document.documentElement.dataset.theme = 'light';
-                document.documentElement.classList.remove('dark');
-            }
-        }());
-    </script>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/css/tailwind.generated.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.css">
     <script src="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.js"></script>
     <link rel="stylesheet" href="/css/app.css">
-    <link rel="stylesheet" href="/css/mirrorstack-adapter.css">
 </head>
-<body class="h-full flex flex-col overflow-hidden" data-ms-shell>
+<body class="h-full flex flex-col overflow-hidden">
 
     <!-- 可視範圍量測探針（iframe 內嵌時用來偵測被瀏覽器介面裁切的高度） -->
     <div id="viewportProbe" aria-hidden="true"></div>
 
-    <!-- 浮動主導覽：保留原有按鈕 ID 與流程，改為可快速切換的工作列。 -->
-    <header class="app-floating-nav">
-        <div class="app-floating-nav__surface">
-            <button class="app-floating-nav__brand" type="button" onclick="showSection('customer', document.getElementById('nav-customer'))" aria-label="回到訂單建立">
-                <span class="app-floating-nav__mark" aria-hidden="true">金</span>
-                <span class="app-floating-nav__wordmark"><strong>金家 POS</strong><small>ORDER STUDIO</small></span>
-            </button>
-            <nav class="app-floating-nav__links" aria-label="主要導覽">
-                <div class="app-nav-group">
-                    <button onclick="showSection('customer', this)" id="nav-customer" aria-current="page" aria-label="客戶資料" class="nav-item bg-blue-100 text-blue-700">
-                        <span class="material-symbols-rounded" aria-hidden="true">person</span><span>客戶</span>
+    <!-- Header -->
+    <header class="bg-white shadow-md z-20 flex-none">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-3">
+                <div class="flex space-x-2">
+                    <button onclick="showSection('customer', this)" id="nav-customer" aria-label="客戶資料" class="nav-item px-5 py-3 rounded-lg text-base font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
+                        <i class="fas fa-user mr-2"></i><span class="hidden lg:inline">客戶</span>
                     </button>
-                    <button onclick="showSection('date', this)" id="nav-date" aria-label="交貨日期" class="nav-item text-gray-600">
-                        <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span><span>日期</span>
+                    <button onclick="showSection('date', this)" id="nav-date" aria-label="交貨日期" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-calendar mr-2"></i><span class="hidden lg:inline">日期</span>
                     </button>
-                    <button onclick="showSection('gift', this)" id="nav-gift" aria-label="伴手禮" class="nav-item text-gray-600">
-                        <span class="material-symbols-rounded" aria-hidden="true">cookie</span><span>伴手禮</span>
+                    <button onclick="showSection('gift', this)" id="nav-gift" aria-label="伴手禮" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-cookie mr-2"></i><span class="hidden lg:inline">伴手禮</span>
                     </button>
-                    <button onclick="showSection('cake', this)" id="nav-cake" aria-label="喜餅" class="nav-item text-gray-600">
-                        <span class="material-symbols-rounded" aria-hidden="true">cake</span><span>喜餅</span>
+                    <button onclick="showSection('cake', this)" id="nav-cake" aria-label="喜餅" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-birthday-cake mr-2"></i><span class="hidden lg:inline">喜餅</span>
                     </button>
-                    <button onclick="showSection('giftbox', this)" id="nav-giftbox" aria-label="禮盒" class="nav-item text-gray-600">
-                        <span class="material-symbols-rounded" aria-hidden="true">deployed_code</span><span>禮盒</span>
+                    <button onclick="showSection('giftbox', this)" id="nav-giftbox" aria-label="禮盒" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-box mr-2"></i><span class="hidden lg:inline">禮盒</span>
                     </button>
                 </div>
-                <span class="app-nav-divider" aria-hidden="true"></span>
-                <div class="app-nav-group app-nav-group--utility">
-                    <button onclick="showSection('search', this)" id="nav-search" aria-label="訂單搜尋" class="nav-item text-gray-600">
-                        <span class="material-symbols-rounded" aria-hidden="true">search</span><span>搜尋</span>
+                <div class="flex space-x-2">
+                    <button onclick="showSection('search', this)" id="nav-search" aria-label="訂單搜尋" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-search mr-2"></i><span class="hidden lg:inline">搜尋</span>
                     </button>
-                    <button onclick="showSection('settings', this)" id="nav-settings" aria-label="系統設定" class="nav-item text-gray-600">
-                        <span class="material-symbols-rounded" aria-hidden="true">settings</span><span>設定</span>
+                    <button onclick="showSection('settings', this)" id="nav-settings" aria-label="系統設定" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
+                        <i class="fas fa-cog mr-2"></i><span class="hidden lg:inline">設定</span>
                     </button>
                 </div>
-            </nav>
-            <button id="themeToggle" class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="切換為深色模式" title="切換為深色模式">
-                <span id="themeToggleIcon" class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
-                <span id="themeToggleLabel">深色</span>
-            </button>
+            </div>
         </div>
     </header>
 
@@ -227,42 +198,27 @@
 
         <!-- 禮盒頁 -->
         <section id="giftbox" class="content-section max-w-6xl mx-auto min-h-full flex flex-col">
-            <div class="giftbox-workflow">
-                <header class="giftbox-workflow__header">
-                    <div>
-                        <p class="workspace-eyebrow">客製禮盒</p>
-                        <h2 id="giftboxWorkflowTitle">從規格開始建立禮盒</h2>
-                        <p id="giftboxWorkflowDescription" class="workspace-description">依序選擇入數、組合內容，再確認數量與備註。</p>
-                    </div>
-                    <ol class="giftbox-stepper" aria-label="禮盒建立步驟">
-                        <li class="active" data-giftbox-step="1" aria-current="step"><span>1</span><strong>規格</strong></li>
-                        <li data-giftbox-step="2"><span>2</span><strong>組合</strong></li>
-                        <li data-giftbox-step="3"><span>3</span><strong>確認</strong></li>
-                    </ol>
-                </header>
-                <div class="giftbox-workflow__body">
             <!-- 步驟1: 選擇盒裝規格 -->
             <div id="giftboxStep1" class="giftbox-step active flex-1 flex flex-col items-center justify-center">
-                <h3 class="giftbox-step-heading">選擇每盒入數</h3>
-                <p class="giftbox-step-support">先選擇規格，下一步再配置每一份商品。</p>
-                <div class="giftbox-size-grid">
-                    <button onclick="selectGiftboxSize(6)" class="giftbox-size-btn p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                <h2 class="text-3xl font-bold mb-10 text-gray-800">請選擇禮盒規格</h2>
+                <div class="grid grid-cols-3 gap-8 w-full max-w-3xl">
+                    <button onclick="selectGiftboxSize(6)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
                         <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
                         <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">6入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(8)" class="giftbox-size-btn p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                    <button onclick="selectGiftboxSize(8)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
                         <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
                         <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">8入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(10)" class="giftbox-size-btn p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                    <button onclick="selectGiftboxSize(10)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
                         <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
                         <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">10入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(12)" class="giftbox-size-btn p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                    <button onclick="selectGiftboxSize(12)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
                         <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
                         <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">12入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(15)" class="giftbox-size-btn p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                    <button onclick="selectGiftboxSize(15)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
                         <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
                         <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">15入</span>
                     </button>
@@ -271,20 +227,17 @@
 
             <!-- 步驟2: 選擇商品組合 -->
             <div id="giftboxStep2" class="giftbox-step flex-col h-full" style="display: none;">
-                <div class="giftbox-composer-header">
-                    <div>
-                        <h3 id="giftboxStep2Title">選擇商品組合</h3>
-                        <p>可調整每個品項數量，合計需符合所選規格。</p>
-                    </div>
+                <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm">
+                    <h2 id="giftboxStep2Title" class="text-2xl font-bold text-gray-800">自選禮盒內容</h2>
                     <div class="giftbox-progress bg-blue-50 px-6 py-2 rounded-lg border-l-4 border-blue-500 transition-colors duration-300">
-                        <span>已選</span>
+                        <span class="text-gray-600">目前進度: </span>
                         <span id="selectedCount" class="font-bold text-2xl text-blue-600">0</span>
-                        <span class="text-gray-400 text-lg">／</span>
+                        <span class="text-gray-400 text-lg"> / </span>
                         <span id="targetCount" class="font-bold text-gray-600 text-lg">6</span>
                     </div>
                 </div>
                 <div id="giftboxProducts" class="giftbox-product-list bg-white border rounded-xl p-4 mb-4">載入中...</div>
-                <div class="giftbox-workflow-actions">
+                <div class="flex gap-4">
                     <button onclick="backToStep1()" class="px-8 py-3 bg-gray-200 rounded-xl font-bold text-gray-700">重選規格</button>
                     <button id="proceedStep3" onclick="proceedToStep3()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-lg">下一步</button>
                 </div>
@@ -334,17 +287,6 @@
                     </div>
                 </div>
             </div>
-                </div>
-                <aside class="giftbox-workflow-summary" aria-live="polite">
-                    <span class="workspace-eyebrow">目前組合</span>
-                    <strong id="giftboxWorkflowSummaryTitle">尚未選擇規格</strong>
-                    <p id="giftboxWorkflowSummaryText">選擇入數後，即可配置禮盒內容。</p>
-                    <div class="giftbox-workflow-summary__total">
-                        <span>單組小計</span>
-                        <strong id="giftboxWorkflowSummaryPrice">—</strong>
-                    </div>
-                </aside>
-            </div>
         </section>
 
         <!-- 搜尋頁 -->
@@ -355,16 +297,13 @@
                     <div class="search-header-icon">
                         <i class="fas fa-search"></i>
                     </div>
-                    <div>
-                        <h2>訂單搜尋</h2>
-                        <p>先用聯絡資訊快速查詢；需要時再展開更多條件。</p>
-                    </div>
+                    <h2>訂單搜尋</h2>
                 </div>
 
                 <!-- 搜尋表單 -->
                 <div class="search-form">
-                    <div class="search-form-grid search-form-grid--primary">
-                        <div class="search-form-group search-form-group--primary">
+                    <div class="search-form-grid">
+                        <div class="search-form-group">
                             <label for="searchPhone"><i class="fas fa-address-card"></i> 電話／LINE</label>
                             <div class="name-title-row search-contact-row">
                                 <input type="tel" id="searchPhone" class="name-title-input" placeholder="輸入電話號碼">
@@ -374,11 +313,6 @@
                                 </div>
                             </div>
                         </div>
-                        <button id="searchFiltersToggle" type="button" class="search-filter-toggle" aria-expanded="false" aria-controls="searchAdvancedFilters" onclick="toggleSearchFilters()">
-                            <i class="fas fa-sliders-h"></i> 更多條件
-                        </button>
-                    </div>
-                    <div id="searchAdvancedFilters" class="search-advanced-filters" hidden>
                         <div class="search-form-group">
                             <label for="searchName"><i class="fas fa-user"></i> 姓名</label>
                             <input type="text" id="searchName" placeholder="請輸入客戶姓名">
@@ -407,19 +341,14 @@
                         <button onclick="clearSearch()" class="btn-clear">
                             <i class="fas fa-eraser"></i> 清空條件
                         </button>
-                    </div>
-                    <div class="search-overdue-row">
-                        <span><i class="fas fa-clock"></i> 需要追蹤逾期訂單？</span>
                         <button onclick="searchOverdueOrders()" class="btn-overdue">
-                            <i class="fas fa-exclamation-triangle"></i> 檢視逾期訂單
+                            <i class="fas fa-exclamation-triangle"></i> 檢索過期訂單
                         </button>
                     </div>
                 </div>
 
                 <!-- 搜尋結果 -->
-                <div id="searchResults">
-                    <div class="search-empty-state ms-feedback"><i class="fas fa-search"></i><strong>開始搜尋訂單</strong><span>輸入電話或 LINE，可最快找到客戶訂單。</span></div>
-                </div>
+                <div id="searchResults"></div>
             </div>
         </section>
 
@@ -431,55 +360,36 @@
                     <div class="settings-header-icon">
                         <i class="fas fa-cog"></i>
                     </div>
-                    <div>
-                        <h2>營運工作區</h2>
-                        <p>在同一處管理商品、供應量、分析與裝置資訊。</p>
-                    </div>
+                    <h2>系統設定</h2>
                 </div>
 
                 <div class="settings-layout">
                     <!-- 側邊導航 -->
-                    <nav class="settings-nav" aria-label="營運工作區">
-                        <span class="settings-nav__label">工作區</span>
-                        <button data-settings-section="products" onclick="showSettingsSection('products', this)" class="settings-nav-btn active">
+                    <nav class="settings-nav">
+                        <button onclick="showSettingsSection('products', this)" class="settings-nav-btn active">
                             <i class="fas fa-box-open"></i>
-                            商品目錄
+                            商品管理
                         </button>
-                        <button data-settings-section="capacity" onclick="showSettingsSection('capacity', this)" class="settings-nav-btn">
+                        <button onclick="showSettingsSection('capacity', this)" class="settings-nav-btn">
                             <i class="fas fa-tachometer-alt"></i>
-                            產能與日期
+                            產能設定
                         </button>
-                        <button data-settings-section="demand" onclick="showSettingsSection('demand', this)" class="settings-nav-btn">
+                        <button onclick="showSettingsSection('demand', this)" class="settings-nav-btn">
                             <i class="fas fa-clipboard-list"></i>
-                            需求分析
+                            需求統計
                         </button>
-                        <button data-settings-section="reports" onclick="showSettingsSection('reports', this)" class="settings-nav-btn">
+                        <button onclick="showSettingsSection('reports', this)" class="settings-nav-btn">
                             <i class="fas fa-chart-bar"></i>
-                            銷售報表
+                            營業報表
                         </button>
-                        <button data-settings-section="device" onclick="showSettingsSection('device', this)" class="settings-nav-btn">
+                        <button onclick="showSettingsSection('device', this)" class="settings-nav-btn">
                             <i class="fas fa-laptop"></i>
-                            系統與裝置
+                            裝置資訊
                         </button>
                     </nav>
 
                     <!-- 內容區 -->
                     <div class="settings-content">
-                        <label class="settings-section-picker" for="settingsSectionPicker">
-                            <span>工作區</span>
-                            <select id="settingsSectionPicker" onchange="selectSettingsWorkspace(this.value)">
-                                <option value="products">商品目錄</option>
-                                <option value="capacity">產能與日期</option>
-                                <option value="demand">需求分析</option>
-                                <option value="reports">銷售報表</option>
-                                <option value="device">系統與裝置</option>
-                            </select>
-                        </label>
-                        <div class="settings-workspace-intro" aria-live="polite">
-                            <span class="workspace-eyebrow">目前工作區</span>
-                            <h3 id="settingsWorkspaceTitle">商品目錄</h3>
-                            <p id="settingsWorkspaceDescription">維護販售品項與可用狀態，商品變更會反映在點單頁面。</p>
-                        </div>
                         <button class="settings-back-btn" onclick="settingsBack()">
                             <i class="fas fa-arrow-left"></i> 返回設定
                         </button>
@@ -521,7 +431,7 @@
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                                     <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">日期覆寫</div>
                                 </div>
-                                <div class="capacity-override-form" style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end;">
+                                <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end;">
                                     <div style="flex: 1; min-width: 130px;">
                                         <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">日期</label>
                                         <input type="text" id="overrideDate" placeholder="點擊選擇日期" readonly style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; cursor: pointer; background: white;">
@@ -534,7 +444,7 @@
                                         <i class="fas fa-plus" style="margin-right: 4px;"></i>新增
                                     </button>
                                 </div>
-                                <div class="capacity-overrides-table" style="border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb;">
+                                <div style="border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb;">
                                     <table class="capacity-override-table">
                                         <thead>
                                             <tr>
@@ -627,16 +537,16 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>金家 POS 系統 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version v.13.1</p>
+            <p>Website content edited by yuyan2123. Version v.13.0</p>
         </footer>
 
     </main>
 
     <!-- 浮動購物車按鈕 -->
-    <button id="floatingCartButton" type="button" class="fab-cart floating-cart" onclick="toggleCartModal()" aria-label="開啟購物車">
+    <div class="fab-cart floating-cart" onclick="toggleCartModal()">
         <i class="fas fa-shopping-cart text-2xl"></i>
         <div class="cart-badge" id="cartCount">0</div>
-    </button>
+    </div>
 
     <!-- 購物車側邊欄 -->
     <div class="cart-overlay" id="cartOverlay" onclick="toggleCartModal()"></div>
