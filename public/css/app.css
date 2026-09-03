@@ -52,6 +52,8 @@
 
         /* 主捲動容器：由 body 的 flex-1 決定高度，到頂/到底不把捲動傳給外層 */
         main {
+            display: flex;
+            flex-direction: column;
             min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
@@ -287,13 +289,10 @@
             background: #fafafa;
         }
 
-        /* 內容區塊顯示控制
-           min-height: 100% 有兩個作用：
-           1. 內容較少的頁面（如搜尋頁）頁尾仍會被推到內容最下方，不會浮在畫面中間
-           2. main 永遠保有可捲動範圍，overscroll-behavior 才會生效，
-              否則內容不足時觸控會直接傳遞到外層網頁（Google Sites）造成兩層一起滑動 */
+        /* 內容不足時由目前頁面撐開剩餘空間，讓 footer 置底；
+           內容超高時則依內容高度延伸，由 main 負責捲動。 */
         .content-section { display: none !important; }
-        .content-section.active { display: block !important; min-height: 100%; animation: fadeIn 0.3s ease; }
+        .content-section.active { display: block !important; flex: 1 0 auto; min-height: 0; animation: fadeIn 0.3s ease; }
         .content-section.active.flex { display: flex !important; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -4085,6 +4084,7 @@ body .firebase-shop-option.active {
 
 /* Footer */
 .footer {
+    flex: 0 0 auto;
     margin: 34px 0 0;
     border-top: 1px solid var(--pos-line);
     background: transparent;

@@ -76,6 +76,17 @@ test("PWA banner stays above navigation actions and clears the cart", () => {
   assert.match(css, /bottom: calc\(152px \+ var\(--vp-bottom\) \+ env\(safe-area-inset-bottom\)\)/);
 });
 
+test("footer uses normal flow and only scrolls when page content overflows", () => {
+  const html = read("public/index.html");
+  const css = read("public/css/app.css");
+
+  assert.match(html, /<main[\s\S]*<footer class="footer">[\s\S]*<\/main>/);
+  assert.match(css, /main \{[\s\S]*display: flex;[\s\S]*flex-direction: column;[\s\S]*overflow-y: auto/);
+  assert.match(css, /\.content-section\.active \{[^}]*flex: 1 0 auto;[^}]*min-height: 0/);
+  assert.match(css, /\.footer \{[^}]*flex: 0 0 auto/);
+  assert.doesNotMatch(css, /\.footer \{[^}]*(?:position:\s*(?:fixed|sticky))/);
+});
+
 test("order search uses the same phone and LINE button pattern", () => {
   const html = read("public/index.html");
   const app = read("public/js/app.js");
