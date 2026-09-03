@@ -3979,6 +3979,11 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 
 .alert-container {
     top: calc(18px + var(--vp-top));
+    transition: top .18s ease;
+}
+
+body.account-badge-visible .alert-container {
+    top: calc(72px + var(--vp-top));
 }
 
 .alert {
@@ -4392,6 +4397,10 @@ body .firebase-shop-option.active {
         right: 10px;
         left: 10px;
         max-width: none;
+    }
+
+    body.account-badge-visible .alert-container {
+        top: calc(64px + var(--vp-top));
     }
 
     .alert { min-width: 0; width: 100%; }

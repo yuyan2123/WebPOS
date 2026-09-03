@@ -60,10 +60,13 @@ test("LINE is a no-input contact option and confirmation uses only the original 
 
 test("opening the cart explicitly hides the Firebase account badge", () => {
   const app = read("public/js/app.js");
+  const bridge = read("public/js/rpc-bridge.js");
   const css = read("public/css/app.css");
 
   assert.match(app, /classList\.toggle\('cart-open'/);
   assert.match(app, /classList\.remove\('cart-open'\)/);
+  assert.match(bridge, /classList\.toggle\('account-badge-visible', Boolean\(visible\)\)/);
+  assert.match(css, /body\.account-badge-visible \.alert-container \{[^}]*top: calc\(72px \+ var\(--vp-top\)\)/);
   assert.match(css, /body\.cart-open #firebaseAccountBadge[\s\S]*display: none !important/);
 });
 

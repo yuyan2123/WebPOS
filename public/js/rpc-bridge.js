@@ -253,6 +253,11 @@
         if (button) button.textContent = activeShop ? activeShop.name : '選擇店鋪';
     }
 
+    function setAccountBadgeVisible(visible) {
+        document.getElementById('firebaseAccountBadge')?.classList.toggle('active', Boolean(visible));
+        document.body.classList.toggle('account-badge-visible', Boolean(visible));
+    }
+
     async function activateShop(shop, reloadWhenChanged) {
         const changed = Boolean(activeShop && activeShop.shopId !== shop.shopId);
         if (changed && typeof window.saveOrderDraftNow === 'function') {
@@ -597,7 +602,7 @@
                         document.body.dataset.userId = user.uid;
                         hideAuthOverlay();
                         document.getElementById('firebaseAccountEmail').textContent = `✓ ${user.email || user.uid}`;
-                        document.getElementById('firebaseAccountBadge').classList.add('active');
+                        setAccountBadgeVisible(true);
                         authWaiters.splice(0).forEach((waiter) => waiter.resolve(user));
                     } else if (user) {
                         activeUid = user.uid;
@@ -605,7 +610,7 @@
                         activeShop = null;
                         availableShops = [];
                         updateShopBadge();
-                        document.getElementById('firebaseAccountBadge').classList.remove('active');
+                        setAccountBadgeVisible(false);
                         showAuthOverlay('', 'verify', user);
                     } else {
                         activeUid = null;
@@ -615,7 +620,7 @@
                         activeShop = null;
                         availableShops = [];
                         updateShopBadge();
-                        document.getElementById('firebaseAccountBadge').classList.remove('active');
+                        setAccountBadgeVisible(false);
                         showAuthOverlay();
                     }
                     if (!initialStateResolved) {
