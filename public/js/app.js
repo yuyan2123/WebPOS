@@ -620,7 +620,6 @@
             currentContactMethod = method === 'line' ? 'line' : 'phone';
             const input = document.getElementById('customerPhone');
             const label = document.getElementById('customerContactLabel');
-            const hint = document.getElementById('customerContactHint');
             document.getElementById('contactMethodPhone')?.classList.toggle('active', currentContactMethod === 'phone');
             document.getElementById('contactMethodLine')?.classList.toggle('active', currentContactMethod === 'line');
             if (input) {
@@ -633,10 +632,6 @@
                 else if (clearValue) input.value = '';
             }
             if (label) label.textContent = '聯絡電話';
-            if (hint) {
-                hint.textContent = '請輸入可聯絡的電話號碼';
-                hint.hidden = currentContactMethod === 'line';
-            }
             closeAllAcLists();
             scheduleDraftSave();
         }

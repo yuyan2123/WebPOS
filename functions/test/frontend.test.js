@@ -67,6 +67,15 @@ test("opening the cart explicitly hides the Firebase account badge", () => {
   assert.match(css, /body\.cart-open #firebaseAccountBadge[\s\S]*display: none !important/);
 });
 
+test("PWA banner stays above navigation actions and clears the cart", () => {
+  const css = read("public/css/app.css");
+
+  assert.match(css, /body\.cart-open \.pwa-banner[\s\S]*pointer-events: none/);
+  assert.match(css, /@media \(min-width: 900px\)[\s\S]*\.pwa-banner[\s\S]*bottom: 172px/);
+  assert.match(css, /@media \(min-width: 900px\)[\s\S]*\.pwa-banner[\s\S]*left: 10px/);
+  assert.match(css, /bottom: calc\(152px \+ var\(--vp-bottom\) \+ env\(safe-area-inset-bottom\)\)/);
+});
+
 test("order search uses the same phone and LINE button pattern", () => {
   const html = read("public/index.html");
   const app = read("public/js/app.js");
