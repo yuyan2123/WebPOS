@@ -1,10 +1,11 @@
-const CACHE_VERSION = "gin-jia-pos-shell-v2";
+const CACHE_VERSION = "gin-jia-pos-shell-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
   "/css/tailwind.generated.css",
   "/css/app.css",
+  "/css/mirrorstack-adapter.css",
   "/js/runtime-config.js",
   "/js/rpc-bridge.js",
   "/js/app.js",
