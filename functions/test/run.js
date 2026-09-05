@@ -4,3 +4,6 @@ await import("./security.test.js");
 await import("./optimization.test.js");
 await import("./contacts.test.js");
 await import("./frontend.test.js");
+await import("./transactions.test.js");
+await import("./domain-parity.test.js");
+await import("./service-worker.test.js");

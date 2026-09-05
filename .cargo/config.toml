@@ -1,0 +1,3 @@
+[target.x86_64-pc-windows-msvc]
+# Suppress the MSVC linker's informational import-library banner.
+rustflags = ["-C", "link-arg=/NOLOGO"]

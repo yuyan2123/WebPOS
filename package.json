@@ -3,15 +3,31 @@
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.cjs -i ./src/tailwind.css -o ./public/css/tailwind.generated.css --minify",
-    "build": "npm run build:css && npm run check && npm test",
+    "build:rust": "node scripts/build-rust.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "build": "npm run build:rust && npm run build:css && npm run build:web && npm run check && npm test",
     "emulators": "firebase emulators:start",
     "deploy": "firebase deploy",
     "deploy:hosting": "firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
-    "test": "npm --prefix functions test",
-    "check": "npm --prefix functions run check && node --check public/js/app.js && node --check public/js/rpc-bridge.js && node --check public/js/pwa.js"
+    "test": "cargo test --workspace && npm --prefix functions test && playwright test",
+    "test:browser": "playwright test",
+    "test:integration": "node scripts/test-emulators.mjs",
+    "dev": "node scripts/serve.mjs",
+    "check": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && eslint src scripts functions/src tests && tsc --noEmit && npm --prefix functions run check && node --check public/js/app.js && node --check public/js/rpc-bridge.js && node --check public/js/pwa.js",
+    "format": "cargo fmt --all && prettier --write src scripts tests package.json tsconfig.json playwright.config.js eslint.config.mjs"
   },
   "devDependencies": {
-    "tailwindcss": "3.4.17"
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^9.39.5",
+    "@fortawesome/fontawesome-free": "^6.4.0",
+    "@playwright/test": "^1.63.0",
+    "air-datepicker": "^3.5.3",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "tailwindcss": "3.4.17",
+    "typescript": "^5.9.3"
   }
 }

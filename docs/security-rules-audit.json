@@ -1,0 +1,13 @@
+{
+  "score": 5,
+  "summary": "Firestore rules deny every direct client operation. Collaboration intentionally goes through authenticated Admin SDK RPCs. This score applies to the rules only, not the entire application or deployment configuration.",
+  "findings": [],
+  "checks": {
+    "updateBypass": "Create and update are both denied.",
+    "authoritySource": "Rules trust no client-supplied identity or role.",
+    "businessLogic": "Admin SDK services implement authorized collaborative access.",
+    "storageAbuse": "All direct writes denied; RPC request limits are a separate boundary.",
+    "typeSafety": "No client document is accepted.",
+    "identitySecurity": "No client can read or mutate another identity's data."
+  }
+}

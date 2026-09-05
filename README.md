@@ -1,24 +1,74 @@
-# 金家 POS — Firebase edition
+# 金家 POS — Rust domain + Firebase
 
 This project is the Firebase migration of the original Google Sheets + Apps Script POS.
-The existing Traditional Chinese interface and workflows are preserved, while Firebase
-Hosting, Authentication, Cloud Functions, and Cloud Firestore replace Apps Script and
-Google Sheets at runtime.
+The Traditional Chinese POS now uses a shared Rust domain compiled to WebAssembly,
+modular browser controllers, and Firebase Hosting, Authentication, Cloud Functions and
+Firestore. Database paths, RPC names, shop roles, order idempotency and local draft keys
+remain compatible. See [the architecture and capability ledger](docs/architecture.md)
+for the audit, migration boundaries and known limitations.
+
+## Build and work locally
+
+Install Node 22 and Rust through rustup, then run:
+
+```powershell
+npm ci
+npm ci --prefix functions
+rustup show
+cargo install wasm-bindgen-cli --version 0.2.128 --locked
+npx playwright install chromium webkit
+npm run build
+```
+
+`rust-toolchain.toml` pins Rust, rustfmt, Clippy and the Wasm target. The build compiles
+the Rust crate for browser and Node, generates the frontend and CSS, checks Rust/JS/TS,
+and runs Rust, Node and Chromium/WebKit browser tests. Linux CI installs browser OS
+dependencies with `playwright install --with-deps`.
+
+Use `npm run dev` for the static preview at http://127.0.0.1:4173. It has no Firebase
+configuration endpoint: use the Firebase emulators below for authenticated local use.
+Browser tests supply an isolated RPC fixture and never modify a live shop. Transaction
+tests exercise the real services with an in-memory transaction adapter; they do not
+replace a staging test of Firebase Auth, App Check, indexes or deployed Functions.
+
+For authenticated end-to-end backend checks, install Java 21 and run
+`npm run test:integration` after building. This starts Auth, Firestore and Functions
+under `demo-ginjia-pos`, with copied source and a temporary emulator-only secret in
+`artifacts/emulator-test`. It never copies local credentials or `.env` files. CI runs
+this suite before preview or live deployment. Ports 19099, 18080, 15101, 14400 and
+14500 must be free. `FIREBASE_CLI_PATH` can point to an already installed Firebase CLI
+JS entry point; otherwise the script uses pinned `firebase-tools@15.28.2` through npm.
+
+Edit `src/app`, `src/ui`, `src/platform`, `src/styles` and `crates/pos-domain`.
+`public/js/app.js`, `public/css/app.css`, `public/wasm`, and `functions/wasm` are generated
+and committed deployment artifacts. Rebuild them after source changes. The small
+`src/app/compatibility.js` export list preserves existing HTML handlers. Firebase SDK
+integration stays in `public/js/rpc-bridge.js`, behind the promise-based `posApi` adapter.
 
 ## Project layout
 
 ```text
+crates/pos-domain/          Rust item validation, capacity, pricing, payments and aggregation
+src/app/                   Feature controllers and private session state
+src/platform/              Typed Wasm and RPC host adapters
+src/ui/                    Navigation, order context and accessible interactions
+src/styles/                Component, surface, responsive and workspace styles
+tests/browser/             Chromium + WebKit workflow/accessibility regression tests
+docs/                      Architecture, capability ledger and security rules audit
 public/                    Firebase Hosting site
   index.html               POS markup
   css/app.css              UI styles
   css/tailwind.generated.css  Build-time utility CSS (no CDN runtime)
-  js/app.js                POS behavior
+  js/app.js                Generated browser bundle
+  wasm/                    Generated Rust browser module
+  vendor/                  Pinned datepicker/icons and licenses
   js/pwa.js                Install, offline and update lifecycle
   js/runtime-config.js     Public App Check site-key setting
   js/rpc-bridge.js         Apps Script-compatible Firebase RPC bridge
   manifest.webmanifest     iOS/iPadOS/Android PWA metadata
   sw.js                    Same-origin app-shell offline fallback
 functions/
+  wasm/                    Generated Rust Node module
   src/index.js             Authenticated POS RPC entry point
   src/services/            Products, orders, reports, capacity
   src/lib/                 Auth, tenant isolation, validation, IDs, serialization
@@ -44,7 +94,7 @@ firestore.rules            Denies direct browser access to POS records
 8. Create the HMAC key used for pseudonymous device/network audit records with `firebase functions:secrets:set SECURITY_HASH_SALT`. Use at least 32 random characters and never commit it.
 9. Run `npm ci` at the project root and `npm ci --prefix functions`, then deploy from the project root with `firebase deploy`.
 
-The root build runs local Tailwind generation, syntax checks and the complete test suite. GitHub
+The root build runs Rust/Wasm and local frontend compilation, checks and the complete test suite. GitHub
 pull requests build before creating a Hosting preview; merges to `main` build and deploy Firestore
 rules/indexes, Functions and Hosting together.
 

@@ -682,6 +682,7 @@
         });
     }
 
+    window.posApi = Object.freeze({ call: invoke });
     window.google = window.google || {};
     window.google.script = window.google.script || {};
     Object.defineProperty(window.google.script, 'run', {

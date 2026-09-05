@@ -1,0 +1,537 @@
+.settings-nav-btn.active {
+  background: linear-gradient(135deg, #f1f8f5, #e4f2ed);
+  color: #1f6f5f;
+  border-color: #1f6f5f;
+  font-weight: 600;
+}
+
+.settings-nav-btn.active i {
+  color: #1f6f5f;
+}
+
+/* 內容區塊 */
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-panel {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.settings-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.settings-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.settings-panel-title i {
+  color: #1f6f5f;
+}
+
+/* 姓名稱謂按鈕組 */
+
+.name-title-row {
+  display: flex;
+  gap: 8px;
+}
+
+.name-title-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-title-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.name-title-btn {
+  padding: 6px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.name-title-btn:hover {
+  border-color: #9bc7b9;
+  background: #f1f8f5;
+}
+
+.name-title-btn.active {
+  background: #1f6f5f;
+  color: white;
+  border-color: #1f6f5f;
+}
+
+/* 客戶 autocomplete */
+
+.customer-ac-wrap {
+  position: relative;
+}
+
+.customer-ac-list {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-top: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.customer-ac-list.show {
+  display: block;
+}
+
+.customer-ac-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.customer-ac-item:not(:last-child) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.customer-ac-item:hover,
+.customer-ac-item.highlight {
+  background: #f1f8f5;
+}
+
+.customer-ac-item:first-child {
+  border-radius: 12px 12px 0 0;
+}
+
+.customer-ac-item:last-child {
+  border-radius: 0 0 12px 12px;
+}
+
+.customer-ac-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e4f2ed;
+  color: #1f6f5f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.customer-ac-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.customer-ac-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1f2937;
+}
+
+.customer-ac-phone {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* 手機版返回按鈕 */
+
+.settings-back-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .settings-nav {
+    width: 100%;
+  }
+  .settings-nav-btn {
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+  }
+  .settings-nav-btn i {
+    font-size: 1rem;
+    width: 22px;
+  }
+  .settings-layout.drilled-in .settings-nav {
+    display: none;
+  }
+  .settings-layout:not(.drilled-in) .settings-content {
+    display: none;
+  }
+  .settings-layout.drilled-in .settings-back-btn {
+    display: inline-flex;
+  }
+}
+
+/* 新增商品按鈕 */
+
+.btn-add-product {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-add-product:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* 商品篩選 tabs */
+
+.products-filter-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.products-filter-tabs button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.products-filter-tabs button.active {
+  background: #1f6f5f;
+  color: white;
+  border-color: #1f6f5f;
+}
+
+.products-filter-tabs button:not(.active):hover {
+  background: #f3f4f6;
+}
+
+/* 商品卡片 grid */
+
+.products-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+@media (max-width: 640px) {
+  .products-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 商品卡片 */
+
+.product-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s;
+}
+
+.product-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.product-card-header .product-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.product-card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 狀態標籤（卡片與其他共用） */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.status-badge.enabled {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-badge.disabled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge.yes {
+  background: #e4f2ed;
+  color: #1f6f5f;
+}
+
+.status-badge.no {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-badge.category {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+/* 價格區塊 */
+
+.product-card-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.product-card-prices .price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.price-row .price-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.price-row .price-value {
+  font-weight: 600;
+  color: #374151;
+}
+
+.price-row .price-special {
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.price-row .price-none {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* 卡片操作按鈕 */
+
+.product-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.product-card-actions button {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-card-edit {
+  background: #f1f8f5;
+  color: #1f6f5f;
+}
+
+.btn-card-edit:hover {
+  background: #e4f2ed;
+  color: #1f6f5f;
+}
+
+.btn-card-delete {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.btn-card-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* 卡片空狀態 */
+
+.products-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: #9ca3af;
+}
+
+.products-empty i {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.products-empty p {
+  font-size: 0.95rem;
+}
+
+/* 營業報表區塊 */
+
+.report-form {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.report-form .form-group {
+  flex: 1;
+  max-width: 300px;
+}
+
+.report-form label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+#reportDatePicker,
+#demandDatePicker,
+#searchDate {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+#reportDatePicker:focus,
+#demandDatePicker:focus,
+#searchDate:focus {
+  border-color: #1f6f5f;
+  box-shadow: 0 0 0 3px rgba(31, 111, 95, 0.1);
+}
+
+/* 營業報表結果 */
+
+.report-date-label {
+  text-align: center;
+  padding: 8px 16px;
+  background: #ecfdf5;
+  border-radius: 8px;
+  color: #065f46;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.report-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.report-summary-card {
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.report-summary-card .card-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.report-summary-card .card-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.report-summary-card.revenue {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #6ee7b7;
+}
+
+.report-summary-card.revenue .card-value {
+  color: #047857;
+}
+
+.report-summary-card.orders {
+  background: linear-gradient(135deg, #f1f8f5, #e4f2ed);
+  border: 1px solid #9bc7b9;
+}

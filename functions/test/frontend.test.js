@@ -1,3 +1,4 @@
+import { frontendSource } from './frontend-source.js';
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -24,7 +25,7 @@ test("ships an installable PWA without the Tailwind CDN runtime", () => {
 });
 
 test("keeps order drafts and product fallbacks scoped to the signed-in shop", () => {
-  const app = read("public/js/app.js");
+  const app = frontendSource();
   const bridge = read("public/js/rpc-bridge.js");
 
   assert.match(app, /indexedDB\.open\('ginJiaPosLocal'/);
@@ -35,7 +36,7 @@ test("keeps order drafts and product fallbacks scoped to the signed-in shop", ()
 });
 
 test("viewer role blocks mutation controls as well as backend calls", () => {
-  const app = read("public/js/app.js");
+  const app = frontendSource();
   const css = read("public/css/app.css");
 
   assert.match(app, /#settingsCapacity input, #settingsCapacity button/);
@@ -46,12 +47,12 @@ test("viewer role blocks mutation controls as well as backend calls", () => {
 
 test("LINE is a no-input contact option and confirmation uses only the original sliders", () => {
   const html = read("public/index.html");
-  const app = read("public/js/app.js");
+  const app = frontendSource();
 
   assert.match(html, /id="contactMethodPhone"[^>]*class="name-title-btn active"/);
   assert.match(html, /id="contactMethodLine"[^>]*class="name-title-btn"/);
   assert.match(app, /currentContactMethod === 'line' \? 'LINE'/);
-  assert.match(app, /input\.readOnly = currentContactMethod === 'line'/);
+  assert.match(app, /input\.readOnly = state.currentContactMethod === 'line'/);
   assert.match(app, /contactMethodLine[\s\S]*addEventListener\('click'/);
   assert.doesNotMatch(html, /statusConfirmButton|deleteConfirmButton/);
   assert.match(app, /initConfirmSlider\('statusSliderThumb'/);
@@ -59,7 +60,7 @@ test("LINE is a no-input contact option and confirmation uses only the original 
 });
 
 test("opening the cart explicitly hides the Firebase account badge", () => {
-  const app = read("public/js/app.js");
+  const app = frontendSource();
   const bridge = read("public/js/rpc-bridge.js");
   const css = read("public/css/app.css");
 
@@ -74,9 +75,9 @@ test("PWA banner stays above navigation actions and clears the cart", () => {
   const css = read("public/css/app.css");
 
   assert.match(css, /body\.cart-open \.pwa-banner[\s\S]*pointer-events: none/);
-  assert.match(css, /@media \(min-width: 900px\)[\s\S]*\.pwa-banner[\s\S]*bottom: 172px/);
-  assert.match(css, /@media \(min-width: 900px\)[\s\S]*\.pwa-banner[\s\S]*left: 10px/);
-  assert.match(css, /bottom: calc\(152px \+ var\(--vp-bottom\) \+ env\(safe-area-inset-bottom\)\)/);
+  const workspace = read('src/styles/workspace.css');
+  assert.match(workspace, /@media \(min-width: 900px\)[\s\S]*\.pwa-banner[\s\S]*position: static !important/);
+  assert.match(workspace, /bottom: calc\(150px \+ env\(safe-area-inset-bottom\)\)/);
 });
 
 test("footer uses normal flow and only scrolls when page content overflows", () => {
@@ -92,11 +93,11 @@ test("footer uses normal flow and only scrolls when page content overflows", () 
 
 test("order search uses the same phone and LINE button pattern", () => {
   const html = read("public/index.html");
-  const app = read("public/js/app.js");
+  const app = frontendSource();
 
   assert.doesNotMatch(html, /id="searchContactType"/);
   assert.match(html, /id="searchContactPhone"[^>]*class="name-title-btn active"/);
   assert.match(html, /id="searchContactLine"[^>]*class="name-title-btn"/);
-  assert.match(app, /currentSearchContactMethod === 'line' \? 'LINE'/);
+  assert.match(app, /currentSearchContactMethod === 'line'\s*\?\s*'LINE'/);
   assert.match(app, /selectSearchContactMethod\('phone', false\)/);
 });

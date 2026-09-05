@@ -1,0 +1,255 @@
+.order-items-table {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.order-items-table th,
+.order-items-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #eef2f7;
+  color: #475569;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.order-items-table th {
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.order-items-table tr:last-child td {
+  border-bottom: none;
+}
+
+.order-items-table .giftbox-row td,
+.order-items-table .giftbox-subtotal-row td {
+  background: #f0f8ff;
+}
+
+.order-items-table .giftbox-subitem-row td {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.order-items-table .giftbox-note-row td {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.order-items-empty {
+  padding: 12px;
+  color: #64748b;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+#searchResults .table td {
+  padding: 12px 10px;
+  color: #374151;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+#searchResults .table td:first-child {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 搜尋結果標題與提示橫幅 */
+
+.result-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 4px 0 12px;
+}
+
+.result-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.result-banner i {
+  font-size: 1rem;
+}
+
+.result-banner.danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.result-banner.success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
+.result-banner.neutral {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #64748b;
+}
+
+/* 表格操作按鈕 */
+
+.btn-table {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-table-view {
+  background: #f1f8f5;
+  color: #17584c;
+  border: 1px solid #b8d8ce;
+  margin-right: 8px;
+}
+
+.btn-table-view:hover {
+  background: #1f6f5f;
+  color: white;
+  border-color: #1f6f5f;
+}
+
+.btn-table-delete {
+  background: white;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.btn-table-delete:hover {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+/* 逾期標記與列底色 */
+
+.overdue-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.overdue-badge.mild {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.overdue-badge.severe {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+#searchResults tr.row-overdue-mild {
+  background: #fffbeb;
+}
+
+#searchResults tr.row-overdue-severe {
+  background: #fef2f2;
+}
+
+/* 金額欄位 */
+
+#searchResults .td-amount {
+  font-weight: 600;
+}
+
+#searchResults .td-fee {
+  color: #94a3b8;
+}
+
+#searchResults .td-fee.has-fee {
+  color: #1f6f5f;
+  font-weight: 600;
+}
+
+#searchResults .td-deposit {
+  color: #64748b;
+}
+
+#searchResults .td-deposit.paid {
+  color: #047857;
+  font-weight: 600;
+}
+
+#searchResults .td-remaining.due {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+#searchResults .td-remaining.clear {
+  color: #047857;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .search-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .search-actions {
+    flex-direction: column;
+  }
+  .btn-overdue {
+    margin-left: 0;
+  }
+}
+
+/* 企業客戶相關樣式 */
+
+.company-price-tag {
+  display: inline-block;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.company-original-price {
+  text-decoration: line-through;
+  color: #9ca3af;
+  font-size: 0.85em;
+  margin-right: 4px;
+}
+
+.company-mode-banner {
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #4338ca;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.company-mode-banner i {
+  font-size: 1.1rem;
+}

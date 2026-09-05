@@ -23,6 +23,14 @@
     ],
     "headers": [
       {
+        "source": "**/*.wasm",
+        "headers": [
+          { "key": "Content-Type", "value": "application/wasm" },
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
+        ]
+      },
+      {
         "source": "/index.html",
         "headers": [
           { "key": "Cache-Control", "value": "no-cache" }

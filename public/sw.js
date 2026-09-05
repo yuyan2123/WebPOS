@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gin-jia-pos-shell-v2";
+const CACHE_VERSION = "gin-jia-pos-e72de8a077f3";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -9,19 +9,26 @@ const APP_SHELL = [
   "/js/rpc-bridge.js",
   "/js/app.js",
   "/js/pwa.js",
+  "/wasm/pos_domain_bg.wasm",
+  "/vendor/air-datepicker.js",
+  "/vendor/air-datepicker.css",
+  "/vendor/fontawesome/css/all.min.css",
+  "/vendor/fontawesome/webfonts/fa-solid-900.woff2",
+  "/vendor/fontawesome/webfonts/fa-regular-400.woff2",
+  "/vendor/fontawesome/webfonts/fa-brands-400.woff2",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png"
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL.map(path => new Request(path, { cache: 'reload' })))));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith('gin-jia-pos-') && key !== CACHE_VERSION).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -40,14 +47,12 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/__/auth/") || url.pathname.startsWith("/api/")) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/index.html")));
+    // A controlled page uses one complete release until its waiting update is accepted.
+    event.respondWith(caches.open(CACHE_VERSION).then(cache => cache.match('/index.html')).then(cached => cached || fetch(request)));
     return;
   }
   if (!APP_SHELL.includes(url.pathname)) return;
   event.respondWith(
-    fetch(request).then((response) => {
-      if (response.ok) caches.open(CACHE_VERSION).then((cache) => cache.put(request, response.clone()));
-      return response;
-    }).catch(() => caches.match(request)),
+    caches.open(CACHE_VERSION).then(cache => cache.match(url.pathname)).then(cached => cached || fetch(request)),
   );
 });

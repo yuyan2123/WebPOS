@@ -1,3 +1,4 @@
+import { domain } from "../lib/domain.js";
 import { Timestamp } from "firebase-admin/firestore";
 import { COLLECTIONS } from "../config.js";
 import { assert } from "../lib/errors.js";
@@ -94,12 +95,15 @@ export async function saveDateOverrideCapacity(user, setting = {}) {
   const date = dateString(setting.date);
   const reference = tenantCollection(user, COLLECTIONS.capacityOverrides).doc(date);
   const now = Timestamp.now();
-  await reference.set({
-    date,
-    maxQuantity: setting.maxQuantity === "" ? "" : Math.max(0, integer(setting.maxQuantity)),
-    enabled: boolean(setting.enabled),
-    updateTime: now,
-  }, { merge: true });
+  await reference.set(
+    {
+      date,
+      maxQuantity: setting.maxQuantity === "" ? "" : Math.max(0, integer(setting.maxQuantity)),
+      enabled: boolean(setting.enabled),
+      updateTime: now,
+    },
+    { merge: true },
+  );
   return { success: true, id: date };
 }
 
@@ -109,12 +113,16 @@ export async function saveDateOverrideCapacityBatch(user, settings = []) {
   const now = Timestamp.now();
   settings.forEach((setting) => {
     const date = dateString(setting.date);
-    batch.set(tenantCollection(user, COLLECTIONS.capacityOverrides).doc(date), {
-      date,
-      maxQuantity: setting.maxQuantity === "" ? "" : Math.max(0, integer(setting.maxQuantity)),
-      enabled: boolean(setting.enabled),
-      updateTime: now,
-    }, { merge: true });
+    batch.set(
+      tenantCollection(user, COLLECTIONS.capacityOverrides).doc(date),
+      {
+        date,
+        maxQuantity: setting.maxQuantity === "" ? "" : Math.max(0, integer(setting.maxQuantity)),
+        enabled: boolean(setting.enabled),
+        updateTime: now,
+      },
+      { merge: true },
+    );
   });
   await batch.commit();
   return { success: true };
@@ -143,38 +151,7 @@ function capacityLimit(date, settings) {
 }
 
 function statusFor(limitInfo, currentQuantity, newOrderQuantity = 0) {
-  const projectedQuantity = currentQuantity + newOrderQuantity;
-  if (!limitInfo.hasLimit) {
-    return {
-      limit: 0,
-      currentQuantity,
-      newOrderQuantity,
-      projectedQuantity,
-      exceededQuantity: 0,
-      usageRate: 0,
-      status: "unlimited",
-      source: limitInfo.source,
-      hasLimit: false,
-    };
-  }
-  const usageRate = Math.round((currentQuantity / limitInfo.limit) * 100);
-  let status = "available";
-  if (currentQuantity >= limitInfo.limit) status = "full";
-  else if (usageRate >= 90) status = "nearFull";
-  else if (usageRate >= 70) status = "warning";
-  const exceededQuantity = Math.max(0, projectedQuantity - limitInfo.limit);
-  if (exceededQuantity > 0) status = "exceeded";
-  return {
-    limit: limitInfo.limit,
-    currentQuantity,
-    newOrderQuantity,
-    projectedQuantity,
-    exceededQuantity,
-    usageRate,
-    status,
-    source: limitInfo.source,
-    hasLimit: true,
-  };
+  return domain("capacity", { ...limitInfo, currentQuantity, newOrderQuantity });
 }
 
 export async function getDateCapacityStatus(user, date, excludeOrderId = null, newOrderItems = []) {
@@ -190,12 +167,19 @@ export async function getDateCapacityStatus(user, date, excludeOrderId = null, n
   if (excludedOrder?.exists) {
     const order = excludedOrder.data();
     if (order.deliveryDate === normalizedDate && order.status !== "取消") {
-      currentQuantity = Math.max(0, currentQuantity - integer(order.orderUnitCount, calculateOrderUnitCount(order.items)));
+      currentQuantity = Math.max(
+        0,
+        currentQuantity - integer(order.orderUnitCount, calculateOrderUnitCount(order.items)),
+      );
     }
   }
   return {
     date: normalizedDate,
-    ...statusFor(capacityLimit(normalizedDate, settings), currentQuantity, calculateOrderUnitCount(newOrderItems)),
+    ...statusFor(
+      capacityLimit(normalizedDate, settings),
+      currentQuantity,
+      calculateOrderUnitCount(newOrderItems),
+    ),
   };
 }
 

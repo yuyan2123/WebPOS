@@ -1,13 +1,15 @@
+import { normalizeItem } from "../lib/order-item.js";
 import { FieldPath, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase.js";
 import { COLLECTIONS, ORDER_STATUSES } from "../config.js";
 import { assert, notFound } from "../lib/errors.js";
-import { newId, orderDocumentId } from "../lib/ids.js";
+import { orderDocumentId } from "../lib/ids.js";
 import { boolean, dateString, integer, number, taipeiToday, text } from "../lib/values.js";
 import { customerMergeRecord, customerReference } from "./catalog.js";
 import { tenantCollection } from "../lib/tenant.js";
 import { calculateOrderUnitCount } from "../lib/order-units.js";
 import { normalizeContactType, normalizeContactValue } from "../lib/ids.js";
+import { domain } from "../lib/domain.js";
 
 const OPEN_ORDER_STATUSES = ["已確認", "已付訂金", "已付清", "已付款"];
 
@@ -25,78 +27,25 @@ function storedOrderUnits(order) {
 
 function adjustCapacityUsage(writer, user, date, delta, now) {
   if (!delta) return;
-  writer.set(usageReference(user, date), {
-    date: dateString(date),
-    quantity: FieldValue.increment(delta),
-    updateTime: now,
-  }, { merge: true });
-}
-
-function normalizeItem(item = {}) {
-  const quantity = integer(item.quantity, 0);
-  const unitPrice = number(item.price ?? item.unitPrice, -1);
-  assert(quantity > 0, "商品數量必須大於 0");
-  assert(quantity <= 10000, "商品數量超過允許範圍");
-  assert(unitPrice >= 0, "商品價格不可小於 0");
-  assert(unitPrice <= 10000000, "商品價格超過允許範圍");
-
-  const isGiftBox = item.type === "giftbox" || boolean(item.isGiftBox);
-  const detailId = text(item.detailId) || newId("D");
-  assert(detailId.length <= 128, "商品明細編號過長");
-
-  if (isGiftBox) {
-    const incomingDetails = item.giftBoxDetails || {};
-    const products = item.products || incomingDetails.products || {};
-    const size = integer(item.size ?? incomingDetails.size, 0);
-    assert(size > 0, "禮盒規格不正確");
-    const productEntries = Object.entries(products);
-    assert(productEntries.length > 0 && productEntries.length <= 100, "禮盒內容數量不正確");
-    productEntries.forEach(([id, qty]) => {
-      assert(text(id).length > 0 && text(id).length <= 128, "禮盒商品編號不正確");
-      assert(integer(qty) > 0 && integer(qty) <= 10000, "禮盒商品數量不正確");
-    });
-    return {
-      detailId,
-      productId: text(item.id || item.productId) || newId("GB"),
-      productName: text(item.name || item.productName, `${size}粒裝禮盒`),
-      quantity,
-      unitPrice,
-      subtotal: unitPrice * quantity,
-      isGiftBox: true,
-      giftBoxDetails: {
-        size,
-        products: Object.fromEntries(
-          productEntries.map(([id, qty]) => [id, integer(qty)]),
-        ),
-        notes: text(item.notes ?? incomingDetails.notes),
-      },
-      originalPrice: number(item.originalPrice, unitPrice),
-      isSpecialPrice: boolean(item.isSpecialPrice),
-    };
-  }
-
-  const productId = text(item.productId);
-  const productName = text(item.productName);
-  assert(productId && productName, "商品資料不完整");
-  assert(productId.length <= 128 && productName.length <= 200, "商品資料過長");
-  return {
-    detailId,
-    productId,
-    productName,
-    quantity,
-    unitPrice,
-    subtotal: unitPrice * quantity,
-    isGiftBox: false,
-    giftBoxDetails: null,
-    originalPrice: number(item.originalPrice, unitPrice),
-    isSpecialPrice: boolean(item.isSpecialPrice),
-  };
+  writer.set(
+    usageReference(user, date),
+    {
+      date: dateString(date),
+      quantity: FieldValue.increment(delta),
+      updateTime: now,
+    },
+    { merge: true },
+  );
 }
 
 function normalizeOrderInput(orderData = {}) {
   const customer = orderData.customer || {};
-  const customerContactType = normalizeContactType(customer.contactType || (customer.lineId ? "line" : "phone"));
-  const customerContactValue = text(customer.contactValue || (customerContactType === "line" ? customer.lineId : customer.phone));
+  const customerContactType = normalizeContactType(
+    customer.contactType || (customer.lineId ? "line" : "phone"),
+  );
+  const customerContactValue = text(
+    customer.contactValue || (customerContactType === "line" ? customer.lineId : customer.phone),
+  );
   const customerContactNormalized = normalizeContactValue(customerContactType, customerContactValue);
   const items = Array.isArray(orderData.items) ? orderData.items.map(normalizeItem) : [];
   assert(items.length > 0 && items.length <= 200, "購物車品項數量不正確");
@@ -146,7 +95,10 @@ function orderResult(snapshot) {
 export async function createOrder(user, orderData) {
   const input = normalizeOrderInput(orderData);
   assert(input.customerName, "請輸入客戶姓名");
-  assert(input.customerContactNormalized, input.customerContactType === "line" ? "請輸入 LINE ID" : "請輸入客戶電話");
+  assert(
+    input.customerContactNormalized,
+    input.customerContactType === "line" ? "請輸入 LINE ID" : "請輸入客戶電話",
+  );
 
   const orderId = orderDocumentId(input.clientRequestId);
   const orderRef = tenantCollection(user, COLLECTIONS.orders).doc(orderId);
@@ -215,9 +167,10 @@ export async function searchOrders(user, criteria = {}) {
   }
   query = query.orderBy(orderField, orderDirection).orderBy(FieldPath.documentId(), orderDirection);
   if (cursor?.value !== undefined && cursor?.id) {
-    const cursorValue = orderField === "createTime" && typeof cursor.value === "string"
-      ? Timestamp.fromDate(new Date(cursor.value))
-      : cursor.value;
+    const cursorValue =
+      orderField === "createTime" && typeof cursor.value === "string"
+        ? Timestamp.fromDate(new Date(cursor.value))
+        : cursor.value;
     query = query.startAfter(cursorValue, cursor.id);
   }
   let snapshot = await query.limit(pageSize + 1).get();
@@ -227,16 +180,28 @@ export async function searchOrders(user, criteria = {}) {
     orderField = "customerPhone";
     query = tenantCollection(user, COLLECTIONS.orders);
     if (status) query = query.where("status", "==", status);
-    query = query.where(orderField, ">=", contact).where(orderField, "<=", `${contact}\uf8ff`)
-      .orderBy(orderField).orderBy(FieldPath.documentId()).limit(pageSize + 1);
+    query = query
+      .where(orderField, ">=", contact)
+      .where(orderField, "<=", `${contact}\uf8ff`)
+      .orderBy(orderField)
+      .orderBy(FieldPath.documentId())
+      .limit(pageSize + 1);
     snapshot = await query.get();
   }
   const hasMore = snapshot.docs.length > pageSize;
   const pageDocs = snapshot.docs.slice(0, pageSize);
-  const orders = pageDocs.map(orderResult)
+  const orders = pageDocs
+    .map(orderResult)
     .filter((order) => !date || order.deliveryDate === date)
     .filter((order) => !name || text(order.customerName).toLowerCase().includes(name))
-    .filter((order) => !contact || normalizeContactValue(order.customerContactType, order.customerContactValue || order.customerPhone).includes(contact));
+    .filter(
+      (order) =>
+        !contact ||
+        normalizeContactValue(
+          order.customerContactType,
+          order.customerContactValue || order.customerPhone,
+        ).includes(contact),
+    );
   const last = pageDocs.at(-1);
   const result = {
     orders,
@@ -267,7 +232,13 @@ export async function updateOrderStatus(user, orderId, newStatus) {
     const now = Timestamp.now();
     transaction.update(reference, { status, updateTime: now });
     if (wasCounted !== willCount) {
-      adjustCapacityUsage(transaction, user, order.deliveryDate, willCount ? storedOrderUnits(order) : -storedOrderUnits(order), now);
+      adjustCapacityUsage(
+        transaction,
+        user,
+        order.deliveryDate,
+        willCount ? storedOrderUnits(order) : -storedOrderUnits(order),
+        now,
+      );
     }
     return { success: true, orderId: text(orderId), newStatus: status };
   });
@@ -281,10 +252,7 @@ export async function updateOrderDeposit(user, orderId, depositAmount, paymentNo
     const order = snapshot.data();
     const totalAmount = number(order.totalAmount);
     const paid = number(depositAmount, -1);
-    assert(paid >= 0, "訂金不可小於 0");
-    assert(paid <= totalAmount, "訂金不能超過總金額");
-    const remainingAmount = totalAmount - paid;
-    const newStatus = paid === 0 ? "已確認" : paid < totalAmount ? "已付訂金" : "已付清";
+    const { remainingAmount, newStatus } = domain("payment", { total: totalAmount, paid });
     const now = Timestamp.now();
     transaction.update(reference, {
       depositAmount: paid,
@@ -319,23 +287,13 @@ export async function updateOrder(user, orderData) {
     const original = orderSnapshot.data();
     const originalTotal = number(original.totalAmount);
     const originalDeposit = number(original.depositAmount);
-    let status = original.status;
-    let depositAmount = originalDeposit;
-    let remainingAmount = Math.max(0, input.totalAmount - originalDeposit);
-    let paymentNotes = text(original.paymentNotes);
-
-    if (["完成", "已付款", "已付清"].includes(status) && originalTotal !== input.totalAmount) {
-      const difference = input.totalAmount - originalTotal;
-      if (difference > 0) {
-        status = "已確認";
-        depositAmount = Math.min(originalDeposit || originalTotal, input.totalAmount);
-        remainingAmount = input.totalAmount - depositAmount;
-        paymentNotes += `${paymentNotes ? "; " : ""}編輯訂單後需補差額 NT$ ${remainingAmount}`;
-      } else {
-        remainingAmount = 0;
-        paymentNotes += `${paymentNotes ? "; " : ""}編輯訂單後應退款 NT$ ${Math.abs(difference)}`;
-      }
-    }
+    const { status, depositAmount, remainingAmount, paymentNotes } = domain("revisePayment", {
+      originalTotal,
+      total: input.totalAmount,
+      deposit: originalDeposit,
+      status: original.status,
+      notes: text(original.paymentNotes),
+    });
 
     const now = Timestamp.now();
     transaction.update(reference, {
@@ -359,14 +317,16 @@ export async function updateOrder(user, orderData) {
       adjustCapacityUsage(transaction, user, input.deliveryDate, updatedUnits, now);
     }
 
-    return originalTotal === input.totalAmount ? null : {
-      originalTotal,
-      newTotal: input.totalAmount,
-      originalStatus: original.status,
-      newStatus: status,
-      paymentNotes,
-      remainingAmount,
-    };
+    return originalTotal === input.totalAmount
+      ? null
+      : {
+          originalTotal,
+          newTotal: input.totalAmount,
+          originalStatus: original.status,
+          newStatus: status,
+          paymentNotes,
+          remainingAmount,
+        };
   });
 
   return { success: true, orderId, paymentChange };
@@ -425,7 +385,5 @@ export async function capacityOrdersInDateRange(user, startDate, endDate) {
     .limit(5000)
     .select("deliveryDate", "orderUnitCount", "items", "status")
     .get();
-  return snapshot.docs
-    .map(orderResult)
-    .filter((order) => order.status !== "取消");
+  return snapshot.docs.map(orderResult).filter((order) => order.status !== "取消");
 }

@@ -1,0 +1,27 @@
+name: Set up POS toolchain
+description: Install the pinned Rust/Wasm toolchain and browser test runtime.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '21'
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/wasm-bindgen
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+          ~/.cache/firebase/emulators
+        key: ${{ runner.os }}-pos-rust-1.97.0-bindgen-0.2.128-${{ hashFiles('Cargo.lock') }}
+    - shell: bash
+      run: rustup show
+    - shell: bash
+      run: |
+        if ! wasm-bindgen --version 2>/dev/null | grep -q '0.2.128'; then
+          cargo install wasm-bindgen-cli --version 0.2.128 --locked
+        fi
+    - shell: bash
+      run: npx playwright install --with-deps chromium webkit

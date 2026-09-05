@@ -1,0 +1,519 @@
+.delete-order-info .customer-name {
+  font-size: 1.1rem;
+  color: #1f2937;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Slider Component */
+
+.slider-container {
+  position: relative;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.slider-track {
+  width: 100%;
+  height: 56px;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border: 2px solid #fca5a5;
+  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slider-track::before {
+  content: "向右滑到底即刪除訂單";
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.slider-progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(135deg, #fca5a5, #f87171);
+  border-radius: 28px;
+  width: 0;
+}
+
+/* 放開時的吸附/回彈動畫（拖曳中不套用，保持 1:1 跟手） */
+
+.slider-thumb.snapping {
+  transition:
+    left 0.25s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.slider-progress.snapping {
+  transition: width 0.25s ease;
+}
+
+.slider-thumb {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 20px;
+  user-select: none;
+  touch-action: none;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  z-index: 2;
+}
+
+.slider-thumb:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
+}
+
+.slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.slider-thumb.completed {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.slider-hint {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.slider-hint.completed {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.delete-status {
+  text-align: center;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: none;
+}
+
+.delete-status.show {
+  display: block;
+}
+
+.delete-status.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.delete-confirm-footer {
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+}
+
+.delete-confirm-footer .btn-cancel {
+  flex: 1;
+  padding: 14px 24px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-confirm-footer .btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+/* Status Confirm Modal */
+
+.status-confirm-modal .modal-content {
+  max-width: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.status-confirm-header {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.status-confirm-header .icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.status-confirm-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.status-confirm-header .close-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.status-confirm-header .close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.status-confirm-body {
+  padding: 24px;
+  background: white;
+}
+
+.status-order-info {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.status-order-info .order-id {
+  font-size: 0.85rem;
+  color: #059669;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.status-order-info .status-change {
+  font-size: 1rem;
+  color: #065f46;
+  font-weight: 500;
+}
+
+.status-update-status {
+  text-align: center;
+  margin-top: 12px;
+  font-weight: 600;
+  min-height: 24px;
+}
+
+.status-update-status.success {
+  color: #059669;
+}
+
+.status-confirm-footer {
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+}
+
+.status-confirm-footer .btn-cancel {
+  flex: 1;
+  padding: 14px 24px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-confirm-footer .btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+/* Status Confirm Slider (for status update - green theme) */
+
+.status-slider .slider-track {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-color: #6ee7b7;
+}
+
+.status-slider .slider-track::before {
+  content: "向右滑到底即完成訂單";
+  color: #059669;
+}
+
+.status-slider .slider-progress {
+  background: linear-gradient(135deg, #6ee7b7, #34d399);
+}
+
+.status-slider .slider-thumb {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.status-slider .slider-thumb.completed {
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+/* 禮盒細項樣式 */
+
+.giftbox-details {
+  margin-top: 10px;
+  padding-left: 15px;
+  border-left: 3px solid #1f6f5f;
+  background: #f3f4f6;
+  border-radius: 0 6px 6px 0;
+}
+
+.giftbox-details-content {
+  padding: 8px 12px;
+  font-size: 0.9em;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* 特價樣式 */
+
+.original-price {
+  text-decoration: line-through;
+  color: #999;
+  margin-right: 10px;
+}
+
+.special-price-text {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+/* Footer 版權宣告 */
+
+/* 頁尾：置於 main 內部，跟隨內容捲動；負邊距抵銷 main 的 padding 以貼齊邊緣 */
+
+.footer {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1.5rem;
+  text-align: center;
+  border-top: 3px solid #1f6f5f;
+  margin: 2rem -1rem -1rem;
+}
+
+.footer p {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0.25rem 0;
+}
+
+/* Giftbox Steps */
+
+.giftbox-step {
+  display: none !important;
+}
+
+.giftbox-step.active {
+  display: flex !important;
+}
+
+/* Giftbox Product Selection - Grid Layout */
+
+.giftbox-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  padding: 8px;
+}
+
+.giftbox-product-card {
+  background: white;
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.giftbox-product-card:hover {
+  border-color: #1f6f5f;
+  box-shadow: 0 4px 12px rgba(31, 111, 95, 0.15);
+}
+
+.giftbox-product-card.has-quantity {
+  border-color: #1f6f5f;
+  background: linear-gradient(to bottom, #f1f8f5, white);
+}
+
+.giftbox-product-icon {
+  height: 80px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.giftbox-product-icon i {
+  font-size: 2.5rem;
+  color: #f59e0b;
+}
+
+.giftbox-product-info {
+  padding: 12px;
+  text-align: center;
+}
+
+.giftbox-product-info h4 {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.giftbox-product-info .price {
+  font-size: 0.875rem;
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.giftbox-quantity-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.giftbox-qty-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  background: white;
+  color: #6b7280;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.giftbox-qty-btn:hover {
+  border-color: #1f6f5f;
+  color: #1f6f5f;
+  background: #f1f8f5;
+}
+
+.giftbox-qty-btn:active {
+  transform: scale(0.95);
+}
+
+.giftbox-qty-display {
+  width: 56px;
+  min-width: 48px;
+  height: 36px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  outline: none;
+  padding: 0;
+  -moz-appearance: textfield;
+  appearance: textfield;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.giftbox-qty-display.has-value {
+  border-color: #1f6f5f;
+  color: #1f6f5f;
+  background: #f1f8f5;
+}
+
+.giftbox-qty-display:focus {
+  border-color: #1f6f5f;
+}
+
+.giftbox-qty-display::-webkit-outer-spin-button,
+.giftbox-qty-display::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Cart Item - Modern Card Style */
+
+.cart-item-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.cart-item-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cart-item-card:last-child {
+  margin-bottom: 0;
+}
+
+.cart-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}

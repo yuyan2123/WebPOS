@@ -1,3 +1,4 @@
+import { domain } from "../lib/domain.js";
 import { getProductsByIds } from "./catalog.js";
 import { ordersInDateRange } from "./orders.js";
 import { dateString, number } from "../lib/values.js";
@@ -18,90 +19,38 @@ function referencedGiftboxProductIds(orders) {
 
 export async function generateDailyReport(user, date) {
   const normalizedDate = dateString(date);
-  const orders = await ordersInDateRange(user, normalizedDate, normalizedDate);
-  const products = await getProductsByIds(user, referencedGiftboxProductIds(orders));
-  const productsById = productMap(products);
-  const productStats = {};
-  let totalItems = 0;
-
-  for (const order of orders) {
-    for (const item of order.items || []) {
-      if (item.isGiftBox && item.giftBoxDetails?.products) {
-        for (const [productId, quantityInBox] of Object.entries(item.giftBoxDetails.products)) {
-          const quantity = number(quantityInBox) * number(item.quantity);
-          const product = productsById[productId];
-          const name = product?.productName || `商品ID: ${productId}`;
-          const unitPrice = number(product?.price);
-          totalItems += quantity;
-          productStats[name] ||= {
-            productName: name,
-            quantity: 0,
-            amount: 0,
-            unitPrice,
-            isFromGiftBox: true,
-          };
-          productStats[name].quantity += quantity;
-          productStats[name].amount += quantity * unitPrice;
-        }
-      } else {
-        const name = item.productName || "未知商品";
-        const quantity = number(item.quantity);
-        totalItems += quantity;
-        productStats[name] ||= {
-          productName: name,
-          quantity: 0,
-          amount: 0,
-          unitPrice: number(item.unitPrice),
-          isGiftBox: false,
-        };
-        productStats[name].quantity += quantity;
-        productStats[name].amount += number(item.subtotal);
-      }
-    }
-  }
-
-  return {
-    date: normalizedDate,
-    totalRevenue: orders.reduce((sum, order) => sum + number(order.totalAmount), 0),
-    totalOrders: orders.length,
-    totalItems,
-    productSales: Object.values(productStats).sort((a, b) => b.amount - a.amount),
-  };
+  const input = await reportInput(user, normalizedDate, normalizedDate, true);
+  return domain("report", { date: normalizedDate, orders: input });
 }
 
 export async function getDemandStats(user, startDate, endDate) {
+  return domain("demand", { orders: await reportInput(user, startDate, endDate) });
+}
+
+async function reportInput(user, startDate, endDate, requireComposition = false) {
   const orders = await ordersInDateRange(user, startDate, endDate);
-  const products = await getProductsByIds(user, referencedGiftboxProductIds(orders));
-  const productsById = productMap(products);
-  const productTotals = {};
-  const giftboxTotals = {};
+  const productsById = productMap(await getProductsByIds(user, referencedGiftboxProductIds(orders)));
+  return normalizeReportOrders(orders, productsById, requireComposition);
+}
 
-  for (const order of orders) {
-    for (const item of order.items || []) {
-      if (item.isGiftBox && item.giftBoxDetails) {
-        const size = number(item.giftBoxDetails.size);
-        const sizeKey = `${size}粒裝`;
-        giftboxTotals[sizeKey] = (giftboxTotals[sizeKey] || 0) + number(item.quantity);
-        for (const [productId, quantityInBox] of Object.entries(item.giftBoxDetails.products || {})) {
-          const name = productsById[productId]?.productName || "未知商品";
-          productTotals[name] ||= { loose: 0, inbox: 0 };
-          productTotals[name].inbox += number(quantityInBox) * number(item.quantity);
-        }
-      } else {
-        const name = item.productName || "未知商品";
-        productTotals[name] ||= { loose: 0, inbox: 0 };
-        productTotals[name].loose += number(item.quantity);
-      }
-    }
-  }
-
-  return {
-    productStats: Object.entries(productTotals)
-      .map(([name, counts]) => ({ name, ...counts, total: counts.loose + counts.inbox }))
-      .sort((a, b) => b.total - a.total),
-    giftboxStats: Object.entries(giftboxTotals)
-      .map(([size, count]) => ({ size, count }))
-      .sort((a, b) => parseInt(a.size) - parseInt(b.size)),
-    orderCount: orders.length,
-  };
+export function normalizeReportOrders(orders, productsById, requireComposition = false) {
+  return orders.map((order) => ({
+    totalAmount: number(order.totalAmount),
+    items: (order.items || []).map((item) => ({
+      name: item.productName || "未知商品",
+      quantity: number(item.quantity),
+      unitPrice: number(item.unitPrice),
+      subtotal: number(item.subtotal),
+      giftBox: Boolean(
+        item.isGiftBox && item.giftBoxDetails && (!requireComposition || item.giftBoxDetails.products),
+      ),
+      size: number(item.giftBoxDetails?.size),
+      components: Object.entries(item.giftBoxDetails?.products || {}).map(([id, quantity]) => ({
+        reportName: productsById[id]?.productName || "商品ID: " + id,
+        demandName: productsById[id]?.productName || "未知商品",
+        quantity: number(quantity),
+        price: number(productsById[id]?.price),
+      })),
+    })),
+  }));
 }

@@ -1,6 +1,7 @@
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import { defineSecret } from "firebase-functions/params";
+import { logger } from "firebase-functions";
 import { REGION } from "./config.js";
 import { authorize } from "./lib/auth.js";
 import { serialize } from "./lib/values.js";
@@ -103,12 +104,41 @@ const OWNER_METHODS = new Set([
   "renameShop",
 ]);
 
-export const posRpc = onCall({
-  cors: true,
-  enforceAppCheck: process.env.ENFORCE_APP_CHECK === "true",
-  secrets: [securityHashSalt],
-}, async (request) => {
+export const posRpc = onCall(
+  {
+    cors: true,
+    enforceAppCheck: process.env.ENFORCE_APP_CHECK === "true",
+    secrets: [securityHashSalt],
+  },
+  async (request) => {
+    const started = Date.now();
+    let outcome = "ok";
+    try {
+      return await executeRpc(request);
+    } catch (error) {
+      outcome = error.code || "internal";
+      throw error;
+    } finally {
+      logger.info("pos_rpc", {
+        method: Object.hasOwn(methods, request.data?.method) ? request.data.method : "session-or-unknown",
+        outcome,
+        durationMs: Date.now() - started,
+      });
+    }
+  },
+);
+
+export async function executeRpc(request) {
   const user = authorize(request);
+  if (
+    !request.data ||
+    typeof request.data.method !== "string" ||
+    request.data.method.length > 64 ||
+    !Array.isArray(request.data.args) ||
+    request.data.args.length > 8
+  ) {
+    throw new HttpsError("invalid-argument", "請求格式不正確");
+  }
   const method = String(request.data?.method || "");
   const args = Array.isArray(request.data?.args) ? request.data.args : [];
   if (method === "initializeSession") {
@@ -121,7 +151,7 @@ export const posRpc = onCall({
   if (method === "registerDeviceSession") {
     return serialize(await recordDeviceSession(user, request, securityHashSalt.value(), args[0]));
   }
-  const handler = methods[method];
+  const handler = Object.hasOwn(methods, method) ? methods[method] : null;
   if (!handler) throw new HttpsError("not-found", `Unknown POS method: ${method}`);
   if (GLOBAL_METHODS.has(method)) {
     return serialize(await handler(user, ...args));
@@ -129,4 +159,4 @@ export const posRpc = onCall({
   const requiredRole = OWNER_METHODS.has(method) ? "owner" : VIEWER_METHODS.has(method) ? "viewer" : "editor";
   const shop = await requireShopAccess(user, request.data?.shopId, requiredRole);
   return serialize(await handler(shop, ...args));
-});
+}

@@ -1,0 +1,60 @@
+function normalizeItem(item = {}) {
+  const quantity = integer(item.quantity, 0);
+  const unitPrice = number(item.price ?? item.unitPrice, -1);
+  assert(quantity > 0, "商品數量必須大於 0");
+  assert(quantity <= 10000, "商品數量超過允許範圍");
+  assert(unitPrice >= 0, "商品價格不可小於 0");
+  assert(unitPrice <= 10000000, "商品價格超過允許範圍");
+
+  const isGiftBox = item.type === "giftbox" || boolean(item.isGiftBox);
+  const detailId = text(item.detailId) || newId("D");
+  assert(detailId.length <= 128, "商品明細編號過長");
+
+  if (isGiftBox) {
+    const incomingDetails = item.giftBoxDetails || {};
+    const products = item.products || incomingDetails.products || {};
+    const size = integer(item.size ?? incomingDetails.size, 0);
+    assert(size > 0, "禮盒規格不正確");
+    const productEntries = Object.entries(products);
+    assert(productEntries.length > 0 && productEntries.length <= 100, "禮盒內容數量不正確");
+    productEntries.forEach(([id, qty]) => {
+      assert(text(id).length > 0 && text(id).length <= 128, "禮盒商品編號不正確");
+      assert(integer(qty) > 0 && integer(qty) <= 10000, "禮盒商品數量不正確");
+    });
+    return {
+      detailId,
+      productId: text(item.id || item.productId) || newId("GB"),
+      productName: text(item.name || item.productName, `${size}粒裝禮盒`),
+      quantity,
+      unitPrice,
+      subtotal: unitPrice * quantity,
+      isGiftBox: true,
+      giftBoxDetails: {
+        size,
+        products: Object.fromEntries(
+          productEntries.map(([id, qty]) => [id, integer(qty)]),
+        ),
+        notes: text(item.notes ?? incomingDetails.notes),
+      },
+      originalPrice: number(item.originalPrice, unitPrice),
+      isSpecialPrice: boolean(item.isSpecialPrice),
+    };
+  }
+
+  const productId = text(item.productId);
+  const productName = text(item.productName);
+  assert(productId && productName, "商品資料不完整");
+  assert(productId.length <= 128 && productName.length <= 200, "商品資料過長");
+  return {
+    detailId,
+    productId,
+    productName,
+    quantity,
+    unitPrice,
+    subtotal: unitPrice * quantity,
+    isGiftBox: false,
+    giftBoxDetails: null,
+    originalPrice: number(item.originalPrice, unitPrice),
+    isSpecialPrice: boolean(item.isSpecialPrice),
+  };
+}

@@ -1,0 +1,16 @@
+[workspace]
+members = ["crates/pos-domain"]
+resolver = "2"
+
+[profile.release]
+lto = true
+opt-level = "s"
+codegen-units = 1
+strip = true
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

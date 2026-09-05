@@ -1,0 +1,267 @@
+/* Desktop and iPad landscape: stable POS rail */
+@media (min-width: 900px) {
+  #gift,
+  #cake,
+  #giftbox,
+  #search,
+  #settings {
+    padding-right: 74px;
+  }
+}
+
+/* iPad portrait and mobile: persistent, horizontally scrollable dock */
+@media (max-width: 899px) {
+  .fab-cart {
+    bottom: calc(82px + var(--vp-bottom) + env(safe-area-inset-bottom));
+  }
+
+  .settings-layout {
+    gap: 14px;
+  }
+  .settings-nav {
+    width: 145px;
+  }
+  .settings-nav-btn {
+    font-size: 0.8rem;
+  }
+
+  body #firebaseAccountBadge {
+    top: max(10px, calc(var(--vp-top) + 10px)) !important;
+    right: 10px !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  #customer,
+  #date > div,
+  .search-container,
+  .settings-container {
+    padding: 17px !important;
+  }
+
+  #customer .grid,
+  .search-form-grid {
+    gap: 15px !important;
+  }
+
+  .content-section h2,
+  .search-header h2,
+  .settings-header h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .name-title-row {
+    flex-direction: column;
+  }
+  .name-title-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search-header,
+  .settings-header {
+    margin-bottom: 17px;
+    padding-bottom: 14px;
+  }
+
+  .search-form {
+    padding: 15px;
+  }
+  .search-actions {
+    gap: 8px;
+  }
+  .search-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  #giftProducts,
+  #cakeProducts {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  #giftProducts > div:not(.company-mode-banner) > div:first-child > div:first-child,
+  #cakeProducts > div:not(.company-mode-banner) > div:first-child > div:first-child {
+    height: 92px !important;
+  }
+
+  #giftProducts > div:not(.company-mode-banner) > div:first-child > div:first-child i,
+  #cakeProducts > div:not(.company-mode-banner) > div:first-child > div:first-child i {
+    font-size: 2.1rem !important;
+  }
+
+  #giftProducts > div:not(.company-mode-banner) h3,
+  #cakeProducts > div:not(.company-mode-banner) h3 {
+    height: auto !important;
+    min-height: 44px;
+    font-size: 0.95rem !important;
+  }
+
+  #giftProducts > div:not(.company-mode-banner) .text-xl,
+  #cakeProducts > div:not(.company-mode-banner) .text-xl {
+    font-size: 1rem !important;
+  }
+
+  #giftboxStep1 {
+    justify-content: flex-start;
+  }
+
+  #giftboxStep1 > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  #giftboxStep1 > div > button {
+    min-height: 132px;
+    padding: 18px !important;
+  }
+
+  #giftboxStep1 > div > button i {
+    font-size: 2rem !important;
+  }
+  #giftboxStep1 > div > button span {
+    font-size: 1.35rem !important;
+  }
+
+  .giftbox-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    padding: 0;
+  }
+
+  .giftbox-product-icon {
+    height: 64px;
+  }
+  .giftbox-product-icon i {
+    font-size: 1.8rem;
+  }
+  .giftbox-product-info {
+    padding: 10px 7px;
+  }
+  .giftbox-product-info h4 {
+    font-size: 0.88rem;
+  }
+  .giftbox-quantity-control {
+    gap: 5px;
+    padding: 8px 5px;
+  }
+  .giftbox-qty-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .giftbox-qty-display {
+    width: 44px;
+    min-width: 40px;
+    height: 38px;
+  }
+
+  .cart-sidebar {
+    max-width: 100%;
+  }
+  .cart-sidebar > div {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .fab-cart {
+    right: 14px;
+    width: 60px;
+    height: 60px;
+  }
+
+  .modal {
+    padding: 8px;
+    align-items: flex-end;
+  }
+  .modal-content {
+    max-height: calc(100% - 6px);
+    border-radius: 20px 20px 14px 14px;
+  }
+  .modal-body {
+    padding: 18px;
+  }
+  .modal-footer {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+  .modal-footer .btn {
+    flex: 1 1 42%;
+  }
+
+  .settings-container {
+    min-height: calc(100vh - 120px);
+  }
+  .settings-panel {
+    padding: 14px;
+  }
+  .settings-panel-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .btn-add-product {
+    padding-inline: 13px;
+  }
+  .products-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-summary-cards,
+  .demand-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .alert-container {
+    top: calc(10px + var(--vp-top));
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  body.account-badge-visible .alert-container {
+    top: calc(64px + var(--vp-top));
+  }
+
+  .alert {
+    min-width: 0;
+    width: 100%;
+  }
+
+  body #firebaseAccountBadge {
+    width: auto !important;
+    max-width: calc(100vw - 20px) !important;
+    padding-left: 8px !important;
+  }
+
+  body #firebaseAccountEmail {
+    display: none;
+  }
+}
+
+@media (max-width: 350px) {
+  #giftProducts,
+  #cakeProducts,
+  .giftbox-product-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .report-summary-cards,
+  .demand-summary-cards,
+  .payment-grid,
+  .order-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

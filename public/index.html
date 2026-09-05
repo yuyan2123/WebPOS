@@ -12,9 +12,9 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/css/tailwind.generated.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.css">
-    <script src="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.js"></script>
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/air-datepicker.css">
+    <script src="/vendor/air-datepicker.js" defer></script>
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body class="h-full flex flex-col overflow-hidden">
@@ -23,40 +23,34 @@
     <div id="viewportProbe" aria-hidden="true"></div>
 
     <!-- Header -->
-    <header class="bg-white shadow-md z-20 flex-none">
-        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-3">
-                <div class="flex space-x-2">
-                    <button onclick="showSection('customer', this)" id="nav-customer" aria-label="客戶資料" class="nav-item px-5 py-3 rounded-lg text-base font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
-                        <i class="fas fa-user mr-2"></i><span class="hidden lg:inline">客戶</span>
-                    </button>
-                    <button onclick="showSection('date', this)" id="nav-date" aria-label="交貨日期" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-                        <i class="fas fa-calendar mr-2"></i><span class="hidden lg:inline">日期</span>
-                    </button>
-                    <button onclick="showSection('gift', this)" id="nav-gift" aria-label="伴手禮" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-                        <i class="fas fa-cookie mr-2"></i><span class="hidden lg:inline">伴手禮</span>
-                    </button>
-                    <button onclick="showSection('cake', this)" id="nav-cake" aria-label="喜餅" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-                        <i class="fas fa-birthday-cake mr-2"></i><span class="hidden lg:inline">喜餅</span>
-                    </button>
-                    <button onclick="showSection('giftbox', this)" id="nav-giftbox" aria-label="禮盒" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-                        <i class="fas fa-box mr-2"></i><span class="hidden lg:inline">禮盒</span>
-                    </button>
-                </div>
-                <div class="flex space-x-2">
-                    <button onclick="showSection('search', this)" id="nav-search" aria-label="訂單搜尋" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-                        <i class="fas fa-search mr-2"></i><span class="hidden lg:inline">搜尋</span>
-                    </button>
-                    <button onclick="showSection('settings', this)" id="nav-settings" aria-label="系統設定" class="nav-item px-5 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-                        <i class="fas fa-cog mr-2"></i><span class="hidden lg:inline">設定</span>
-                    </button>
-                </div>
-            </div>
+    <a class="skip-link" href="#mainContent">跳至主要內容</a>
+    <div id="startupStatus" role="alert" hidden></div>
+    <header class="app-navigation">
+      <a class="brand" href="#customer" aria-label="金家 POS 首頁"><span class="brand-mark">金</span><span>金家<span class="brand-subtitle">訂單工作台</span></span></a>
+      <nav aria-label="主要導覽">
+        <div class="navigation-group"><p class="navigation-label">建立訂單</p><button type="button" onclick="showSection('customer', this)" id="nav-customer" class="nav-item" aria-label="客戶資料"><i class="fas fa-user" aria-hidden="true"></i><span>客戶資料</span></button>
+<button type="button" onclick="showSection('date', this)" id="nav-date" class="nav-item" aria-label="交貨日期"><i class="fas fa-calendar" aria-hidden="true"></i><span>交貨日期</span></button>
+<button type="button" onclick="showSection('gift', this)" id="nav-gift" class="nav-item" aria-label="伴手禮"><i class="fas fa-cookie" aria-hidden="true"></i><span>伴手禮</span></button>
+<button type="button" onclick="showSection('cake', this)" id="nav-cake" class="nav-item" aria-label="喜餅"><i class="fas fa-birthday-cake" aria-hidden="true"></i><span>喜餅</span></button>
+<button type="button" onclick="showSection('giftbox', this)" id="nav-giftbox" class="nav-item" aria-label="禮盒組合"><i class="fas fa-box" aria-hidden="true"></i><span>禮盒組合</span></button></div>
+        <div class="navigation-group management"><p class="navigation-label">管理</p><button type="button" onclick="showSection('search', this)" id="nav-search" class="nav-item" aria-label="訂單查詢"><i class="fas fa-search" aria-hidden="true"></i><span>訂單查詢</span></button><button type="button" onclick="showSection('settings', this)" id="nav-settings" class="nav-item" aria-label="店務管理"><i class="fas fa-sliders" aria-hidden="true"></i><span>店務管理</span></button>
+          <button type="button" class="workspace-shortcut" data-panel="capacity"><i class="fas fa-calendar-check" aria-hidden="true"></i>供應量</button>
+          <button type="button" class="workspace-shortcut" data-panel="demand"><i class="fas fa-clipboard-list" aria-hidden="true"></i>需求統計</button>
+          <button type="button" class="workspace-shortcut" data-panel="reports"><i class="fas fa-chart-bar" aria-hidden="true"></i>營業報表</button>
         </div>
+      </nav>
+      <p class="navigation-hint">按 / 快速查詢訂單</p>
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto bg-gray-50 p-4 relative">
+    <main id="mainContent" tabindex="-1" class="workspace-main">
+      <div class="workspace-heading"><div><p class="eyebrow">金家 · 訂單工作台</p><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">先填寫客戶與配送資料</p></div></div>
+      <aside id="orderContext" class="order-context" aria-label="目前訂單摘要">
+        <span class="context-mode" id="workspaceMode">新訂單</span>
+        <button type="button" data-route="customer"><span class="context-label">客戶</span><span id="workspaceCustomer">尚未填寫客戶</span></button>
+        <button type="button" data-route="date"><span class="context-label">交貨日期</span><span id="workspaceDate">尚未選擇日期</span></button>
+        <button type="button" id="workspaceCart" class="context-cart"><span id="workspaceQuantity">0 件商品</span><span>檢視訂單 <i class="fas fa-arrow-right" aria-hidden="true"></i></span></button>
+      </aside>
 
         <!-- 客戶資訊頁 -->
         <section id="customer" class="content-section active max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm">
@@ -124,12 +118,14 @@
 
             <div class="border-t border-gray-100 my-6"></div>
 
-            <h3 class="text-lg font-semibold mb-4 text-gray-700">收件人資訊 <span class="text-sm font-normal text-gray-400">(若同客戶可省略)</span></h3>
+            <details class="recipient-details" id="recipientDetails"><summary>收件人與客戶不同 <span>選填</span></summary>
             <div id="recipientInfoGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                 <input type="text" id="recipientName" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="收件人姓名">
                 <input type="tel" id="recipientPhone" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="收件人電話">
             </div>
+            </details>
             <div class="mb-8">
+                <label for="customerAddress" class="field-label">配送地址</label>
                 <input type="text" id="customerAddress" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="請輸入完整地址">
             </div>
 
@@ -187,12 +183,14 @@
         <!-- 伴手禮頁 -->
         <section id="gift" class="content-section max-w-6xl mx-auto pb-24">
             <h2 class="text-2xl font-bold mb-4 text-gray-800">伴手禮選購</h2>
+            <label class="catalog-search"><span>搜尋伴手禮</span><input type="search" id="giftProductSearch" placeholder="輸入商品名稱或特色" autocomplete="off"></label>
             <div id="giftProducts" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">載入中...</div>
         </section>
 
         <!-- 喜餅頁 -->
         <section id="cake" class="content-section max-w-6xl mx-auto pb-24">
             <h2 class="text-2xl font-bold mb-4 text-gray-800">喜餅選購</h2>
+            <label class="catalog-search"><span>搜尋喜餅</span><input type="search" id="cakeProductSearch" placeholder="輸入商品名稱或特色" autocomplete="off"></label>
             <div id="cakeProducts" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">載入中...</div>
         </section>
 
@@ -282,6 +280,7 @@
                     </div>
 
                     <div class="giftbox-action-buttons">
+                        <output id="giftboxTotalAmount" aria-live="polite" class="giftbox-total-preview"></output>
                         <button onclick="backToStep2()" class="btn-back"><i class="fas fa-arrow-left"></i> 上一步</button>
                         <button onclick="addGiftboxToCart()" class="btn-add-cart"><i class="fas fa-cart-plus"></i> 加入購物車</button>
                     </div>
@@ -301,7 +300,7 @@
                 </div>
 
                 <!-- 搜尋表單 -->
-                <div class="search-form">
+                <div class="search-quick-actions"><button type="button" id="todayOrders">今日交貨</button><button type="button" id="overdueShortcut">待處理逾期訂單</button><span>或使用下方條件查詢</span></div><div class="search-form">
                     <div class="search-form-grid">
                         <div class="search-form-group">
                             <label for="searchPhone"><i class="fas fa-address-card"></i> 電話／LINE</label>
@@ -348,7 +347,7 @@
                 </div>
 
                 <!-- 搜尋結果 -->
-                <div id="searchResults"></div>
+                <div id="searchResults" aria-live="polite"><div class="workspace-empty"><i class="fas fa-search" aria-hidden="true"></i><h3>找到每一筆訂單</h3><p>輸入姓名、聯絡方式或日期，查看訂單與付款進度。</p></div></div>
             </div>
         </section>
 
@@ -543,10 +542,10 @@
     </main>
 
     <!-- 浮動購物車按鈕 -->
-    <div class="fab-cart floating-cart" onclick="toggleCartModal()">
+    <button type="button" class="fab-cart floating-cart" onclick="toggleCartModal()" aria-label="開啟購物車">
         <i class="fas fa-shopping-cart text-2xl"></i>
-        <div class="cart-badge" id="cartCount">0</div>
-    </div>
+        <span class="cart-badge" id="cartCount">0</span>
+    </button>
 
     <!-- 購物車側邊欄 -->
     <div class="cart-overlay" id="cartOverlay" onclick="toggleCartModal()"></div>
@@ -829,7 +828,7 @@
     <div id="alertContainer" class="alert-container"></div>
 
     <!-- 送單處理中遮罩 -->
-    <div id="orderSubmitOverlay" class="submit-overlay">
+    <div id="orderSubmitOverlay" class="submit-overlay" role="status" aria-live="polite">
         <div class="submit-overlay-box">
             <div class="submit-overlay-spinner"></div>
             <div class="submit-overlay-text" id="orderSubmitOverlayText">訂單建立中...</div>
@@ -839,7 +838,7 @@
 
     <script src="/js/runtime-config.js" defer></script>
     <script src="/js/rpc-bridge.js" defer></script>
-    <script src="/js/app.js" defer></script>
+    <script type="module" src="/js/app.js"></script>
     <script src="/js/pwa.js" defer></script>
 
     <!-- 產能超量警告 Modal -->

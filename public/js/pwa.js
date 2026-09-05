@@ -10,7 +10,7 @@
       banner.className = "pwa-banner";
       banner.setAttribute("role", "status");
       banner.setAttribute("aria-live", "polite");
-      document.body.appendChild(banner);
+      (document.querySelector('.app-navigation') || document.body).appendChild(banner);
     }
     banner.innerHTML = `
       <span class="pwa-banner-icon" aria-hidden="true"><i class="fas ${iconClass}"></i></span>
@@ -63,27 +63,32 @@
         banner.classList.remove("active");
       });
     }
-    if (!("serviceWorker" in navigator) || location.protocol !== "https:" && location.hostname !== "localhost") return;
+    if (!("serviceWorker" in navigator) || location.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(location.hostname)) return;
     navigator.serviceWorker.register("/sw.js").then((registration) => {
+      function offerUpdate(worker) {
+        const banner = showMessage("版本更新", "完成目前訂單後即可更新。", '<button id="pwaUpdate" type="button">更新</button>', "fa-sync-alt");
+        banner.querySelector("#pwaUpdate")?.addEventListener("click", () => {
+          if (document.body.dataset.draftDirty === "true") {
+            banner.querySelector(".pwa-banner-message").textContent = "仍有訂單草稿，請先完成或捨棄。";
+            return;
+          }
+          worker.postMessage({ type: "SKIP_WAITING" });
+        });
+      }
+      if (registration.waiting) offerUpdate(registration.waiting);
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         worker?.addEventListener("statechange", () => {
           if (worker.state !== "installed" || !navigator.serviceWorker.controller) return;
-          const banner = showMessage("版本更新", "完成目前訂單後即可更新。", '<button id="pwaUpdate" type="button">更新</button>', "fa-sync-alt");
-          banner.querySelector("#pwaUpdate")?.addEventListener("click", () => {
-            if (document.body.dataset.draftDirty === "true") {
-              banner.querySelector(".pwa-banner-message").textContent = "仍有訂單草稿，請先完成或捨棄。";
-              return;
-            }
-            worker.postMessage({ type: "SKIP_WAITING" });
-          });
+          offerUpdate(worker);
         });
       });
     }).catch((error) => console.warn("PWA 註冊失敗", error));
     let refreshing = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
+    navigator.serviceWorker.addEventListener("controllerchange", async () => {
       if (refreshing) return;
       refreshing = true;
+      try { await window.saveOrderDraftNow?.(); } catch (error) { console.warn("更新前草稿保存失敗", error); refreshing = false; return; }
       location.reload();
     });
   });

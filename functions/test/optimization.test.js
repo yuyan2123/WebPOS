@@ -8,8 +8,8 @@ async function source(relativePath) {
 }
 
 test("startup uses one shop bootstrap and does not preload customer or future-month collections", async () => {
-  const app = await source("../../public/js/app.js");
-  const startup = app.slice(app.indexOf("document.addEventListener('DOMContentLoaded'"), app.indexOf("// ==========================================", 100));
+  const app = await source("../../src/app/catalog.js");
+  const startup = await source("../../src/app/startup.js");
   assert.match(startup, /loadInitialShopData\(\)/);
   assert.doesNotMatch(startup, /loadCustomersCache|preloadCapacityData|ensureCapacityBuffer/);
   assert.doesNotMatch(app, /\.getAllCustomers\s*\(/);
