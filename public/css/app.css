@@ -5791,6 +5791,31 @@ body #firebaseAccountBadge {
     padding-inline: 24px !important;
   }
 }
+@media (min-width: 900px) and (max-width: 1366px) {
+  .navigation-group.management > .navigation-label {
+    display: none;
+  }
+  .app-navigation .nav-item.management-toggle {
+    display: flex;
+  }
+  .app-navigation .management-toggle.current-group,
+  .app-navigation .management-toggle[aria-expanded="true"] {
+    background: var(--pos-primary-soft);
+    color: var(--pos-primary-dark);
+    font-weight: 700;
+  }
+  .management-links {
+    display: none;
+    margin-top: 6px;
+    padding: 6px;
+    border: 1px solid var(--pos-line);
+    border-radius: 12px;
+    background: var(--pos-surface);
+  }
+  .management-toggle[aria-expanded="true"] + .management-links {
+    display: grid;
+  }
+}
 @media (max-width: 899px) {
   body {
     display: flex !important;

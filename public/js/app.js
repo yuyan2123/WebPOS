@@ -4297,6 +4297,7 @@ function initializeWorkspace() {
     }
   });
   window.matchMedia("(max-width: 899px)").addEventListener("change", () => closeManagement());
+  window.matchMedia("(max-width: 1366px)").addEventListener("change", () => closeManagement());
   document.querySelectorAll("[data-panel]").forEach((button) => button.addEventListener("click", () => showSettingsSection(button.dataset.panel)));
   document.querySelectorAll("[data-route]").forEach((button) => button.addEventListener("click", () => showSection(button.dataset.route)));
   document.getElementById("todayOrders").addEventListener("click", () => {

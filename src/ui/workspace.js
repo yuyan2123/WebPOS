@@ -91,6 +91,7 @@ export function initializeWorkspace() {
     }
   });
   window.matchMedia('(max-width: 899px)').addEventListener('change', () => closeManagement());
+  window.matchMedia('(max-width: 1366px)').addEventListener('change', () => closeManagement());
   document
     .querySelectorAll('[data-panel]')
     .forEach((button) => button.addEventListener('click', () => showSettingsSection(button.dataset.panel)));
