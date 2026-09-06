@@ -1,3 +1,18 @@
+// src/platform/gestures.js
+var preventGesture = (event2) => {
+  event2.preventDefault();
+};
+document.addEventListener("gesturestart", preventGesture, { passive: false, capture: true });
+document.addEventListener("gesturechange", preventGesture, { passive: false, capture: true });
+document.addEventListener("gestureend", preventGesture, { passive: false, capture: true });
+var preventMultiTouch = (event2) => {
+  if (event2.touches.length > 1) {
+    event2.preventDefault();
+  }
+};
+document.addEventListener("touchstart", preventMultiTouch, { passive: false, capture: true });
+document.addEventListener("touchmove", preventMultiTouch, { passive: false, capture: true });
+
 // public/wasm/pos_domain.js
 function execute(request) {
   let deferred3_0;
