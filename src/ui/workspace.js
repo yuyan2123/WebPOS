@@ -63,6 +63,17 @@ export function initializeWorkspace() {
   document.getElementById('workspaceCart').addEventListener('click', toggleCartModal);
   const managementToggle = document.getElementById('managementToggle');
   const managementLinks = document.getElementById('managementLinks');
+  function positionManagement() {
+    if (!window.matchMedia('(min-width: 900px) and (max-width: 1366px)').matches) {
+      managementLinks.style.removeProperty('left');
+      managementLinks.style.removeProperty('top');
+      return;
+    }
+    const toggleRect = managementToggle.getBoundingClientRect();
+    const navRect = managementToggle.closest('.app-navigation').getBoundingClientRect();
+    managementLinks.style.left = `${navRect.right + 8}px`;
+    managementLinks.style.top = `${Math.max(12, Math.min(toggleRect.top, window.innerHeight - managementLinks.offsetHeight - 12))}px`;
+  }
   function closeManagement(returnFocus = false) {
     managementToggle.setAttribute('aria-expanded', 'false');
     if (returnFocus) managementToggle.focus();
@@ -71,6 +82,7 @@ export function initializeWorkspace() {
     const expanded = managementToggle.getAttribute('aria-expanded') === 'true';
     managementToggle.setAttribute('aria-expanded', String(!expanded));
     if (!expanded) {
+      positionManagement();
       (
         managementLinks.querySelector('[aria-current="page"]') || managementLinks.querySelector('button')
       ).focus();
@@ -92,6 +104,8 @@ export function initializeWorkspace() {
   });
   window.matchMedia('(max-width: 899px)').addEventListener('change', () => closeManagement());
   window.matchMedia('(max-width: 1366px)').addEventListener('change', () => closeManagement());
+  window.addEventListener('resize', positionManagement);
+  managementToggle.closest('.app-navigation').addEventListener('scroll', positionManagement);
   document
     .querySelectorAll('[data-panel]')
     .forEach((button) => button.addEventListener('click', () => showSettingsSection(button.dataset.panel)));
@@ -117,6 +131,7 @@ export function initializeWorkspace() {
     document.getElementById('workspaceSubtitle').textContent = panelSubtitles[panel] || subtitle;
     document.getElementById('orderContext').hidden = ['search', 'settings'].includes(section);
     document.body.dataset.section = section;
+    document.body.dataset.panel = panel || '';
     document.title = `${panels[panel] || title} · WebPOS`;
     const hash = `#${section}${panel ? '/' + panel : ''}`;
     if (!restoring && location.hash !== hash) history.pushState(null, '', hash);

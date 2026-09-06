@@ -12,6 +12,7 @@
     let resolveShopSelection = null;
     let sessionBootstrapPromise = null;
     let shopsLoaded = false;
+    let shopManagerLoading = false;
     const GLOBAL_METHODS = new Set(['listMyShops', 'createShop', 'registerDeviceSession']);
 
     function installAuthOverlay() {
@@ -86,6 +87,15 @@
             .firebase-member-row select { padding: 7px; border: 1px solid #cbd5e1; border-radius: 8px; }
             .firebase-member-remove { border: 0; border-radius: 8px; padding: 8px; color: #dc2626; background: #fef2f2; cursor: pointer; }
             #firebaseShopMessage { min-height: 22px; margin-top: 10px; color: #dc2626; font-size: .85rem; }
+            #firebaseShopLoading { display: flex; align-items: center; justify-content: center; gap: 4px;
+                min-height: 76px; margin-bottom: 16px; border-radius: 12px; background: #f1f8f5; color: #25654d; font-size: .9rem; }
+            #firebaseShopLoading[hidden] { display: none; }
+            .firebase-loading-dots { display: inline-flex; font-size: 22px; font-weight: 700; line-height: 1; }
+            .firebase-loading-dots span { animation: firebaseLoadingDot 1.2s ease-in-out infinite; }
+            .firebase-loading-dots span:nth-child(2) { animation-delay: .15s; }
+            .firebase-loading-dots span:nth-child(3) { animation-delay: .3s; }
+            @keyframes firebaseLoadingDot { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+            @media (prefers-reduced-motion: reduce) { .firebase-loading-dots span { animation: none; } }
             @media (max-width: 560px) {
                 .firebase-shop-form { grid-template-columns: 1fr; }
                 .firebase-member-row { grid-template-columns: minmax(0,1fr) auto; }
@@ -132,6 +142,7 @@
                     <h2>我的店鋪</h2>
                     <button id="firebaseShopClose" type="button" aria-label="關閉">&times;</button>
                 </div>
+                <div id="firebaseShopLoading" role="status" hidden>載入店鋪資料中<span class="firebase-loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></div>
                 <div id="firebaseShopList"></div>
                 <div class="firebase-shop-form">
                     <input id="firebaseNewShopName" type="text" maxlength="60" placeholder="新店鋪名稱">
@@ -385,20 +396,39 @@
     }
 
     async function openShopManager(required) {
-        const state = await ensureSignedIn();
-        await refreshShops(state);
-        const current = activeShop && availableShops.find((shop) => shop.shopId === activeShop.shopId);
-        activeShop = current || null;
-        updateShopBadge();
+        if (shopManagerLoading) return;
+        shopManagerLoading = true;
+        setShopMessage('');
         showShopOverlay(Boolean(required || !activeShop));
         const admin = document.getElementById('firebaseShopAdmin');
-        if (activeShop?.role === 'owner') {
-            admin.classList.add('active');
-            document.getElementById('firebaseShopMeta').textContent = `店鋪 ID：${activeShop.shopId}`;
-            document.getElementById('firebaseRenameShopName').value = activeShop.name;
-            await loadMembers(state);
-        } else {
-            admin.classList.remove('active');
+        const list = document.getElementById('firebaseShopList');
+        const loading = document.getElementById('firebaseShopLoading');
+        const forms = document.querySelectorAll('#firebaseShopOverlay .firebase-shop-form');
+        admin.classList.remove('active');
+        list.style.display = 'none';
+        list.setAttribute('aria-busy', 'true');
+        loading.hidden = false;
+        forms.forEach((form) => { form.inert = true; });
+        try {
+            const state = await ensureSignedIn();
+            await refreshShops(state);
+            const current = activeShop && availableShops.find((shop) => shop.shopId === activeShop.shopId);
+            activeShop = current || null;
+            updateShopBadge();
+            document.getElementById('firebaseShopClose').disabled = Boolean(required || !activeShop);
+            if (activeShop?.role === 'owner') {
+                document.getElementById('firebaseMemberList').replaceChildren();
+                document.getElementById('firebaseShopMeta').textContent = `店鋪 ID：${activeShop.shopId}`;
+                document.getElementById('firebaseRenameShopName').value = activeShop.name;
+                await loadMembers(state);
+                admin.classList.add('active');
+            }
+        } finally {
+            shopManagerLoading = false;
+            loading.hidden = true;
+            list.style.display = '';
+            list.setAttribute('aria-busy', 'false');
+            forms.forEach((form) => { form.inert = false; });
         }
     }
 

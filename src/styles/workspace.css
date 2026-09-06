@@ -496,6 +496,11 @@ body[data-section="settings"] .fab-cart {
 .footer p {
   color: var(--pos-muted);
 }
+@media (orientation: portrait) {
+  body:not([data-section="settings"][data-panel="device"]) .footer {
+    display: none;
+  }
+}
 body #firebaseAccountBadge {
   top: calc(22px + var(--vp-top)) !important;
   right: 24px !important;
@@ -545,11 +550,16 @@ body #firebaseAccountBadge {
   }
   .management-links {
     display: none;
-    margin-top: 6px;
-    padding: 6px;
+    position: fixed;
+    width: 220px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    margin: 0;
+    padding: 8px;
     border: 1px solid var(--pos-line);
     border-radius: 12px;
     background: var(--pos-surface);
+    box-shadow: var(--pos-shadow);
   }
   .management-toggle[aria-expanded="true"] + .management-links {
     display: grid;

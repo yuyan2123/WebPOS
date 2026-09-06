@@ -388,7 +388,13 @@ function showAlert(message, type = "success", duration = 0) {
   };
   const icon = document.createElement("div");
   icon.className = "alert-icon";
+  icon.setAttribute("aria-hidden", "true");
   icon.innerHTML = `<i class="fas ${iconMap[type] || iconMap.info}"></i>`;
+  const content = document.createElement("div");
+  content.className = "alert-content";
+  const title = document.createElement("div");
+  title.className = "alert-title";
+  title.textContent = { success: "\u64CD\u4F5C\u6210\u529F", error: "\u64CD\u4F5C\u672A\u5B8C\u6210", warning: "\u8ACB\u7559\u610F", info: "\u901A\u77E5" }[type] || "\u901A\u77E5";
   const text = document.createElement("div");
   text.className = "alert-message";
   text.textContent = message;
@@ -397,8 +403,9 @@ function showAlert(message, type = "success", duration = 0) {
   close2.setAttribute("aria-label", "\u95DC\u9589\u901A\u77E5");
   close2.className = "alert-close";
   close2.innerHTML = '<i class="fas fa-times"></i>';
+  content.append(title, text);
   alertDiv.appendChild(icon);
-  alertDiv.appendChild(text);
+  alertDiv.appendChild(content);
   alertDiv.appendChild(close2);
   alertContainer.prepend(alertDiv);
   let removed = false;
@@ -4271,6 +4278,17 @@ function initializeWorkspace() {
   document.getElementById("workspaceCart").addEventListener("click", toggleCartModal);
   const managementToggle = document.getElementById("managementToggle");
   const managementLinks = document.getElementById("managementLinks");
+  function positionManagement() {
+    if (!window.matchMedia("(min-width: 900px) and (max-width: 1366px)").matches) {
+      managementLinks.style.removeProperty("left");
+      managementLinks.style.removeProperty("top");
+      return;
+    }
+    const toggleRect = managementToggle.getBoundingClientRect();
+    const navRect = managementToggle.closest(".app-navigation").getBoundingClientRect();
+    managementLinks.style.left = `${navRect.right + 8}px`;
+    managementLinks.style.top = `${Math.max(12, Math.min(toggleRect.top, window.innerHeight - managementLinks.offsetHeight - 12))}px`;
+  }
   function closeManagement(returnFocus = false) {
     managementToggle.setAttribute("aria-expanded", "false");
     if (returnFocus) managementToggle.focus();
@@ -4279,6 +4297,7 @@ function initializeWorkspace() {
     const expanded = managementToggle.getAttribute("aria-expanded") === "true";
     managementToggle.setAttribute("aria-expanded", String(!expanded));
     if (!expanded) {
+      positionManagement();
       (managementLinks.querySelector('[aria-current="page"]') || managementLinks.querySelector("button")).focus();
     }
   });
@@ -4298,6 +4317,8 @@ function initializeWorkspace() {
   });
   window.matchMedia("(max-width: 899px)").addEventListener("change", () => closeManagement());
   window.matchMedia("(max-width: 1366px)").addEventListener("change", () => closeManagement());
+  window.addEventListener("resize", positionManagement);
+  managementToggle.closest(".app-navigation").addEventListener("scroll", positionManagement);
   document.querySelectorAll("[data-panel]").forEach((button) => button.addEventListener("click", () => showSettingsSection(button.dataset.panel)));
   document.querySelectorAll("[data-route]").forEach((button) => button.addEventListener("click", () => showSection(button.dataset.route)));
   document.getElementById("todayOrders").addEventListener("click", () => {
@@ -4319,6 +4340,7 @@ function initializeWorkspace() {
     document.getElementById("workspaceSubtitle").textContent = panelSubtitles[panel] || subtitle;
     document.getElementById("orderContext").hidden = ["search", "settings"].includes(section);
     document.body.dataset.section = section;
+    document.body.dataset.panel = panel || "";
     document.title = `${panels[panel] || title} \xB7 WebPOS`;
     const hash = `#${section}${panel ? "/" + panel : ""}`;
     if (!restoring && location.hash !== hash) history.pushState(null, "", hash);

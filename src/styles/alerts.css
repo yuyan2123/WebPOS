@@ -1,0 +1,115 @@
+/* Shared notifications, aligned with the workspace palette. */
+.alert-container {
+  width: 400px;
+  pointer-events: none;
+}
+
+.alert {
+  --alert-tone: #25654d;
+  --alert-tint: #e8f1e9;
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  gap: 12px;
+  border: 1px solid var(--pos-line, #dce2dc);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 12px 36px #192a201a,
+    0 2px 6px #192a2008;
+  pointer-events: auto;
+  animation: alertAppear 0.25s ease-out;
+}
+
+.alert-error {
+  --alert-tone: #b53838;
+  --alert-tint: #fff0f0;
+}
+
+.alert-warning {
+  --alert-tone: #895719;
+  --alert-tint: #fff4df;
+}
+
+.alert-info {
+  --alert-tone: #326482;
+  --alert-tint: #edf4f9;
+}
+
+.alert .alert-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--alert-tint);
+  color: var(--alert-tone);
+  font-size: 16px;
+}
+
+.alert-content {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.alert-title {
+  color: var(--alert-tone);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.alert .alert-message {
+  padding-top: 4px;
+  color: #48534d;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.alert .alert-close {
+  margin: -6px -6px 0 0;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  color: #626f67;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.alert .alert-close:hover {
+  background: #f0f3ef;
+}
+
+.alert .alert-close:focus-visible {
+  outline: 2px solid var(--alert-tone);
+  outline-offset: 2px;
+}
+
+@keyframes alertAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .alert-container {
+    width: auto;
+  }
+  .alert {
+    padding: 14px;
+    gap: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert {
+    animation: none;
+    transition: none;
+  }
+}

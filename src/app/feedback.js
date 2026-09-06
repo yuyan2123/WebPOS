@@ -19,7 +19,14 @@ export function showAlert(message, type = 'success', duration = 0) {
   };
   const icon = document.createElement('div');
   icon.className = 'alert-icon';
+  icon.setAttribute('aria-hidden', 'true');
   icon.innerHTML = `<i class="fas ${iconMap[type] || iconMap.info}"></i>`;
+  const content = document.createElement('div');
+  content.className = 'alert-content';
+  const title = document.createElement('div');
+  title.className = 'alert-title';
+  title.textContent =
+    { success: '操作成功', error: '操作未完成', warning: '請留意', info: '通知' }[type] || '通知';
   const text = document.createElement('div');
   text.className = 'alert-message';
   text.textContent = message;
@@ -28,8 +35,9 @@ export function showAlert(message, type = 'success', duration = 0) {
   close.setAttribute('aria-label', '關閉通知');
   close.className = 'alert-close';
   close.innerHTML = '<i class="fas fa-times"></i>';
+  content.append(title, text);
   alertDiv.appendChild(icon);
-  alertDiv.appendChild(text);
+  alertDiv.appendChild(content);
   alertDiv.appendChild(close);
   alertContainer.prepend(alertDiv);
   let removed = false;

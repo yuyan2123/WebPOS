@@ -21,7 +21,7 @@ writeFileSync(
   'public/css/app.css',
   [
     ...components,
-    ...['surfaces', 'responsive', 'resilience', 'workspace'].map((name) =>
+    ...['surfaces', 'responsive', 'resilience', 'workspace', 'alerts'].map((name) =>
       readFileSync(`src/styles/${name}.css`, 'utf8'),
     ),
   ].join('\n'),
