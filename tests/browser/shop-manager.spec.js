@@ -3,7 +3,6 @@ const { readFileSync } = require('node:fs');
 
 async function openManager(page) {
   await page.goto('/');
-  await page.unrouteAll();
   const source = readFileSync('public/js/rpc-bridge.js', 'utf8');
   // Exercise the real bridge UI with a controllable RPC, without Firebase credentials.
   await page.addScriptTag({
@@ -28,7 +27,9 @@ async function openManager(page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/js/rpc-bridge.js', (route) =>
+  // Isolate the bridge: app startup awaits WASM, then makes its own RPCs.
+  // Those calls can otherwise race with the manager's deferred RPC in WebKit.
+  await page.route('**/js/{app,rpc-bridge}.js', (route) =>
     route.fulfill({ contentType: 'text/javascript', body: '' }),
   );
 });
