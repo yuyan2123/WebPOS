@@ -4,6 +4,7 @@ import { db } from "../firebase.js";
 import { assert, forbidden, notFound } from "../lib/errors.js";
 import { newId } from "../lib/ids.js";
 import { text } from "../lib/values.js";
+import { initializeSystemAdmin, isSystemAdmin } from "../lib/system-admin.js";
 
 const ROLE_LEVEL = Object.freeze({ viewer: 1, editor: 2, owner: 3 });
 
@@ -26,6 +27,10 @@ function userShopReference(uid, shopId) {
 
 export async function requireShopAccess(user, shopId, requiredRole = "viewer") {
   const reference = shopReference(shopId);
+  if (await isSystemAdmin(user)) {
+    if (!(await reference.get()).exists) notFound("找不到店鋪，或此帳號不是店鋪成員");
+    return { ...user, shopId: reference.id, role: "owner", shopRef: reference };
+  }
   const membership = await reference.collection("members").doc(user.uid).get();
   if (!membership.exists) notFound("找不到店鋪，或此帳號不是店鋪成員");
   const role = validRole(membership.data().role, true);
@@ -41,6 +46,16 @@ export async function requireShopAccess(user, shopId, requiredRole = "viewer") {
 }
 
 export async function listMyShops(user) {
+  await initializeSystemAdmin();
+  if (await isSystemAdmin(user)) {
+    const snapshot = await db.collection("shops").orderBy("name").get();
+    return snapshot.docs.map((document) => ({
+      shopId: document.id,
+      name: document.data().name,
+      ownerUid: document.data().ownerUid,
+      role: "owner",
+    }));
+  }
   const snapshot = await db.collection("users").doc(user.uid).collection("shops").orderBy("name").get();
   return snapshot.docs.map((document) => ({ shopId: document.id, ...document.data() }));
 }

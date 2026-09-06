@@ -375,6 +375,7 @@ export async function ordersInDateRange(user, startDate, endDate) {
     .where("deliveryDate", "<=", dateString(endDate))
     .limit(5000)
     .get();
+  assert(snapshot.docs.length < 5000, "日期區間內的訂單達到查詢上限，請縮小日期區間");
   return snapshot.docs.map(orderResult).filter((order) => order.status !== "取消");
 }
 

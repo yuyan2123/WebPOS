@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "金家訂單管理系統",
-  "short_name": "金家 POS",
-  "description": "金家店鋪訂單、商品與產能管理",
+  "name": "WebPOS",
+  "short_name": "WebPOS",
+  "description": "WebPOS 店鋪訂單、商品與供應量管理",
   "lang": "zh-TW",
   "start_url": "/?source=pwa",
   "scope": "/",

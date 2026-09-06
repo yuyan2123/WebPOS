@@ -21,6 +21,7 @@ export function authorize(request) {
 
   return {
     uid: request.auth.uid,
+    authTime: request.auth.token.auth_time,
     email,
     name: String(request.auth.token.name || ""),
     emailVerified: true,

@@ -7,9 +7,10 @@
     <meta name="theme-color" content="#1f6f5f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="金家 POS">
-    <title>金家訂單管理系統</title>
+    <meta name="apple-mobile-web-app-title" content="WebPOS">
+    <title>WebPOS</title>
     <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/css/tailwind.generated.css">
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
@@ -26,7 +27,7 @@
     <a class="skip-link" href="#mainContent">跳至主要內容</a>
     <div id="startupStatus" role="alert" hidden></div>
     <header class="app-navigation">
-      <a class="brand" href="#customer" aria-label="金家 POS 首頁"><span class="brand-mark">金</span><span>金家<span class="brand-subtitle">訂單工作台</span></span></a>
+      <a class="brand" href="#customer" aria-label="WebPOS 首頁"><img class="brand-mark" src="/icons/icon-192.png" width="42" height="42" alt=""><span>WebPOS<span class="brand-subtitle">訂單工作台</span></span></a>
       <nav aria-label="主要導覽">
         <div class="navigation-group"><p class="navigation-label">建立訂單</p><button type="button" onclick="showSection('customer', this)" id="nav-customer" class="nav-item" aria-label="客戶資料"><i class="fas fa-user" aria-hidden="true"></i><span>客戶資料</span></button>
 <button type="button" onclick="showSection('date', this)" id="nav-date" class="nav-item" aria-label="交貨日期"><i class="fas fa-calendar" aria-hidden="true"></i><span>交貨日期</span></button>
@@ -51,7 +52,7 @@
 
     <!-- Main Content -->
     <main id="mainContent" tabindex="-1" class="workspace-main">
-      <div class="workspace-heading"><div><p class="eyebrow">金家 · 訂單工作台</p><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">先填寫客戶與配送資料</p></div></div>
+      <div class="workspace-heading"><div><p class="eyebrow">WebPOS · 訂單工作台</p><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">先填寫客戶與配送資料</p></div></div>
       <aside id="orderContext" class="order-context" aria-label="目前訂單摘要">
         <span class="context-mode" id="workspaceMode">新訂單</span>
         <button type="button" data-route="customer"><span class="context-label">客戶</span><span id="workspaceCustomer">尚未填寫客戶</span></button>
@@ -460,8 +461,8 @@
                     </div>
                     <div class="report-form">
                         <div class="form-group">
-                            <label><i class="fas fa-calendar-alt"></i> 選擇日期</label>
-                            <input type="text" id="reportDatePicker" placeholder="點擊選擇日期" readonly>
+                            <label><i class="fas fa-calendar-alt"></i> 選擇日期區間（交貨日期）</label>
+                            <input type="text" id="reportDatePicker" placeholder="點擊選擇日期區間" readonly>
                         </div>
                         <button onclick="generateReport()" id="btnReport" class="btn-generate-report">
                             <i class="fas fa-file-export"></i>
@@ -500,8 +501,8 @@
 
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
-            <p>金家 POS 系統 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version v.13.0</p>
+            <p>WebPOS 系統 &copy; 2025. All Rights Reserved.</p>
+            <p>Website content edited by yuyan2123. Version v.13.2</p>
         </footer>
 
     </main>

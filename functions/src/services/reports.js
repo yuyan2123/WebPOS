@@ -2,6 +2,7 @@ import { domain } from "../lib/domain.js";
 import { getProductsByIds } from "./catalog.js";
 import { ordersInDateRange } from "./orders.js";
 import { dateString, number } from "../lib/values.js";
+import { assert } from "../lib/errors.js";
 
 function productMap(products) {
   return Object.fromEntries(products.map((product) => [product.productId, product]));
@@ -17,10 +18,16 @@ function referencedGiftboxProductIds(orders) {
   return [...ids];
 }
 
-export async function generateDailyReport(user, date) {
-  const normalizedDate = dateString(date);
-  const input = await reportInput(user, normalizedDate, normalizedDate, true);
-  return domain("report", { date: normalizedDate, orders: input });
+export async function generateDailyReport(user, startDate, endDate = startDate) {
+  const start = dateString(startDate);
+  const end = dateString(endDate);
+  for (const date of [start, end]) {
+    const parsed = new Date(date);
+    assert(!Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date, "報表日期無效");
+  }
+  assert(start <= end, "結束日期不可早於開始日期");
+  const input = await reportInput(user, start, end, true);
+  return domain("report", { date: start === end ? start : `${start} ~ ${end}`, orders: input });
 }
 
 export async function getDemandStats(user, startDate, endDate) {

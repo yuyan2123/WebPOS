@@ -9,12 +9,16 @@ export function initReportDatepicker() {
   if (!el) return;
   state.reportDatepickerInstance = new AirDatepicker(el, {
     locale: state.demandDateLocaleZh,
+    range: true,
     dateFormat: 'yyyy-MM-dd',
+    multipleDatesSeparator: ' ~ ',
     autoClose: true,
     buttons: [
       {
         content: '今天',
         onClick: function (dp) {
+          dp.clear();
+          dp.selectDate(new Date());
           dp.selectDate(new Date());
         },
       },
@@ -29,11 +33,13 @@ export function initReportDatepicker() {
 }
 
 export function generateReport() {
-  var date = document.getElementById('reportDatePicker').value.trim();
-  if (!date) {
-    showAlert('請選擇報表日期', 'error');
+  const raw = document.getElementById('reportDatePicker').value.trim();
+  if (!raw) {
+    showAlert('請選擇報表日期區間', 'error');
     return;
   }
+  const [startDate, selectedEnd] = raw.split('~').map((value) => value.trim());
+  const endDate = selectedEnd || startDate;
   var btn = document.getElementById('btnReport');
   setButtonLoading(btn, true, '產生中...');
   rpc
@@ -45,19 +51,19 @@ export function generateReport() {
       setButtonLoading(btn, false);
       handleError(error);
     })
-    .generateDailyReport(date);
+    .generateDailyReport(startDate, endDate);
 }
 
 export function handleReportGenerated(report) {
   var container = document.getElementById('reportResults');
-  var dateLabel = report.date || '';
+  var dateLabel = escapeHtml(report.date || '');
   if (report.totalOrders === 0) {
     container.innerHTML =
       '<div class="report-date-label">' +
       '<i class="fas fa-calendar-check" style="margin-right:6px;"></i>' +
       dateLabel +
       '</div>' +
-      '<p style="padding:20px;text-align:center;color:#64748b;">當日無營業記錄</p>';
+      '<p style="padding:20px;text-align:center;color:#64748b;">此期間無營業記錄</p>';
     return;
   }
   var totalRevenue = Math.round(report.totalRevenue);
@@ -129,7 +135,7 @@ export function handleReportGenerated(report) {
     }
     html += '</tbody></table>';
   } else {
-    html += '<p style="padding:20px;text-align:center;color:#64748b;">當日無商品銷售明細</p>';
+    html += '<p style="padding:20px;text-align:center;color:#64748b;">此期間無商品銷售明細</p>';
   }
   container.innerHTML = html;
 }

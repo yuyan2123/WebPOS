@@ -26,7 +26,7 @@ async function openWorkspace(page, role = 'owner') {
       if (method === 'searchCustomers') return window.__customers || [];
       if (method === 'searchOrders') return {orders:[],pagination:{hasMore:false,nextCursor:null}};
       if (method === 'searchOverdueOrders') return [];
-      if (method === 'generateDailyReport') return {date:args[0],totalRevenue:100,totalOrders:1,totalItems:2,productSales:[{productName:'<img src=x onerror=alert(1)>',quantity:2,amount:100}]};
+      if (method === 'generateDailyReport') return window.__report || {date:args[1] && args[1] !== args[0] ? args[0] + ' ~ ' + args[1] : args[0],totalRevenue:100,totalOrders:1,totalItems:2,productSales:[{productName:'<img src=x onerror=alert(1)>',quantity:2,amount:100}]};
       if (method === 'getDemandStats') return {orderCount:1,productStats:[{name:'原味餅',loose:2,inbox:0,total:2}],giftboxStats:[]};
       if (method === 'submitOrder') return window.__capacity && !args[1].confirmed ? {needConfirm:true,capacityStatus:{date:args[0].deliveryDate,limit:1,currentQuantity:1,newOrderQuantity:2,projectedQuantity:3,exceededQuantity:2}} : {success:true,orderId:'O-test'};
       if (method === 'updateOrderDeposit') return {success:true,orderId:args[0],depositAmount:args[1],remainingAmount:100-args[1],newStatus:args[1]===100?'已付清':'已付訂金'};
@@ -172,6 +172,66 @@ async function prepareOrder(page) {
   await page.locator('#btn-confirm-date').click();
   await page.locator('#giftProducts button').last().click();
 }
+
+test('cart slides out and backdrop fades before hiding, including quick reopen', async ({ page }) => {
+  await openWorkspace(page);
+  const cart = page.locator('#cartModal');
+  const overlay = page.locator('#cartOverlay');
+  await page.locator('#workspaceCart').click();
+  await cart.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished)),
+  );
+  // Pause actual CSS exit transitions halfway to inspect the closing frame deterministically.
+  const closing = await page.evaluate(() => {
+    const cart = document.getElementById('cartModal');
+    const overlay = document.getElementById('cartOverlay');
+    cart.querySelector('button').click();
+    for (const element of [cart, overlay]) {
+      for (const animation of element.getAnimations()) {
+        animation.pause();
+        animation.currentTime = 150;
+      }
+    }
+    return {
+      visibility: getComputedStyle(cart).visibility,
+      offset: new DOMMatrixReadOnly(getComputedStyle(cart).transform).m41,
+      width: cart.getBoundingClientRect().width,
+      opacity: Number(getComputedStyle(overlay).opacity),
+    };
+  });
+  expect(closing.visibility).toBe('visible');
+  expect(closing.offset).toBeGreaterThan(0);
+  expect(closing.offset).toBeLessThan(closing.width);
+  expect(closing.opacity).toBeGreaterThan(0);
+  expect(closing.opacity).toBeLessThan(1);
+  await expect(cart).toHaveAttribute('inert', '');
+  await expect(page.locator('#mainContent')).not.toHaveAttribute('inert', '');
+  await page.locator('#workspaceCart').click();
+  await expect(cart).toHaveClass(/active/);
+  await expect(cart).not.toHaveAttribute('inert', '');
+  await cart.evaluate((element) =>
+    Promise.all(element.getAnimations().map((animation) => animation.finished)),
+  );
+  await page.keyboard.press('Escape');
+  await expect(cart).toBeHidden();
+  await expect(overlay).toBeHidden();
+  await expect(page.locator('#mainContent')).not.toHaveAttribute('inert', '');
+});
+
+test('cart closes without a delayed exit when reduced motion is requested', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openWorkspace(page);
+  await page.locator('#workspaceCart').click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#cartModal')).toBeHidden();
+  await expect(page.locator('#cartOverlay')).toBeHidden();
+  for (const selector of ['#cartModal', '#cartOverlay']) {
+    const delays = await page
+      .locator(selector)
+      .evaluate((element) => getComputedStyle(element).transitionDelay);
+    expect(delays.split(',').every((delay) => parseFloat(delay) === 0)).toBe(true);
+  }
+});
 
 test('capacity cancel releases submit lock and confirmed submission keeps request identity', async ({
   page,

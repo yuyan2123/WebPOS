@@ -25,7 +25,7 @@ const panelSubtitles = {
   products: '新增、編輯與管理商品',
   capacity: '設定每日供應量與指定日期上限',
   demand: '依交貨日期彙整商品需求',
-  reports: '查看每日營收與商品銷售',
+  reports: '依交貨日期區間查看營收與商品銷售',
   device: '查看目前使用的裝置與瀏覽器',
 };
 let restoring = false;
@@ -116,7 +116,7 @@ export function initializeWorkspace() {
     document.getElementById('workspaceSubtitle').textContent = panelSubtitles[panel] || subtitle;
     document.getElementById('orderContext').hidden = ['search', 'settings'].includes(section);
     document.body.dataset.section = section;
-    document.title = `${panels[panel] || title} · 金家 POS`;
+    document.title = `${panels[panel] || title} · WebPOS`;
     const hash = `#${section}${panel ? '/' + panel : ''}`;
     if (!restoring && location.hash !== hash) history.pushState(null, '', hash);
     closeManagement();

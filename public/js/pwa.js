@@ -41,7 +41,7 @@
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     installPrompt = event;
-    const banner = showMessage("安裝金家 POS", "加入主畫面，之後可直接開啟。", '<button id="pwaInstall" type="button">安裝</button><button id="pwaDismiss" type="button">稍後</button>');
+    const banner = showMessage("安裝WebPOS", "加入主畫面，之後可直接開啟。", '<button id="pwaInstall" type="button">安裝</button><button id="pwaDismiss" type="button">稍後</button>');
     banner.querySelector("#pwaInstall")?.addEventListener("click", async () => {
       await installPrompt?.prompt();
       installPrompt = null;

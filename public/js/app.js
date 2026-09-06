@@ -3156,12 +3156,16 @@ function initReportDatepicker() {
   if (!el) return;
   state.reportDatepickerInstance = new AirDatepicker(el, {
     locale: state.demandDateLocaleZh,
+    range: true,
     dateFormat: "yyyy-MM-dd",
+    multipleDatesSeparator: " ~ ",
     autoClose: true,
     buttons: [
       {
         content: "\u4ECA\u5929",
         onClick: function(dp) {
+          dp.clear();
+          dp.selectDate(/* @__PURE__ */ new Date());
           dp.selectDate(/* @__PURE__ */ new Date());
         }
       },
@@ -3175,11 +3179,13 @@ function initReportDatepicker() {
   });
 }
 function generateReport() {
-  var date = document.getElementById("reportDatePicker").value.trim();
-  if (!date) {
-    showAlert("\u8ACB\u9078\u64C7\u5831\u8868\u65E5\u671F", "error");
+  const raw = document.getElementById("reportDatePicker").value.trim();
+  if (!raw) {
+    showAlert("\u8ACB\u9078\u64C7\u5831\u8868\u65E5\u671F\u5340\u9593", "error");
     return;
   }
+  const [startDate, selectedEnd] = raw.split("~").map((value) => value.trim());
+  const endDate = selectedEnd || startDate;
   var btn = document.getElementById("btnReport");
   setButtonLoading(btn, true, "\u7522\u751F\u4E2D...");
   rpc.withSuccessHandler(function(report) {
@@ -3188,13 +3194,13 @@ function generateReport() {
   }).withFailureHandler(function(error) {
     setButtonLoading(btn, false);
     handleError(error);
-  }).generateDailyReport(date);
+  }).generateDailyReport(startDate, endDate);
 }
 function handleReportGenerated(report) {
   var container = document.getElementById("reportResults");
-  var dateLabel = report.date || "";
+  var dateLabel = escapeHtml(report.date || "");
   if (report.totalOrders === 0) {
-    container.innerHTML = '<div class="report-date-label"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>' + dateLabel + '</div><p style="padding:20px;text-align:center;color:#64748b;">\u7576\u65E5\u7121\u71DF\u696D\u8A18\u9304</p>';
+    container.innerHTML = '<div class="report-date-label"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>' + dateLabel + '</div><p style="padding:20px;text-align:center;color:#64748b;">\u6B64\u671F\u9593\u7121\u71DF\u696D\u8A18\u9304</p>';
     return;
   }
   var totalRevenue = Math.round(report.totalRevenue);
@@ -3218,7 +3224,7 @@ function handleReportGenerated(report) {
     }
     html += "</tbody></table>";
   } else {
-    html += '<p style="padding:20px;text-align:center;color:#64748b;">\u7576\u65E5\u7121\u5546\u54C1\u92B7\u552E\u660E\u7D30</p>';
+    html += '<p style="padding:20px;text-align:center;color:#64748b;">\u6B64\u671F\u9593\u7121\u5546\u54C1\u92B7\u552E\u660E\u7D30</p>';
   }
   container.innerHTML = html;
 }
@@ -4213,7 +4219,7 @@ var panelSubtitles = {
   products: "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1",
   capacity: "\u8A2D\u5B9A\u6BCF\u65E5\u4F9B\u61C9\u91CF\u8207\u6307\u5B9A\u65E5\u671F\u4E0A\u9650",
   demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5F59\u6574\u5546\u54C1\u9700\u6C42",
-  reports: "\u67E5\u770B\u6BCF\u65E5\u71DF\u6536\u8207\u5546\u54C1\u92B7\u552E",
+  reports: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5340\u9593\u67E5\u770B\u71DF\u6536\u8207\u5546\u54C1\u92B7\u552E",
   device: "\u67E5\u770B\u76EE\u524D\u4F7F\u7528\u7684\u88DD\u7F6E\u8207\u700F\u89BD\u5668"
 };
 var restoring = false;
@@ -4293,7 +4299,7 @@ function initializeWorkspace() {
     document.getElementById("workspaceSubtitle").textContent = panelSubtitles[panel] || subtitle;
     document.getElementById("orderContext").hidden = ["search", "settings"].includes(section);
     document.body.dataset.section = section;
-    document.title = `${panels[panel] || title} \xB7 \u91D1\u5BB6 POS`;
+    document.title = `${panels[panel] || title} \xB7 WebPOS`;
     const hash = `#${section}${panel ? "/" + panel : ""}`;
     if (!restoring && location.hash !== hash) history.pushState(null, "", hash);
     closeManagement();

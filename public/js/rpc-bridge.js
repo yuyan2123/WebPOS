@@ -98,7 +98,7 @@
         overlay.innerHTML = `
             <div class="firebase-auth-card">
                 <i class="fas fa-cash-register" aria-hidden="true"></i>
-                <h2 id="firebaseAuthTitle">登入金家 POS</h2>
+                <h2 id="firebaseAuthTitle">登入WebPOS</h2>
                 <p id="firebaseAuthDescription">請使用已授權的 Google 帳號登入，才能存取訂單與客戶資料。</p>
                 <div id="firebaseEmailAuth">
                     <input id="firebaseAuthEmail" type="email" autocomplete="email" placeholder="Email" aria-label="Email">
@@ -165,7 +165,7 @@
         const divider = document.getElementById('firebaseAuthDivider');
         const googleButton = document.getElementById('firebaseGoogleSignIn');
         const verificationActions = document.getElementById('firebaseVerificationActions');
-        if (title) title.textContent = verificationMode ? '請驗證 Email' : '登入金家 POS';
+        if (title) title.textContent = verificationMode ? '請驗證 Email' : '登入WebPOS';
         if (description) {
             description.textContent = verificationMode
                 ? `驗證信已寄到 ${user?.email || '您的信箱'}。完成驗證前，系統不會讀取任何店鋪資料。`
