@@ -9,7 +9,8 @@ functions/.env.*
 !functions/.env.example
 functions/.secret.local
 migration/data.json
-legacy-apps-script/
+legacy-apps-script/*
+!legacy-apps-script/data_trans/
 *.local
 .agents/
 .claude/
