@@ -3,7 +3,7 @@
 <head>
     <base target="_top">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f5f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -695,55 +695,57 @@
     </div>
 
     <!-- 狀態更新確認 Modal -->
-    <div id="statusConfirmModal" class="modal status-confirm-modal">
+    <div id="statusConfirmModal" class="modal status-confirm-modal order-action-modal" aria-describedby="statusConfirmDescription">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="status-confirm-header">
                 <div class="icon"><i class="fas fa-check-circle"></i></div>
-                <h3>確認狀態更新</h3>
+                <div class="order-action-heading"><span class="order-action-eyebrow">訂單管理</span><h3 id="statusConfirmTitle">完成這筆訂單？</h3></div>
                 <button class="close-btn" onclick="closeStatusConfirmModal()">×</button>
             </div>
             <div class="status-confirm-body">
+                <p class="order-action-description" id="statusConfirmDescription">請確認訂單已處理完畢，再將狀態標記為完成。</p>
                 <div class="status-order-info">
                     <div class="order-id" id="statusOrderId">訂單編號</div>
                     <div class="status-change" id="statusUpdateInfo">即將更新訂單狀態</div>
                 </div>
                 <div class="slider-container status-slider">
-                    <div class="slider-track">
+                    <div class="slider-track" data-confirm-label="向右滑動，確認完成">
                         <div class="slider-progress" id="statusSliderProgress"></div>
                         <div class="slider-thumb" id="statusSliderThumb"><i class="fas fa-chevron-right"></i></div>
                     </div>
                 </div>
-                <div id="statusUpdateStatus" class="status-update-status"></div>
+                <div id="statusUpdateStatus" class="status-update-status" role="status" aria-live="polite"></div>
             </div>
             <div class="status-confirm-footer">
-                <button class="btn-cancel" onclick="closeStatusConfirmModal()"><i class="fas fa-times"></i> 取消</button>
+                <button class="btn-cancel" onclick="closeStatusConfirmModal()">返回訂單</button>
             </div>
         </div>
     </div>
 
     <!-- 刪除確認 Modal -->
-    <div id="deleteConfirmModal" class="modal delete-confirm-modal">
+    <div id="deleteConfirmModal" class="modal delete-confirm-modal order-action-modal" aria-describedby="deleteConfirmDescription">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="delete-confirm-header">
                 <div class="icon"><i class="fas fa-trash-alt"></i></div>
-                <h3>刪除訂單確認</h3>
+                <div class="order-action-heading"><span class="order-action-eyebrow">訂單管理</span><h3>刪除這筆訂單？</h3></div>
                 <button class="close-btn" onclick="closeDeleteConfirmModal()">×</button>
             </div>
             <div class="delete-confirm-body">
+                <p class="order-action-description" id="deleteConfirmDescription">刪除後無法復原，請先確認下方訂單資訊。</p>
                 <div class="delete-order-info">
                     <div class="order-id" id="deleteOrderId">訂單編號</div>
                     <div class="customer-name" id="deleteCustomerName">客戶名稱</div>
                 </div>
                 <div class="slider-container">
-                    <div class="slider-track">
+                    <div class="slider-track" data-confirm-label="向右滑動，確認刪除">
                         <div class="slider-progress" id="deleteSliderProgress"></div>
                         <div class="slider-thumb" id="deleteSliderThumb"><i class="fas fa-chevron-right"></i></div>
                     </div>
                 </div>
-                <div id="deleteStatus" class="delete-status"></div>
+                <div id="deleteStatus" class="delete-status" role="status" aria-live="polite"></div>
             </div>
             <div class="delete-confirm-footer">
-                <button class="btn-cancel" onclick="closeDeleteConfirmModal()"><i class="fas fa-times"></i> 取消</button>
+                <button class="btn-cancel" onclick="closeDeleteConfirmModal()">保留訂單</button>
             </div>
         </div>
     </div>

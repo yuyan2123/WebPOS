@@ -94,6 +94,16 @@ export function initConfirmSlider(thumbId, progressId, onConfirm) {
 export function showStatusConfirm(orderId, newStatus) {
   state.currentStatusOrderId = orderId;
   state.currentStatusValue = newStatus;
+  const completing = newStatus === '完成';
+  document.getElementById('statusConfirmTitle').textContent = completing
+    ? '完成這筆訂單？'
+    : '更新訂單狀態？';
+  document.getElementById('statusConfirmDescription').textContent = completing
+    ? '請確認訂單已處理完畢，再將狀態標記為完成。'
+    : '請確認下方訂單資訊，再更新訂單狀態。';
+  document.querySelector('#statusConfirmModal .slider-track').dataset.confirmLabel = completing
+    ? '向右滑動，確認完成'
+    : '向右滑動，確認更新';
   // 更新顯示資訊
   document.getElementById('statusOrderId').textContent = `訂單編號：${orderId}`;
   document.getElementById('statusUpdateInfo').textContent = `將更新為：${newStatus}`;

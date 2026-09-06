@@ -3654,6 +3654,10 @@ function initConfirmSlider(thumbId, progressId, onConfirm) {
 function showStatusConfirm(orderId, newStatus) {
   state.currentStatusOrderId = orderId;
   state.currentStatusValue = newStatus;
+  const completing = newStatus === "\u5B8C\u6210";
+  document.getElementById("statusConfirmTitle").textContent = completing ? "\u5B8C\u6210\u9019\u7B46\u8A02\u55AE\uFF1F" : "\u66F4\u65B0\u8A02\u55AE\u72C0\u614B\uFF1F";
+  document.getElementById("statusConfirmDescription").textContent = completing ? "\u8ACB\u78BA\u8A8D\u8A02\u55AE\u5DF2\u8655\u7406\u5B8C\u7562\uFF0C\u518D\u5C07\u72C0\u614B\u6A19\u8A18\u70BA\u5B8C\u6210\u3002" : "\u8ACB\u78BA\u8A8D\u4E0B\u65B9\u8A02\u55AE\u8CC7\u8A0A\uFF0C\u518D\u66F4\u65B0\u8A02\u55AE\u72C0\u614B\u3002";
+  document.querySelector("#statusConfirmModal .slider-track").dataset.confirmLabel = completing ? "\u5411\u53F3\u6ED1\u52D5\uFF0C\u78BA\u8A8D\u5B8C\u6210" : "\u5411\u53F3\u6ED1\u52D5\uFF0C\u78BA\u8A8D\u66F4\u65B0";
   document.getElementById("statusOrderId").textContent = `\u8A02\u55AE\u7DE8\u865F\uFF1A${orderId}`;
   document.getElementById("statusUpdateInfo").textContent = `\u5C07\u66F4\u65B0\u70BA\uFF1A${newStatus}`;
   document.getElementById("statusUpdateStatus").textContent = "";

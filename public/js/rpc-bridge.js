@@ -294,7 +294,7 @@
         list.innerHTML = availableShops.map((shop) => `
             <button type="button" class="firebase-shop-option ${activeShop?.shopId === shop.shopId ? 'active' : ''}" data-shop-id="${escapeMarkup(shop.shopId)}">
                 <span><strong>${escapeMarkup(shop.name)}</strong></span>
-                <span class="firebase-shop-role">${roleLabel(shop.role)}</span>
+                <span class="firebase-shop-role">${shop.role === 'owner' && shop.ownerUid && shop.ownerUid !== activeUid ? 'admin' : roleLabel(shop.role)}</span>
             </button>`).join('');
         list.querySelectorAll('.firebase-shop-option').forEach((button) => {
             button.addEventListener('click', () => {

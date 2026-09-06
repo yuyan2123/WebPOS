@@ -302,6 +302,222 @@
   background: linear-gradient(135deg, #059669, #047857);
 }
 
+/* Shared order action dialogs */
+.order-action-modal {
+  --action-color: #286653;
+  --action-soft: #edf5f0;
+  --action-border: #cbded3;
+  padding: 16px;
+}
+
+.delete-confirm-modal.order-action-modal {
+  --action-color: #ad3935;
+  --action-soft: #fcf0ee;
+  --action-border: #ebceca;
+}
+
+.order-action-modal .modal-content {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  border: 1px solid #e1e7e2;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 80px #172c2430;
+}
+
+.order-action-modal :is(.status-confirm-header, .delete-confirm-header) {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 60px 0 28px;
+  background: #fff;
+  color: #253c32;
+  position: relative;
+}
+
+.order-action-modal .icon {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--action-soft);
+  color: var(--action-color);
+  font-size: 20px;
+}
+
+.order-action-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #64736b;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.order-action-modal h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.order-action-modal .close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  transform: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #65736b;
+  background: #f3f5f3;
+}
+
+.order-action-modal .close-btn:hover {
+  background: #e7ece8;
+}
+
+.order-action-modal :is(.status-confirm-body, .delete-confirm-body) {
+  padding: 20px 28px 0;
+  background: #fff;
+}
+
+.order-action-description {
+  margin: 0 0 20px;
+  color: #65736b;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.order-action-modal :is(.status-order-info, .delete-order-info) {
+  margin: 0 0 24px;
+  padding: 16px 18px;
+  border: 1px solid #e3e8e4;
+  border-radius: 14px;
+  background: #f7f9f7;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.order-action-modal .order-id {
+  margin: 0 0 8px;
+  color: #58675e;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.order-action-modal :is(.status-change, .customer-name) {
+  margin: 0;
+  color: #253c32;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.order-action-modal .slider-container {
+  margin: 0;
+}
+
+.order-action-modal .slider-track {
+  height: 60px;
+  border: 1px solid var(--action-border);
+  border-radius: 16px;
+  background: var(--action-soft);
+}
+
+.order-action-modal .slider-track::before {
+  content: attr(data-confirm-label);
+  right: 0;
+  left: 60px;
+  text-align: center;
+  color: var(--action-color);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 1;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.order-action-modal .slider-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+  background: var(--action-color);
+  box-shadow: 0 2px 5px #172c2420;
+}
+
+.order-action-modal .slider-thumb:hover,
+.order-action-modal .slider-thumb:active {
+  transform: none;
+}
+
+.order-action-modal .slider-progress {
+  background: var(--action-border);
+  border-radius: 14px;
+}
+
+.order-action-modal :is(.status-update-status, .delete-status) {
+  margin: 12px 0 0;
+  padding: 0;
+  min-height: 0;
+  font-size: 13px;
+  color: var(--action-color);
+}
+
+.order-action-modal :is(.status-update-status, .delete-status):empty {
+  display: none;
+}
+
+.order-action-modal :is(.status-confirm-footer, .delete-confirm-footer) {
+  padding: 12px 28px 24px;
+  border: 0;
+  background: #fff;
+}
+
+.order-action-modal .btn-cancel {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #58675e;
+  font-size: 14px;
+}
+
+.order-action-modal .btn-cancel:hover {
+  background: #f3f5f3;
+}
+
+.order-action-modal :is(button, .slider-thumb):focus-visible {
+  outline: 3px solid var(--action-color);
+  outline-offset: 3px;
+}
+
+.order-action-modal .slider-thumb:focus-visible {
+  outline-offset: -4px;
+  outline-color: #fff;
+}
+
+@media (max-width: 380px) {
+  .order-action-modal :is(.status-confirm-header, .delete-confirm-header) {
+    padding-left: 20px;
+  }
+  .order-action-modal :is(.status-confirm-body, .delete-confirm-body) {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .order-action-modal h3 {
+    font-size: 20px;
+  }
+  .order-action-modal .slider-track::before {
+    font-size: 13px;
+  }
+}
+
 /* 禮盒細項樣式 */
 
 .giftbox-details {
