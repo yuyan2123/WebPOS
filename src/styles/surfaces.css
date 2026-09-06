@@ -75,7 +75,6 @@ textarea:focus-visible,
 #customer,
 #date > div,
 .search-container,
-.settings-container,
 .giftbox-confirm-container,
 #giftboxStep2 > .bg-white,
 .giftbox-product-list {
@@ -91,7 +90,6 @@ textarea:focus-visible,
 
 .content-section h2,
 .search-header h2,
-.settings-header h2,
 .settings-panel-title {
   color: var(--pos-ink) !important;
   letter-spacing: -0.025em;
@@ -301,7 +299,6 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 
 .giftbox-summary-card h4 i,
 .giftbox-special-price-section label i,
-.settings-nav-btn.active i,
 .device-info-item label i {
   color: var(--pos-primary) !important;
 }
@@ -628,20 +625,17 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 /* Search, settings, reporting */
-.search-container,
-.settings-container {
+.search-container {
   padding: clamp(20px, 2.6vw, 32px);
 }
 
-.search-header,
-.settings-header {
+.search-header {
   margin-bottom: 24px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--pos-line);
 }
 
-.search-header-icon,
-.settings-header-icon {
+.search-header-icon {
   width: 46px;
   height: 46px;
   border-radius: 13px;
@@ -669,8 +663,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 .btn-clear,
-.giftbox-action-buttons .btn-back,
-.settings-back-btn {
+.giftbox-action-buttons .btn-back {
   color: var(--pos-ink-soft);
   border: 1px solid var(--pos-line-strong);
   background: #fff;
@@ -687,29 +680,6 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
   color: #fff;
   background: var(--pos-primary);
   box-shadow: 0 8px 18px rgba(31, 111, 95, 0.16);
-}
-
-.settings-layout {
-  gap: 20px;
-}
-.settings-nav {
-  width: 156px;
-}
-
-.settings-nav-btn {
-  min-height: 46px;
-  margin-bottom: 6px;
-  padding: 11px 13px;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  color: var(--pos-muted);
-  background: transparent;
-}
-
-.settings-nav-btn.active {
-  color: var(--pos-primary);
-  border-color: #c9dfd7;
-  background: var(--pos-primary-soft);
 }
 
 .settings-panel {

@@ -136,7 +136,7 @@ export function loadProductsByCategory(category, containerId) {
   const container = document.getElementById(containerId + 'Products');
   container.classList.remove('loading');
   if (products.length === 0) {
-    container.innerHTML = `<div class="col-span-full workspace-empty" role="status"><h3>${query ? '找不到符合的商品' : '目前沒有啟用的商品'}</h3><p>${query ? '試試其他名稱，或清除搜尋條件。' : '可在店務管理中新增或啟用商品。'}</p></div>`;
+    container.innerHTML = `<div class="col-span-full workspace-empty" role="status"><h3>${query ? '找不到符合的商品' : '目前沒有啟用的商品'}</h3><p>${query ? '試試其他名稱，或清除搜尋條件。' : '可在「管理」的「商品管理」新增或啟用商品。'}</p></div>`;
     return;
   }
   // 企業客戶模式提示 banner

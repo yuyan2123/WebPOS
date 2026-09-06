@@ -33,10 +33,17 @@
 <button type="button" onclick="showSection('gift', this)" id="nav-gift" class="nav-item" aria-label="伴手禮"><i class="fas fa-cookie" aria-hidden="true"></i><span>伴手禮</span></button>
 <button type="button" onclick="showSection('cake', this)" id="nav-cake" class="nav-item" aria-label="喜餅"><i class="fas fa-birthday-cake" aria-hidden="true"></i><span>喜餅</span></button>
 <button type="button" onclick="showSection('giftbox', this)" id="nav-giftbox" class="nav-item" aria-label="禮盒組合"><i class="fas fa-box" aria-hidden="true"></i><span>禮盒組合</span></button></div>
-        <div class="navigation-group management"><p class="navigation-label">管理</p><button type="button" onclick="showSection('search', this)" id="nav-search" class="nav-item" aria-label="訂單查詢"><i class="fas fa-search" aria-hidden="true"></i><span>訂單查詢</span></button><button type="button" onclick="showSection('settings', this)" id="nav-settings" class="nav-item" aria-label="店務管理"><i class="fas fa-sliders" aria-hidden="true"></i><span>店務管理</span></button>
-          <button type="button" class="workspace-shortcut" data-panel="capacity"><i class="fas fa-calendar-check" aria-hidden="true"></i>供應量</button>
-          <button type="button" class="workspace-shortcut" data-panel="demand"><i class="fas fa-clipboard-list" aria-hidden="true"></i>需求統計</button>
-          <button type="button" class="workspace-shortcut" data-panel="reports"><i class="fas fa-chart-bar" aria-hidden="true"></i>營業報表</button>
+        <div class="navigation-group management">
+          <p class="navigation-label">管理</p>
+          <button type="button" onclick="showSection('search', this)" id="nav-search" class="nav-item" aria-label="訂單查詢"><i class="fas fa-search" aria-hidden="true"></i><span>訂單查詢</span></button>
+          <button type="button" id="managementToggle" class="nav-item management-toggle" aria-expanded="false" aria-controls="managementLinks"><i class="fas fa-sliders" aria-hidden="true"></i><span>管理</span></button>
+          <div id="managementLinks" class="management-links" role="group" aria-label="管理功能">
+            <button type="button" id="nav-products" class="nav-item" data-panel="products"><i class="fas fa-box-open" aria-hidden="true"></i><span>商品管理</span></button>
+            <button type="button" id="nav-capacity" class="nav-item" data-panel="capacity"><i class="fas fa-calendar-check" aria-hidden="true"></i><span>供應量設定</span></button>
+            <button type="button" id="nav-demand" class="nav-item" data-panel="demand"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span>需求統計</span></button>
+            <button type="button" id="nav-reports" class="nav-item" data-panel="reports"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>營業報表</span></button>
+            <button type="button" id="nav-device" class="nav-item" data-panel="device"><i class="fas fa-laptop" aria-hidden="true"></i><span>裝置資訊</span></button>
+          </div>
         </div>
       </nav>
       <p class="navigation-hint">按 / 快速查詢訂單</p>
@@ -353,180 +360,138 @@
 
         <!-- 設定頁 -->
         <section id="settings" class="content-section max-w-6xl mx-auto">
-            <div class="settings-container">
-                <!-- 標題區 -->
-                <div class="settings-header">
-                    <div class="settings-header-icon">
-                        <i class="fas fa-cog"></i>
-                    </div>
-                    <h2>系統設定</h2>
-                </div>
-
-                <div class="settings-layout">
-                    <!-- 側邊導航 -->
-                    <nav class="settings-nav">
-                        <button onclick="showSettingsSection('products', this)" class="settings-nav-btn active">
-                            <i class="fas fa-box-open"></i>
+            <!-- 商品管理 -->
+            <div id="settingsProducts" class="settings-section active">
+                <div class="settings-panel">
+                    <div class="settings-panel-header">
+                        <div class="settings-panel-title">
+                            <i class="fas fa-list-ul"></i>
                             商品管理
-                        </button>
-                        <button onclick="showSettingsSection('capacity', this)" class="settings-nav-btn">
-                            <i class="fas fa-tachometer-alt"></i>
-                            產能設定
-                        </button>
-                        <button onclick="showSettingsSection('demand', this)" class="settings-nav-btn">
-                            <i class="fas fa-clipboard-list"></i>
-                            需求統計
-                        </button>
-                        <button onclick="showSettingsSection('reports', this)" class="settings-nav-btn">
-                            <i class="fas fa-chart-bar"></i>
-                            營業報表
-                        </button>
-                        <button onclick="showSettingsSection('device', this)" class="settings-nav-btn">
-                            <i class="fas fa-laptop"></i>
-                            裝置資訊
-                        </button>
-                    </nav>
-
-                    <!-- 內容區 -->
-                    <div class="settings-content">
-                        <button class="settings-back-btn" onclick="settingsBack()">
-                            <i class="fas fa-arrow-left"></i> 返回設定
-                        </button>
-                        <!-- 商品管理 -->
-                        <div id="settingsProducts" class="settings-section active">
-                            <div class="settings-panel">
-                                <div class="settings-panel-header">
-                                    <div class="settings-panel-title">
-                                        <i class="fas fa-list-ul"></i>
-                                        商品管理
-                                    </div>
-                                    <button onclick="showAddProduct()" class="btn-add-product">
-                                        <i class="fas fa-plus"></i>
-                                        新增商品
-                                    </button>
-                                </div>
-                                <div id="productsFilterTabs" class="products-filter-tabs"></div>
-                                <div id="productsCardGrid" class="products-card-grid"></div>
-                            </div>
                         </div>
+                        <button onclick="showAddProduct()" class="btn-add-product">
+                            <i class="fas fa-plus"></i>
+                            新增商品
+                        </button>
+                    </div>
+                    <div id="productsFilterTabs" class="products-filter-tabs"></div>
+                    <div id="productsCardGrid" class="products-card-grid"></div>
+                </div>
+            </div>
 
-                        <!-- 產能設定 -->
-                        <div id="settingsCapacity" class="settings-section" style="display: none;">
-                            <div class="settings-panel">
-                                <div class="settings-panel-title" style="margin-bottom: 4px;">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                    每日供應量上限
-                                </div>
-                                <div style="font-size: 0.78rem; color: #9ca3af; margin-bottom: 16px;">超過上限僅顯示警告，不阻擋訂單。留空或 0 = 不限制。日期覆寫優先於星期預設。</div>
+            <!-- 產能設定 -->
+            <div id="settingsCapacity" class="settings-section" style="display: none;">
+                <div class="settings-panel">
+                    <div class="settings-panel-title" style="margin-bottom: 4px;">
+                        <i class="fas fa-tachometer-alt"></i>
+                        每日供應量上限
+                    </div>
+                    <div style="font-size: 0.78rem; color: #9ca3af; margin-bottom: 16px;">超過上限僅顯示警告，不阻擋訂單。留空或 0 = 不限制。日期覆寫優先於星期預設。</div>
 
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">星期預設</div>
-                                    <div id="weekdayAutoSaveStatus" style="font-size: 0.78rem; color: #9ca3af; min-height: 18px;"></div>
-                                </div>
-                                <div id="capacityWeekdayGrid" class="capacity-weekday-strip"></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">星期預設</div>
+                        <div id="weekdayAutoSaveStatus" style="font-size: 0.78rem; color: #9ca3af; min-height: 18px;"></div>
+                    </div>
+                    <div id="capacityWeekdayGrid" class="capacity-weekday-strip"></div>
 
-                                <hr class="capacity-section-divider">
+                    <hr class="capacity-section-divider">
 
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                    <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">日期覆寫</div>
-                                </div>
-                                <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end;">
-                                    <div style="flex: 1; min-width: 130px;">
-                                        <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">日期</label>
-                                        <input type="text" id="overrideDate" placeholder="點擊選擇日期" readonly style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; cursor: pointer; background: white;">
-                                    </div>
-                                    <div style="width: 88px;">
-                                        <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">上限</label>
-                                        <input type="number" id="overrideMaxQty" min="0" placeholder="0" style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; text-align: center;">
-                                    </div>
-                                    <button onclick="addDateOverride()" style="padding: 7px 14px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; white-space: nowrap;">
-                                        <i class="fas fa-plus" style="margin-right: 4px;"></i>新增
-                                    </button>
-                                </div>
-                                <div style="border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb;">
-                                    <table class="capacity-override-table">
-                                        <thead>
-                                            <tr>
-                                                <th>日期</th>
-                                                <th>星期</th>
-                                                <th>上限</th>
-                                                <th>狀態</th>
-                                                <th style="text-align: center;">操作</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="overrideTableBody">
-                                            <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 24px;">尚無日期覆寫設定</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">日期覆寫</div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end;">
+                        <div style="flex: 1; min-width: 130px;">
+                            <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">日期</label>
+                            <input type="text" id="overrideDate" placeholder="點擊選擇日期" readonly style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; cursor: pointer; background: white;">
                         </div>
-
-                        <!-- 需求統計 -->
-                        <div id="settingsDemand" class="settings-section" style="display: none;">
-                            <div class="settings-panel">
-                                <div class="settings-panel-title" style="margin-bottom: 20px;">
-                                    <i class="fas fa-clipboard-list"></i>
-                                    需求統計
-                                </div>
-                                <div class="report-form">
-                                    <div class="form-group">
-                                        <label><i class="fas fa-calendar-alt"></i> 選擇日期或區間</label>
-                                        <input type="text" id="demandDatePicker" placeholder="點擊選擇日期" readonly>
-                                    </div>
-                                    <button onclick="generateDemandStats()" id="btnDemandStats" class="btn-generate-report">
-                                        <i class="fas fa-calculator"></i>
-                                        產生統計
-                                    </button>
-                                </div>
-                                <div id="demandResults"></div>
-                            </div>
+                        <div style="width: 88px;">
+                            <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">上限</label>
+                            <input type="number" id="overrideMaxQty" min="0" placeholder="0" style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; text-align: center;">
                         </div>
+                        <button onclick="addDateOverride()" style="padding: 7px 14px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; white-space: nowrap;">
+                            <i class="fas fa-plus" style="margin-right: 4px;"></i>新增
+                        </button>
+                    </div>
+                    <div style="border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb;">
+                        <table class="capacity-override-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>星期</th>
+                                    <th>上限</th>
+                                    <th>狀態</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overrideTableBody">
+                                <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 24px;">尚無日期覆寫設定</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
-                        <!-- 營業報表 -->
-                        <div id="settingsReports" class="settings-section" style="display: none;">
-                            <div class="settings-panel">
-                                <div class="settings-panel-title" style="margin-bottom: 20px;">
-                                    <i class="fas fa-chart-line"></i>
-                                    營業報表
-                                </div>
-                                <div class="report-form">
-                                    <div class="form-group">
-                                        <label><i class="fas fa-calendar-alt"></i> 選擇日期</label>
-                                        <input type="text" id="reportDatePicker" placeholder="點擊選擇日期" readonly>
-                                    </div>
-                                    <button onclick="generateReport()" id="btnReport" class="btn-generate-report">
-                                        <i class="fas fa-file-export"></i>
-                                        產生報表
-                                    </button>
-                                </div>
-                                <div id="reportResults"></div>
-                            </div>
+            <!-- 需求統計 -->
+            <div id="settingsDemand" class="settings-section" style="display: none;">
+                <div class="settings-panel">
+                    <div class="settings-panel-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-clipboard-list"></i>
+                        需求統計
+                    </div>
+                    <div class="report-form">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> 選擇日期或區間</label>
+                            <input type="text" id="demandDatePicker" placeholder="點擊選擇日期" readonly>
                         </div>
+                        <button onclick="generateDemandStats()" id="btnDemandStats" class="btn-generate-report">
+                            <i class="fas fa-calculator"></i>
+                            產生統計
+                        </button>
+                    </div>
+                    <div id="demandResults"></div>
+                </div>
+            </div>
+
+            <!-- 營業報表 -->
+            <div id="settingsReports" class="settings-section" style="display: none;">
+                <div class="settings-panel">
+                    <div class="settings-panel-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-chart-line"></i>
+                        營業報表
+                    </div>
+                    <div class="report-form">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> 選擇日期</label>
+                            <input type="text" id="reportDatePicker" placeholder="點擊選擇日期" readonly>
+                        </div>
+                        <button onclick="generateReport()" id="btnReport" class="btn-generate-report">
+                            <i class="fas fa-file-export"></i>
+                            產生報表
+                        </button>
+                    </div>
+                    <div id="reportResults"></div>
+                </div>
+            </div>
 
 
-                        <!-- 裝置資訊 -->
-                        <div id="settingsDevice" class="settings-section" style="display: none;">
-                            <div class="settings-panel">
-                                <div class="settings-panel-title" style="margin-bottom: 20px;">
-                                    <i class="fas fa-info-circle"></i>
-                                    裝置資訊
-                                </div>
-                                <div class="device-info-grid">
-                                    <div class="device-info-item">
-                                        <label><i class="fas fa-desktop"></i> 作業系統</label>
-                                        <input type="text" id="deviceOs" readonly>
-                                    </div>
-                                    <div class="device-info-item">
-                                        <label><i class="fas fa-tv"></i> 顯示模式</label>
-                                        <input type="text" id="layoutMode" readonly>
-                                    </div>
-                                    <div class="device-info-item">
-                                        <label><i class="fas fa-code"></i> User Agent</label>
-                                        <textarea id="fullUserAgent" readonly rows="4"></textarea>
-                                    </div>
-                                </div>
-                            </div>
+            <!-- 裝置資訊 -->
+            <div id="settingsDevice" class="settings-section" style="display: none;">
+                <div class="settings-panel">
+                    <div class="settings-panel-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        裝置資訊
+                    </div>
+                    <div class="device-info-grid">
+                        <div class="device-info-item">
+                            <label><i class="fas fa-desktop"></i> 作業系統</label>
+                            <input type="text" id="deviceOs" readonly>
+                        </div>
+                        <div class="device-info-item">
+                            <label><i class="fas fa-tv"></i> 顯示模式</label>
+                            <input type="text" id="layoutMode" readonly>
+                        </div>
+                        <div class="device-info-item">
+                            <label><i class="fas fa-code"></i> User Agent</label>
+                            <textarea id="fullUserAgent" readonly rows="4"></textarea>
                         </div>
                     </div>
                 </div>

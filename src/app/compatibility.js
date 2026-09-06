@@ -1,4 +1,4 @@
-import { showSection, showSettingsSection, settingsBack } from './navigation.js';
+import { showSection, showSettingsSection } from './navigation.js';
 import {
   toggleNameTitle,
   selectCustomerType,
@@ -86,7 +86,6 @@ Object.assign(window, {
   clearSearch,
   searchOverdueOrders,
   showSettingsSection,
-  settingsBack,
   showAddProduct,
   addDateOverride,
   generateDemandStats,

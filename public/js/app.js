@@ -1882,7 +1882,7 @@ function loadProductsByCategory(category, containerId) {
   const container = document.getElementById(containerId + "Products");
   container.classList.remove("loading");
   if (products.length === 0) {
-    container.innerHTML = `<div class="col-span-full workspace-empty" role="status"><h3>${query ? "\u627E\u4E0D\u5230\u7B26\u5408\u7684\u5546\u54C1" : "\u76EE\u524D\u6C92\u6709\u555F\u7528\u7684\u5546\u54C1"}</h3><p>${query ? "\u8A66\u8A66\u5176\u4ED6\u540D\u7A31\uFF0C\u6216\u6E05\u9664\u641C\u5C0B\u689D\u4EF6\u3002" : "\u53EF\u5728\u5E97\u52D9\u7BA1\u7406\u4E2D\u65B0\u589E\u6216\u555F\u7528\u5546\u54C1\u3002"}</p></div>`;
+    container.innerHTML = `<div class="col-span-full workspace-empty" role="status"><h3>${query ? "\u627E\u4E0D\u5230\u7B26\u5408\u7684\u5546\u54C1" : "\u76EE\u524D\u6C92\u6709\u555F\u7528\u7684\u5546\u54C1"}</h3><p>${query ? "\u8A66\u8A66\u5176\u4ED6\u540D\u7A31\uFF0C\u6216\u6E05\u9664\u641C\u5C0B\u689D\u4EF6\u3002" : "\u53EF\u5728\u300C\u7BA1\u7406\u300D\u7684\u300C\u5546\u54C1\u7BA1\u7406\u300D\u65B0\u589E\u6216\u555F\u7528\u5546\u54C1\u3002"}</p></div>`;
     return;
   }
   const companyBanner = state.isCompanyCustomer ? '<div class="company-mode-banner col-span-full"><i class="fas fa-building"></i>\u76EE\u524D\u70BA\u4F01\u696D\u5BA2\u6236\u6A21\u5F0F\uFF0C\u5546\u54C1\u5DF2\u5957\u7528\u4F01\u696D\u50F9\u683C</div>' : "";
@@ -3291,7 +3291,11 @@ function renderDemandResults(result, startDate, endDate) {
 }
 
 // src/app/navigation.js
-function showSection(sectionName, navElement) {
+function showSection(sectionName, navElement, panel) {
+  if (sectionName === "settings" && !panel) {
+    const active = document.querySelector(".settings-section.active");
+    return showSettingsSection(active?.id.replace("settings", "").toLowerCase() || "products");
+  }
   const section = document.getElementById(sectionName);
   if (!section?.classList.contains("content-section")) return;
   navElement ||= document.getElementById("nav-" + sectionName);
@@ -3326,7 +3330,7 @@ function showSection(sectionName, navElement) {
   if (sectionName === "search") {
     initSearchDatepicker();
   }
-  document.dispatchEvent(new CustomEvent("pos:navigate", { detail: { section: sectionName } }));
+  document.dispatchEvent(new CustomEvent("pos:navigate", { detail: { section: sectionName, panel } }));
 }
 function showSettingsSection(sectionName, navElement) {
   const target = document.getElementById(
@@ -3339,13 +3343,7 @@ function showSettingsSection(sectionName, navElement) {
   });
   target.classList.add("active");
   target.style.display = "";
-  document.querySelectorAll(".settings-nav-btn").forEach((item) => {
-    item.classList.remove("active");
-  });
-  if (navElement) {
-    navElement.classList.add("active");
-  }
-  document.querySelector(".settings-layout").classList.add("drilled-in");
+  showSection("settings", navElement || document.getElementById("nav-" + sectionName), sectionName);
   if (sectionName === "demand") {
     initDemandDatepicker();
   }
@@ -3356,12 +3354,6 @@ function showSettingsSection(sectionName, navElement) {
     initOverrideDatepicker();
     loadCapacitySettings();
   }
-  document.dispatchEvent(
-    new CustomEvent("pos:navigate", { detail: { section: "settings", panel: sectionName } })
-  );
-}
-function settingsBack() {
-  document.querySelector(".settings-layout").classList.remove("drilled-in");
 }
 
 // src/app/checkout.js
@@ -4154,7 +4146,6 @@ Object.assign(window, {
   clearSearch,
   searchOverdueOrders,
   showSettingsSection,
-  settingsBack,
   showAddProduct,
   addDateOverride,
   generateDemandStats,
@@ -4209,7 +4200,7 @@ var sections = {
   cake: ["\u559C\u9905", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
   giftbox: ["\u79AE\u76D2\u7D44\u5408", "\u9078\u64C7\u898F\u683C\uFF0C\u81EA\u7531\u642D\u914D\u5167\u5BB9"],
   search: ["\u8A02\u55AE\u7BA1\u7406", "\u67E5\u8A62\u9032\u5EA6\u3001\u4ED8\u6B3E\u8207\u4EA4\u8CA8\u8CC7\u8A0A"],
-  settings: ["\u5E97\u52D9\u7BA1\u7406", "\u5546\u54C1\u3001\u4F9B\u61C9\u91CF\u8207\u71DF\u904B\u8CC7\u8A0A"]
+  settings: ["\u5546\u54C1\u7BA1\u7406", "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1"]
 };
 var panels = {
   products: "\u5546\u54C1\u7BA1\u7406",
@@ -4218,13 +4209,20 @@ var panels = {
   reports: "\u71DF\u696D\u5831\u8868",
   device: "\u88DD\u7F6E\u8CC7\u8A0A"
 };
+var panelSubtitles = {
+  products: "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1",
+  capacity: "\u8A2D\u5B9A\u6BCF\u65E5\u4F9B\u61C9\u91CF\u8207\u6307\u5B9A\u65E5\u671F\u4E0A\u9650",
+  demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5F59\u6574\u5546\u54C1\u9700\u6C42",
+  reports: "\u67E5\u770B\u6BCF\u65E5\u71DF\u6536\u8207\u5546\u54C1\u92B7\u552E",
+  device: "\u67E5\u770B\u76EE\u524D\u4F7F\u7528\u7684\u88DD\u7F6E\u8207\u700F\u89BD\u5668"
+};
 var restoring = false;
 function navigateFromUrl() {
   const [section, panel] = location.hash.slice(1).split("/");
   if (!sections[section]) return;
   restoring = true;
-  showSection(section);
-  if (section === "settings" && panels[panel]) showSettingsSection(panel);
+  if (section === "settings") showSettingsSection(panels[panel] ? panel : "products");
+  else showSection(section);
   restoring = false;
 }
 function refreshWorkspace() {
@@ -4246,14 +4244,35 @@ function initializeWorkspace() {
     document.getElementById(id + "ProductSearch").addEventListener("input", () => loadProductsByCategory(category, id));
   }
   document.getElementById("workspaceCart").addEventListener("click", toggleCartModal);
-  document.querySelectorAll("[data-panel]").forEach(
-    (button) => button.addEventListener("click", () => {
-      restoring = true;
-      showSection("settings");
-      restoring = false;
-      showSettingsSection(button.dataset.panel);
-    })
-  );
+  const managementToggle = document.getElementById("managementToggle");
+  const managementLinks = document.getElementById("managementLinks");
+  function closeManagement(returnFocus = false) {
+    managementToggle.setAttribute("aria-expanded", "false");
+    if (returnFocus) managementToggle.focus();
+  }
+  managementToggle.addEventListener("click", () => {
+    const expanded = managementToggle.getAttribute("aria-expanded") === "true";
+    managementToggle.setAttribute("aria-expanded", String(!expanded));
+    if (!expanded) {
+      (managementLinks.querySelector('[aria-current="page"]') || managementLinks.querySelector("button")).focus();
+    }
+  });
+  document.addEventListener("click", (event2) => {
+    if (!managementLinks.contains(event2.target) && !managementToggle.contains(event2.target))
+      closeManagement();
+  });
+  document.addEventListener("focusin", (event2) => {
+    if (!managementLinks.contains(event2.target) && !managementToggle.contains(event2.target))
+      closeManagement();
+  });
+  document.addEventListener("keydown", (event2) => {
+    if (event2.key === "Escape" && managementToggle.getAttribute("aria-expanded") === "true") {
+      event2.preventDefault();
+      closeManagement(true);
+    }
+  });
+  window.matchMedia("(max-width: 899px)").addEventListener("change", () => closeManagement());
+  document.querySelectorAll("[data-panel]").forEach((button) => button.addEventListener("click", () => showSettingsSection(button.dataset.panel)));
   document.querySelectorAll("[data-route]").forEach((button) => button.addEventListener("click", () => showSection(button.dataset.route)));
   document.getElementById("todayOrders").addEventListener("click", () => {
     document.getElementById("searchDate").value = getTaipeiDate();
@@ -4271,23 +4290,19 @@ function initializeWorkspace() {
     if (!sections[section]) return;
     const [title, subtitle] = sections[section];
     document.getElementById("workspaceTitle").textContent = panels[panel] || title;
-    document.getElementById("workspaceSubtitle").textContent = subtitle;
+    document.getElementById("workspaceSubtitle").textContent = panelSubtitles[panel] || subtitle;
     document.getElementById("orderContext").hidden = ["search", "settings"].includes(section);
     document.body.dataset.section = section;
     document.title = `${panels[panel] || title} \xB7 \u91D1\u5BB6 POS`;
     const hash = `#${section}${panel ? "/" + panel : ""}`;
     if (!restoring && location.hash !== hash) history.pushState(null, "", hash);
-    const heading = document.querySelector(`#${section} h2, #${section} h3`);
+    closeManagement();
+    managementToggle.classList.toggle("current-group", section === "settings");
+    const heading = document.getElementById("workspaceTitle");
     if (heading && !restoring) {
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
     }
-    document.querySelectorAll(".settings-nav-btn").forEach((button) => {
-      const selected = panel && button.getAttribute("onclick")?.includes(`'${panel}'`);
-      button.classList.toggle("active", Boolean(selected));
-      if (selected) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
-    });
     refreshWorkspace();
   });
   window.addEventListener("popstate", navigateFromUrl);

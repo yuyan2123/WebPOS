@@ -1,20 +1,4 @@
-.settings-nav-btn.active {
-  background: linear-gradient(135deg, #f1f8f5, #e4f2ed);
-  color: #1f6f5f;
-  border-color: #1f6f5f;
-  font-weight: 600;
-}
-
-.settings-nav-btn.active i {
-  color: #1f6f5f;
-}
-
 /* 內容區塊 */
-
-.settings-content {
-  flex: 1;
-  min-width: 0;
-}
 
 .settings-panel {
   background: #f8fafc;
@@ -168,45 +152,6 @@
 }
 
 /* 手機版返回按鈕 */
-
-.settings-back-btn {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  margin-bottom: 12px;
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-@media (max-width: 640px) {
-  .settings-nav {
-    width: 100%;
-  }
-  .settings-nav-btn {
-    padding: 14px 16px;
-    font-size: 0.9rem;
-    border-radius: 12px;
-  }
-  .settings-nav-btn i {
-    font-size: 1rem;
-    width: 22px;
-  }
-  .settings-layout.drilled-in .settings-nav {
-    display: none;
-  }
-  .settings-layout:not(.drilled-in) .settings-content {
-    display: none;
-  }
-  .settings-layout.drilled-in .settings-back-btn {
-    display: inline-flex;
-  }
-}
 
 /* 新增商品按鈕 */
 

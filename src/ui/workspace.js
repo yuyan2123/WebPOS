@@ -12,7 +12,7 @@ const sections = {
   cake: ['喜餅', '挑選商品，隨時檢視訂單'],
   giftbox: ['禮盒組合', '選擇規格，自由搭配內容'],
   search: ['訂單管理', '查詢進度、付款與交貨資訊'],
-  settings: ['店務管理', '商品、供應量與營運資訊'],
+  settings: ['商品管理', '新增、編輯與管理商品'],
 };
 const panels = {
   products: '商品管理',
@@ -21,14 +21,21 @@ const panels = {
   reports: '營業報表',
   device: '裝置資訊',
 };
+const panelSubtitles = {
+  products: '新增、編輯與管理商品',
+  capacity: '設定每日供應量與指定日期上限',
+  demand: '依交貨日期彙整商品需求',
+  reports: '查看每日營收與商品銷售',
+  device: '查看目前使用的裝置與瀏覽器',
+};
 let restoring = false;
 
 function navigateFromUrl() {
   const [section, panel] = location.hash.slice(1).split('/');
   if (!sections[section]) return;
   restoring = true;
-  showSection(section);
-  if (section === 'settings' && panels[panel]) showSettingsSection(panel);
+  if (section === 'settings') showSettingsSection(panels[panel] ? panel : 'products');
+  else showSection(section);
   restoring = false;
 }
 
@@ -54,14 +61,39 @@ export function initializeWorkspace() {
       .addEventListener('input', () => loadProductsByCategory(category, id));
   }
   document.getElementById('workspaceCart').addEventListener('click', toggleCartModal);
-  document.querySelectorAll('[data-panel]').forEach((button) =>
-    button.addEventListener('click', () => {
-      restoring = true;
-      showSection('settings');
-      restoring = false;
-      showSettingsSection(button.dataset.panel);
-    }),
-  );
+  const managementToggle = document.getElementById('managementToggle');
+  const managementLinks = document.getElementById('managementLinks');
+  function closeManagement(returnFocus = false) {
+    managementToggle.setAttribute('aria-expanded', 'false');
+    if (returnFocus) managementToggle.focus();
+  }
+  managementToggle.addEventListener('click', () => {
+    const expanded = managementToggle.getAttribute('aria-expanded') === 'true';
+    managementToggle.setAttribute('aria-expanded', String(!expanded));
+    if (!expanded) {
+      (
+        managementLinks.querySelector('[aria-current="page"]') || managementLinks.querySelector('button')
+      ).focus();
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!managementLinks.contains(event.target) && !managementToggle.contains(event.target))
+      closeManagement();
+  });
+  document.addEventListener('focusin', (event) => {
+    if (!managementLinks.contains(event.target) && !managementToggle.contains(event.target))
+      closeManagement();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && managementToggle.getAttribute('aria-expanded') === 'true') {
+      event.preventDefault();
+      closeManagement(true);
+    }
+  });
+  window.matchMedia('(max-width: 899px)').addEventListener('change', () => closeManagement());
+  document
+    .querySelectorAll('[data-panel]')
+    .forEach((button) => button.addEventListener('click', () => showSettingsSection(button.dataset.panel)));
   document
     .querySelectorAll('[data-route]')
     .forEach((button) => button.addEventListener('click', () => showSection(button.dataset.route)));
@@ -81,23 +113,19 @@ export function initializeWorkspace() {
     if (!sections[section]) return;
     const [title, subtitle] = sections[section];
     document.getElementById('workspaceTitle').textContent = panels[panel] || title;
-    document.getElementById('workspaceSubtitle').textContent = subtitle;
+    document.getElementById('workspaceSubtitle').textContent = panelSubtitles[panel] || subtitle;
     document.getElementById('orderContext').hidden = ['search', 'settings'].includes(section);
     document.body.dataset.section = section;
     document.title = `${panels[panel] || title} · 金家 POS`;
     const hash = `#${section}${panel ? '/' + panel : ''}`;
     if (!restoring && location.hash !== hash) history.pushState(null, '', hash);
-    const heading = document.querySelector(`#${section} h2, #${section} h3`);
+    closeManagement();
+    managementToggle.classList.toggle('current-group', section === 'settings');
+    const heading = document.getElementById('workspaceTitle');
     if (heading && !restoring) {
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
     }
-    document.querySelectorAll('.settings-nav-btn').forEach((button) => {
-      const selected = panel && button.getAttribute('onclick')?.includes(`'${panel}'`);
-      button.classList.toggle('active', Boolean(selected));
-      if (selected) button.setAttribute('aria-current', 'page');
-      else button.removeAttribute('aria-current');
-    });
     refreshWorkspace();
   });
   window.addEventListener('popstate', navigateFromUrl);

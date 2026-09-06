@@ -8,7 +8,11 @@ import { loadCapacitySettings } from './capacity.js';
 // ==========================================
 //        導航和區塊切換 (新UI)
 // ==========================================
-export function showSection(sectionName, navElement) {
+export function showSection(sectionName, navElement, panel) {
+  if (sectionName === 'settings' && !panel) {
+    const active = document.querySelector('.settings-section.active');
+    return showSettingsSection(active?.id.replace('settings', '').toLowerCase() || 'products');
+  }
   const section = document.getElementById(sectionName);
   if (!section?.classList.contains('content-section')) return;
   navElement ||= document.getElementById('nav-' + sectionName);
@@ -47,7 +51,7 @@ export function showSection(sectionName, navElement) {
   if (sectionName === 'search') {
     initSearchDatepicker();
   }
-  document.dispatchEvent(new CustomEvent('pos:navigate', { detail: { section: sectionName } }));
+  document.dispatchEvent(new CustomEvent('pos:navigate', { detail: { section: sectionName, panel } }));
 }
 
 export function showSettingsSection(sectionName, navElement) {
@@ -61,13 +65,7 @@ export function showSettingsSection(sectionName, navElement) {
   });
   target.classList.add('active');
   target.style.display = '';
-  document.querySelectorAll('.settings-nav-btn').forEach((item) => {
-    item.classList.remove('active');
-  });
-  if (navElement) {
-    navElement.classList.add('active');
-  }
-  document.querySelector('.settings-layout').classList.add('drilled-in');
+  showSection('settings', navElement || document.getElementById('nav-' + sectionName), sectionName);
   if (sectionName === 'demand') {
     initDemandDatepicker();
   }
@@ -78,11 +76,4 @@ export function showSettingsSection(sectionName, navElement) {
     initOverrideDatepicker();
     loadCapacitySettings();
   }
-  document.dispatchEvent(
-    new CustomEvent('pos:navigate', { detail: { section: 'settings', panel: sectionName } }),
-  );
-}
-
-export function settingsBack() {
-  document.querySelector('.settings-layout').classList.remove('drilled-in');
 }

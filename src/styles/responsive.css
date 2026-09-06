@@ -15,16 +15,6 @@
     bottom: calc(82px + var(--vp-bottom) + env(safe-area-inset-bottom));
   }
 
-  .settings-layout {
-    gap: 14px;
-  }
-  .settings-nav {
-    width: 145px;
-  }
-  .settings-nav-btn {
-    font-size: 0.8rem;
-  }
-
   body #firebaseAccountBadge {
     top: max(10px, calc(var(--vp-top) + 10px)) !important;
     right: 10px !important;
@@ -36,8 +26,7 @@
 @media (max-width: 640px) {
   #customer,
   #date > div,
-  .search-container,
-  .settings-container {
+  .search-container {
     padding: 17px !important;
   }
 
@@ -47,8 +36,7 @@
   }
 
   .content-section h2,
-  .search-header h2,
-  .settings-header h2 {
+  .search-header h2 {
     font-size: 1.25rem !important;
   }
 
@@ -60,8 +48,7 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .search-header,
-  .settings-header {
+  .search-header {
     margin-bottom: 17px;
     padding-bottom: 14px;
   }
@@ -189,10 +176,6 @@
   }
   .modal-footer .btn {
     flex: 1 1 42%;
-  }
-
-  .settings-container {
-    min-height: calc(100vh - 120px);
   }
   .settings-panel {
     padding: 14px;

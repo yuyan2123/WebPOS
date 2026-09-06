@@ -45,16 +45,25 @@ async function openWorkspace(page, role = 'owner') {
   return errors;
 }
 
+async function openManagementPanel(page, panel) {
+  const toggle = page.locator('#managementToggle');
+  if (await toggle.isVisible()) await toggle.click();
+  await page.locator('#nav-' + panel).click();
+}
+
 test('all sections remain reachable, route history works, no horizontal overflow', async ({ page }) => {
   const errors = await openWorkspace(page);
-  for (const section of ['date', 'gift', 'cake', 'giftbox', 'search', 'settings', 'customer']) {
+  for (const section of ['date', 'gift', 'cake', 'giftbox', 'search', 'customer']) {
     await page.locator('#nav-' + section).click();
     await expect(page.locator('#' + section)).toHaveClass(/active/);
     await expect(page.locator('#nav-' + section)).toHaveAttribute('aria-current', 'page');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
+  await openManagementPanel(page, 'products');
+  await page.locator('#nav-customer').click();
   await page.goBack();
-  await expect(page.locator('#settings')).toHaveClass(/active/);
+  await expect(page.locator('#settingsProducts')).toBeVisible();
+  await expect(page.locator('#nav-products')).toHaveAttribute('aria-current', 'page');
   const missing = await page.evaluate(() => {
     const names = new Set();
     for (const element of document.querySelectorAll('*'))
@@ -211,21 +220,20 @@ test('payment preview uses shared Rust rules and confirmation supports keyboard'
 
 test('catalog CRUD form, reports and demand remain accessible through management', async ({ page }) => {
   const errors = await openWorkspace(page);
-  await page.locator('#nav-settings').click();
-  await page.locator('.settings-nav-btn').filter({ hasText: '商品管理' }).click();
+  await openManagementPanel(page, 'products');
   await page.locator('.btn-add-product').click();
   await page.locator('#productName').fill('新商品');
   await page.locator('#productPrice').fill('88');
   await page.locator('#productEditModal button[onclick="saveProduct()"]').click();
   await expect(page.locator('#productsCardGrid')).toContainText('新商品');
-  await page.evaluate(() => window.showSettingsSection('reports'));
+  await openManagementPanel(page, 'reports');
   await page.locator('#reportDatePicker').evaluate((element) => {
     element.value = '2026-09-06';
   });
   await page.locator('#btnReport').click();
   await expect(page.locator('#reportResults')).toContainText('<img src=x onerror=alert(1)>');
   await expect(page.locator('#reportResults img')).toHaveCount(0);
-  await page.evaluate(() => window.showSettingsSection('demand'));
+  await openManagementPanel(page, 'demand');
   await page.locator('#demandDatePicker').evaluate((element) => {
     element.value = '2026-09-06';
   });
@@ -238,10 +246,10 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
   page,
 }) => {
   await openWorkspace(page, 'viewer');
-  await page.locator('#nav-settings').click();
+  await openManagementPanel(page, 'products');
   await expect(page.locator('.btn-add-product')).toBeHidden();
   await expect(page.locator('.btn-card-edit').first()).toBeHidden();
-  await page.evaluate(() => window.showSettingsSection('capacity'));
+  await openManagementPanel(page, 'capacity');
   await expect(page.locator('#overrideMaxQty')).toBeDisabled();
   await page.locator('#nav-search').click();
   await expect(page.locator('#searchName')).toBeEnabled();
@@ -305,5 +313,55 @@ test('gift-box composition, custom price, notes and quantity survive checkout', 
       .args[0].items.find((item) => item.type === 'giftbox'),
   );
   expect(box).toMatchObject({ size: 6, quantity: 2, price: 280, products: { P1: 6 }, notes: '分開包裝' });
+  expect(errors).toEqual([]);
+});
+
+test('management navigation has one entry per panel and restores direct routes', async ({
+  page,
+}, testInfo) => {
+  const errors = await openWorkspace(page);
+  await expect(page.locator('.settings-container, .settings-nav, .settings-back-btn')).toHaveCount(0);
+  for (const [panel, title] of Object.entries({
+    products: '商品管理',
+    capacity: '供應量設定',
+    demand: '需求統計',
+    reports: '營業報表',
+    device: '裝置資訊',
+  })) {
+    await expect(page.locator('[data-panel="' + panel + '"]')).toHaveCount(1);
+    await openManagementPanel(page, panel);
+    await expect(page).toHaveURL(new RegExp('#settings/' + panel + '$'));
+    await expect(page.locator('#workspaceTitle')).toHaveText(title);
+    await expect(page.locator('#workspaceTitle')).toBeFocused();
+    await expect(page.locator('.settings-section:visible')).toHaveCount(1);
+    await expect(page.locator('#nav-' + panel)).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('.app-navigation [aria-current="page"]')).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.goBack();
+  await expect(page.locator('#workspaceTitle')).toHaveText('營業報表');
+  await expect(page.locator('#settingsReports')).toBeVisible();
+  await page.goForward();
+  await expect(page.locator('#settingsDevice')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#settingsDevice')).toBeVisible();
+  await expect(page.locator('#nav-device')).toHaveAttribute('aria-current', 'page');
+  const toggle = page.locator('#managementToggle');
+  if (await toggle.isVisible()) {
+    await toggle.click();
+    await expect(page.locator('#nav-device')).toBeFocused();
+    await page.screenshot({ path: testInfo.outputPath('management-menu.png') });
+    await page.keyboard.press('Escape');
+    await expect(toggle).toBeFocused();
+    await expect(page.locator('#managementLinks')).toBeHidden();
+    await toggle.click();
+    await page.locator('#workspaceTitle').click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  }
+  await openManagementPanel(page, 'products');
+  await page.screenshot({ path: testInfo.outputPath('management-products.png') });
+  await page.goto('/#settings');
+  await expect(page.locator('#settingsProducts')).toBeVisible();
+  await expect(page.locator('#nav-products')).toHaveAttribute('aria-current', 'page');
   expect(errors).toEqual([]);
 });
