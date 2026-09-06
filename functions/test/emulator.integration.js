@@ -9,9 +9,16 @@ for (const variable of ["FIRESTORE_EMULATOR_HOST", "FIREBASE_AUTH_EMULATOR_HOST"
 initializeApp({ projectId });
 const auth = getAuth();
 const password = "emulator-only-pass-12345";
-async function account(name, verified = true) {
+async function account(name, creationTime, verified = true) {
   const email = `${name}@example.test`;
-  const user = await auth.createUser({ email, password, emailVerified: verified });
+  // Admin SDK creationTime has second precision. Import explicit timestamps so
+  // fast CI runs cannot tie the earliest accounts and block admin initialization.
+  const imported = await auth.importUsers([
+    { uid: name, email, emailVerified: verified, metadata: { creationTime } },
+  ]);
+  assert.equal(imported.failureCount, 0, JSON.stringify(imported.errors));
+  const user = await auth.updateUser(name, { password });
+  assert.equal(Date.parse(user.metadata.creationTime), Date.parse(creationTime));
   const response = await fetch(
     `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator`,
     {
@@ -39,10 +46,10 @@ async function rpc(user, method, args = [], shopId) {
   return data.result;
 }
 
-const owner = await account("owner"),
-  viewer = await account("viewer"),
-  outsider = await account("outsider"),
-  unverified = await account("unverified", false);
+const owner = await account("owner", "2026-01-01T00:00:00.000Z"),
+  viewer = await account("viewer", "2026-01-01T00:00:01.000Z"),
+  outsider = await account("outsider", "2026-01-01T00:00:02.000Z"),
+  unverified = await account("unverified", "2026-01-01T00:00:03.000Z", false);
 await assert.rejects(rpc(null, "listMyShops"), (error) => error.code === "UNAUTHENTICATED");
 await assert.rejects(rpc(unverified, "listMyShops"), (error) => error.code === "FAILED_PRECONDITION");
 const session = await rpc(owner, "initializeSession", [
