@@ -251,9 +251,48 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
   await expect(page.locator('.btn-card-edit').first()).toBeHidden();
   await openManagementPanel(page, 'capacity');
   await expect(page.locator('#overrideMaxQty')).toBeDisabled();
+  await expect(page.locator('#capDayEnabled0')).toBeDisabled();
   await page.locator('#nav-search').click();
   await expect(page.locator('#searchName')).toBeEnabled();
 });
+
+for (const role of ['owner', 'editor']) {
+  test(`${role} can toggle weekday capacity with the slider and keyboard`, async ({ page }) => {
+    const errors = await openWorkspace(page, role);
+    await openManagementPanel(page, 'capacity');
+    const checkbox = page.locator('#capDayEnabled0');
+    const column = page.locator('.capacity-day-col').first();
+    await column.locator('.slider').click();
+    await expect(checkbox).toBeChecked();
+    await expect(column).toHaveClass(/active/);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            window.__calls.filter((call) => call.method === 'saveWeekdayCapacity').at(-1)?.args[0][0].enabled,
+        ),
+      )
+      .toBe(true);
+    await expect(page.locator('#weekdayAutoSaveStatus')).toHaveText('已自動儲存');
+    await checkbox.focus();
+    await page.keyboard.press('Space');
+    await expect(checkbox).not.toBeChecked();
+    await expect(column).not.toHaveClass(/active/);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            window.__calls.filter((call) => call.method === 'saveWeekdayCapacity').at(-1)?.args[0][0].enabled,
+        ),
+      )
+      .toBe(false);
+    await openManagementPanel(page, 'products');
+    await openManagementPanel(page, 'capacity');
+    await page.locator('.capacity-day-col').first().locator('.slider').click();
+    await expect(checkbox).toBeChecked();
+    expect(errors).toEqual([]);
+  });
+}
 
 test('offline changes keep draft and block submission', async ({ page, context }) => {
   await openWorkspace(page);

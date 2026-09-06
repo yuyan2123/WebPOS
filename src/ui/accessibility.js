@@ -24,7 +24,9 @@ export function initializeAccessibility() {
       .querySelectorAll('i.fas,i.far,i.fab')
       .forEach((icon) => icon.setAttribute('aria-hidden', 'true'));
     document.querySelectorAll('label:not([for])').forEach((label) => {
-      const control = label.parentElement?.querySelector('input[id],select[id],textarea[id]');
+      const control =
+        label.querySelector('input[id],select[id],textarea[id]') ||
+        label.parentElement?.querySelector('input[id],select[id],textarea[id]');
       if (control) label.htmlFor = control.id;
     });
     document.querySelectorAll('input,select,textarea').forEach((control) => {

@@ -49,22 +49,28 @@ export function renderCapacitySettingsUI() {
       '<div class="day-name">' +
       escapeHtml(state.weekdayNames[i]) +
       '</div>' +
-      '<input type="number" min="0" placeholder="0" value="' +
+      '<input type="number" min="0" placeholder="0" aria-label="星期' +
+      escapeAttr(state.weekdayNames[i]) +
+      '供應量上限" value="' +
       val +
       '" data-day="' +
       i +
       '" id="capDay' +
       i +
       '">' +
-      '<label class="day-toggle">' +
-      '<input type="checkbox" ' +
+      '<label class="day-toggle" for="capDayEnabled' +
+      i +
+      '">' +
+      '<input type="checkbox" aria-label="啟用星期' +
+      escapeAttr(state.weekdayNames[i]) +
+      '供應量限制" ' +
       (isActive ? 'checked' : '') +
       ' data-day="' +
       i +
       '" id="capDayEnabled' +
       i +
       '">' +
-      '<span class="slider"></span>' +
+      '<span class="slider" aria-hidden="true"></span>' +
       '</label>';
     grid.appendChild(col);
   }

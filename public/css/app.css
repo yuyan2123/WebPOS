@@ -324,6 +324,16 @@ main {
   transform: translateX(16px);
 }
 
+.capacity-day-col .day-toggle input:focus-visible + .slider {
+  outline: 3px solid var(--pos-primary);
+  outline-offset: 3px;
+}
+
+.capacity-day-col .day-toggle input:disabled + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .capacity-section-divider {
   border: none;
   border-top: 1px solid #e5e7eb;

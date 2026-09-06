@@ -1426,7 +1426,7 @@ function renderCapacitySettingsUI() {
     var col = document.createElement("div");
     col.className = "capacity-day-col" + (isActive ? " active" : "");
     var val = setting.maxQuantity === "" || setting.maxQuantity === null ? "" : setting.maxQuantity;
-    col.innerHTML = '<div class="day-name">' + escapeHtml(state.weekdayNames[i]) + '</div><input type="number" min="0" placeholder="0" value="' + val + '" data-day="' + i + '" id="capDay' + i + '"><label class="day-toggle"><input type="checkbox" ' + (isActive ? "checked" : "") + ' data-day="' + i + '" id="capDayEnabled' + i + '"><span class="slider"></span></label>';
+    col.innerHTML = '<div class="day-name">' + escapeHtml(state.weekdayNames[i]) + '</div><input type="number" min="0" placeholder="0" aria-label="\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u4E0A\u9650" value="' + val + '" data-day="' + i + '" id="capDay' + i + '"><label class="day-toggle" for="capDayEnabled' + i + '"><input type="checkbox" aria-label="\u555F\u7528\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u9650\u5236" ' + (isActive ? "checked" : "") + ' data-day="' + i + '" id="capDayEnabled' + i + '"><span class="slider" aria-hidden="true"></span></label>';
     grid.appendChild(col);
   }
   grid.querySelectorAll('input[type="number"], input[type="checkbox"]').forEach(function(el) {
@@ -4343,7 +4343,7 @@ function initializeAccessibility() {
   function enhance() {
     document.querySelectorAll("i.fas,i.far,i.fab").forEach((icon) => icon.setAttribute("aria-hidden", "true"));
     document.querySelectorAll("label:not([for])").forEach((label) => {
-      const control = label.parentElement?.querySelector("input[id],select[id],textarea[id]");
+      const control = label.querySelector("input[id],select[id],textarea[id]") || label.parentElement?.querySelector("input[id],select[id],textarea[id]");
       if (control) label.htmlFor = control.id;
     });
     document.querySelectorAll("input,select,textarea").forEach((control) => {
