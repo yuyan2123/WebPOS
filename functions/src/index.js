@@ -148,7 +148,7 @@ export async function executeRpc(request) {
     ]);
     const options = args[1];
     if (!options) return serialize({ shops, device });
-    const selectedShop = shops.find((shop) => shop.shopId === options.shopId) || shops[0] || null;
+    const selectedShop = shops.find((shop) => shop.shopId === options.shopId) || (shops.length === 1 ? shops[0] : null);
     const shop = selectedShop ? await requireShopAccess(user, selectedShop.shopId, "viewer") : null;
     const bootstrap = shop ? await getShopBootstrapService(shop, options.year, options.month) : null;
     return serialize({ shops, device, selectedShop: selectedShop ? { ...selectedShop, role: shop.role } : null, bootstrap });

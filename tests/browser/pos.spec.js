@@ -461,6 +461,62 @@ test('gift-box composition, custom price, notes and quantity survive checkout', 
   expect(errors).toEqual([]);
 });
 
+for (const result of ['current', 'available', 'failed']) {
+  test(`system information checks updates: ${result}`, async ({ page }) => {
+    await page.addInitScript((updateResult) => {
+      const serviceWorker = new EventTarget();
+      const registration = new EventTarget();
+      serviceWorker.controller = {};
+      registration.waiting = null;
+      registration.update = async () => {
+        if (updateResult === 'failed') throw new Error('network failure');
+        if (updateResult === 'available') {
+          const worker = new EventTarget();
+          worker.state = 'installing';
+          worker.postMessage = (message) => { window.__updateMessage = message; };
+          registration.installing = worker;
+          registration.dispatchEvent(new Event('updatefound'));
+          setTimeout(() => {
+            worker.state = 'installed';
+            registration.installing = null;
+            registration.waiting = worker;
+            worker.dispatchEvent(new Event('statechange'));
+          }, 100);
+        }
+      };
+      serviceWorker.register = async () => registration;
+      Object.defineProperty(navigator, 'serviceWorker', { value: serviceWorker });
+    }, result);
+    const errors = await openWorkspace(page);
+    await openManagementPanel(page, 'device');
+    await expect(page.locator('#settingsSystem')).toBeVisible();
+    await expect(page.locator('#systemVersion')).toHaveValue(/^v13\.2\+[a-f0-9]{12}$/);
+    await expect(page.locator('#systemUpdatedAt')).not.toHaveValue('未知');
+    const systemBox = await page.locator('#settingsSystem').boundingBox();
+    const deviceBox = await page.locator('#settingsDevice').boundingBox();
+    expect(systemBox.y + systemBox.height).toBeLessThanOrEqual(deviceBox.y);
+    await page.locator('#systemCheckUpdate').click();
+    await expect(page.locator('#systemUpdateStatus')).toHaveText({
+      current: '目前已是最新版本。',
+      available: '有新版本可更新。',
+      failed: '檢查更新失敗，請稍後重試。',
+    }[result]);
+    if (result === 'available') {
+      await expect(page.locator('#systemCheckUpdate')).toHaveText('更新');
+      await page.evaluate(() => { document.body.dataset.draftDirty = 'true'; });
+      await page.locator('#systemCheckUpdate').click();
+      await expect(page.locator('#systemUpdateStatus')).toContainText('仍有訂單草稿');
+      expect(await page.evaluate(() => window.__updateMessage)).toBeUndefined();
+      await page.evaluate(() => { document.body.dataset.draftDirty = 'false'; });
+      await page.locator('#systemCheckUpdate').click();
+      expect(await page.evaluate(() => window.__updateMessage)).toEqual({ type: 'SKIP_WAITING' });
+    }
+    await openManagementPanel(page, 'products');
+    await expect(page.locator('#settingsSystem')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+}
+
 test('management navigation has one entry per panel and restores direct routes', async ({
   page,
 }, testInfo) => {

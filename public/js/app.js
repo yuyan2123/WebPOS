@@ -3361,6 +3361,7 @@ function showSettingsSection(sectionName, navElement) {
   });
   target.classList.add("active");
   target.style.display = "";
+  document.getElementById("settingsSystem").hidden = sectionName !== "device";
   showSection("settings", navElement || document.getElementById("nav-" + sectionName), sectionName);
   if (sectionName === "demand") {
     initDemandDatepicker();
@@ -4502,6 +4503,7 @@ async function waitForMinimumDisplay() {
 async function startupProgress(completed, message) {
   await waitForMinimumDisplay();
   document.getElementById("startupProgress").value = completed;
+  document.getElementById("startupProgressFill").style.transform = `scaleX(${completed / 4})`;
   document.getElementById("startupMessage").textContent = message;
   document.getElementById("startupCount").textContent = `\u5DF2\u5B8C\u6210 ${completed} / 4 \u6B65\u9A5F\uFF08${completed * 25}%\uFF09`;
   displayedStep = completed;
@@ -4513,7 +4515,11 @@ async function finishStartup() {
   await startupProgress(4, "\u8F09\u5165\u5B8C\u6210");
   await painted();
   await waitForMinimumDisplay();
-  document.getElementById("startupStatus").hidden = true;
+  const overlay = document.getElementById("startupStatus");
+  overlay.classList.add("is-leaving");
+  await Promise.allSettled(overlay.getAnimations().map((animation) => animation.finished));
+  overlay.hidden = true;
+  overlay.classList.remove("is-leaving");
   document.querySelector("main").inert = false;
   document.querySelector("main").removeAttribute("aria-busy");
   document.querySelector(".app-navigation").inert = false;

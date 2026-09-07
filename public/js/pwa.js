@@ -51,6 +51,15 @@
   });
 
   document.addEventListener("DOMContentLoaded", () => {
+    const updateButton = document.getElementById('systemCheckUpdate');
+    const updateStatus = document.getElementById('systemUpdateStatus');
+    const version = document.querySelector('meta[name="app-version"]')?.content;
+    const updatedAt = document.querySelector('meta[name="app-updated-at"]')?.content;
+    document.getElementById('systemVersion').value = version ? `v${version}` : '未知';
+    const date = new Date(updatedAt);
+    document.getElementById('systemUpdatedAt').value = Number.isNaN(date.getTime()) ? '未知' :
+      new Intl.DateTimeFormat('zh-TW', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Taipei' }).format(date);
+    updateButton.disabled = true;
     updateConnectionState();
     window.addEventListener("online", updateConnectionState);
     window.addEventListener("offline", updateConnectionState);
@@ -63,18 +72,70 @@
         banner.classList.remove("active");
       });
     }
-    if (!("serviceWorker" in navigator) || location.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(location.hostname)) return;
+    if (!("serviceWorker" in navigator) || location.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+      updateStatus.textContent = '目前環境不支援檢查更新。';
+      return;
+    }
     navigator.serviceWorker.register("/sw.js").then((registration) => {
-      function offerUpdate(worker) {
-        const banner = showMessage("版本更新", "完成目前訂單後即可更新。", '<button id="pwaUpdate" type="button">更新</button>', "fa-sync-alt");
-        banner.querySelector("#pwaUpdate")?.addEventListener("click", () => {
-          if (document.body.dataset.draftDirty === "true") {
-            banner.querySelector(".pwa-banner-message").textContent = "仍有訂單草稿，請先完成或捨棄。";
-            return;
-          }
-          worker.postMessage({ type: "SKIP_WAITING" });
-        });
+      updateButton.disabled = false;
+      function applyUpdate(worker) {
+        if (document.body.dataset.draftDirty === 'true') {
+          const message = '仍有訂單草稿，請先完成或捨棄。';
+          updateStatus.textContent = message;
+          const bannerMessage = document.querySelector('#pwaBanner .pwa-banner-message');
+          if (bannerMessage) bannerMessage.textContent = message;
+          return;
+        }
+        updateButton.disabled = true;
+        updateStatus.textContent = '正在更新…';
+        worker.postMessage({ type: 'SKIP_WAITING' });
       }
+      function offerUpdate(worker) {
+        updateButton.textContent = '更新';
+        updateStatus.textContent = '有新版本可更新。';
+        const banner = showMessage("版本更新", "完成目前訂單後即可更新。", '<button id="pwaUpdate" type="button">更新</button>', "fa-sync-alt");
+        banner.querySelector("#pwaUpdate")?.addEventListener("click", () => applyUpdate(worker));
+      }
+      updateButton.addEventListener('click', async () => {
+        if (registration.waiting) {
+          applyUpdate(registration.waiting);
+          return;
+        }
+        updateButton.disabled = true;
+        updateStatus.textContent = '正在檢查更新…';
+        try {
+          if (!navigator.onLine) throw new Error('offline');
+          await registration.update();
+          const worker = registration.installing;
+          if (worker && !['installed', 'redundant', 'activated'].includes(worker.state)) {
+            await new Promise((resolve, reject) => {
+              const timeout = setTimeout(() => finish(new Error('timeout')), 30000);
+              function finish(error) {
+                clearTimeout(timeout);
+                worker.removeEventListener('statechange', changed);
+                if (error) reject(error); else resolve();
+              }
+              function changed() {
+                if (worker.state === 'redundant') finish(new Error('installation failed'));
+                else if (['installed', 'activated'].includes(worker.state)) finish();
+              }
+              worker.addEventListener('statechange', changed);
+              changed();
+            });
+          }
+          if (worker?.state === 'redundant') throw new Error('installation failed');
+          if (registration.waiting) offerUpdate(registration.waiting);
+          else {
+            updateButton.textContent = '檢查更新';
+            updateStatus.textContent = '目前已是最新版本。';
+          }
+        } catch (error) {
+          updateStatus.textContent = navigator.onLine ? '檢查更新失敗，請稍後重試。' : '目前離線，請連線後再檢查更新。';
+          console.warn('檢查更新失敗', error);
+        } finally {
+          updateButton.disabled = false;
+        }
+      });
       if (registration.waiting) offerUpdate(registration.waiting);
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
@@ -83,7 +144,10 @@
           offerUpdate(worker);
         });
       });
-    }).catch((error) => console.warn("PWA 註冊失敗", error));
+    }).catch((error) => {
+      updateStatus.textContent = '更新服務無法啟動，請重新載入後再試。';
+      console.warn("PWA 註冊失敗", error);
+    });
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", async () => {
       if (refreshing) return;

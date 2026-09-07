@@ -41,6 +41,24 @@ const worker = readFileSync('public/sw.js', 'utf8');
 const { createHash } = await import('node:crypto');
 const revision = createHash('sha256');
 const shell = JSON.parse(worker.match(/const APP_SHELL = (\[[\s\S]*?\]);/)[1]);
+// Keep release details in the cached HTML so they describe the running release.
+const html = readFileSync('public/index.html', 'utf8');
+const releaseHash = createHash('sha256');
+for (const path of shell) {
+  const content = readFileSync('public' + (path === '/' ? '/index.html' : path));
+  releaseHash.update(path === '/' || path === '/index.html'
+    ? content.toString().replace(/(<meta name="app-(?:version|updated-at)" content=")[^"]*/g, '$1')
+    : content);
+}
+releaseHash.update(worker.replace(/const CACHE_VERSION = .*;/, ''));
+const version = `13.2+${releaseHash.digest('hex').slice(0, 12)}`;
+const previousVersion = html.match(/name="app-version" content="([^"]*)"/)[1];
+const updatedAt = previousVersion === version
+  ? html.match(/name="app-updated-at" content="([^"]*)"/)[1]
+  : new Date().toISOString();
+writeFileSync('public/index.html', html
+  .replace(/(name="app-version" content=")[^"]*/, `$1${version}`)
+  .replace(/(name="app-updated-at" content=")[^"]*/, `$1${updatedAt}`));
 for (const path of shell) revision.update(readFileSync('public' + (path === '/' ? '/index.html' : path)));
 writeFileSync(
   'public/sw.js',

@@ -130,6 +130,23 @@
 
 /* 裝置資訊區塊 */
 
+#settingsSystem[hidden] {
+  display: none;
+}
+#settingsSystem {
+  margin-bottom: 20px;
+}
+#settingsSystem .device-info-grid {
+  margin: 20px 0;
+}
+#systemUpdateStatus {
+  margin-top: 12px;
+  color: #52635b;
+}
+#systemCheckUpdate:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 .device-info-grid {
   display: grid;
   gap: 16px;

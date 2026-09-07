@@ -21,6 +21,7 @@ async function waitForMinimumDisplay() {
 export async function startupProgress(completed, message) {
   await waitForMinimumDisplay();
   document.getElementById('startupProgress').value = completed;
+  document.getElementById('startupProgressFill').style.transform = `scaleX(${completed / 4})`;
   document.getElementById('startupMessage').textContent = message;
   document.getElementById('startupCount').textContent = `已完成 ${completed} / 4 步驟（${completed * 25}%）`;
   displayedStep = completed;
@@ -34,7 +35,12 @@ export async function finishStartup() {
   await startupProgress(4, '載入完成');
   await painted();
   await waitForMinimumDisplay();
-  document.getElementById('startupStatus').hidden = true;
+  const overlay = document.getElementById('startupStatus');
+  overlay.classList.add('is-leaving');
+  // Wait only for the overlay exit, not the spinner's infinite animation.
+  await Promise.allSettled(overlay.getAnimations().map((animation) => animation.finished));
+  overlay.hidden = true;
+  overlay.classList.remove('is-leaving');
   document.querySelector('main').inert = false;
   document.querySelector('main').removeAttribute('aria-busy');
   document.querySelector('.app-navigation').inert = false;

@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f5f">
+    <meta name="app-version" content="13.2+9b67f06bfc3c">
+    <meta name="app-updated-at" content="2026-09-07T15:00:18.308Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -30,7 +32,10 @@
         <div class="startup-spinner" aria-hidden="true"></div>
         <h2>正在開啟 WebPOS</h2>
         <p id="startupMessage">正在準備應用程式…</p>
-        <progress id="startupProgress" max="4" value="0" aria-label="啟動步驟完成進度"></progress>
+        <div class="startup-progress-track">
+          <progress id="startupProgress" max="4" value="0" aria-label="啟動步驟完成進度"></progress>
+          <span id="startupProgressFill" class="startup-progress-fill" aria-hidden="true"></span>
+        </div>
         <p id="startupCount">已完成 0 / 4 步驟（0%）</p>
         <button id="startupRetry" type="button" hidden onclick="location.reload()">重新載入</button>
       </div>
@@ -484,6 +489,21 @@
 
 
             <!-- 裝置資訊 -->
+            <div id="settingsSystem" class="settings-panel" hidden>
+                <div class="settings-panel-title"><i class="fas fa-sync-alt"></i> 系統資訊</div>
+                <div class="device-info-grid">
+                    <div class="device-info-item">
+                        <label for="systemVersion">系統版本</label>
+                        <input type="text" id="systemVersion" readonly>
+                    </div>
+                    <div class="device-info-item">
+                        <label for="systemUpdatedAt">更新日期</label>
+                        <input type="text" id="systemUpdatedAt" readonly>
+                    </div>
+                </div>
+                <button id="systemCheckUpdate" type="button" class="btn-generate-report">檢查更新</button>
+                <p id="systemUpdateStatus" role="status" aria-live="polite"></p>
+            </div>
             <div id="settingsDevice" class="settings-section" style="display: none;">
                 <div class="settings-panel">
                     <div class="settings-panel-title" style="margin-bottom: 20px;">

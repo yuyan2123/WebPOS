@@ -2,6 +2,9 @@ const { test, expect } = require('@playwright/test');
 const { readFileSync } = require('node:fs');
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ginJiaPos.activeShop.startup-user', 'shop-one');
+  });
   const bridge = readFileSync('public/js/rpc-bridge.js', 'utf8');
   await page.route('**/js/rpc-bridge.js', (route) =>
     route.fulfill({
@@ -18,12 +21,17 @@ test.beforeEach(async ({ page }) => {
         auth: { currentUser: { uid: activeUid, emailVerified: true } },
         functionsSdk: { httpsCallable: () => (request) => {
           window.startupCalls.push(request);
+          if (request.method === 'getShopBootstrap') return Promise.resolve({ data: {
+            products: [{productId:'P1',productName:'測試商品',category:'伴手禮',price:50,status:'啟用'}],
+            capacityMonth: {key:request.args[0] + '-' + request.args[1],data:{}}
+          } });
           return new Promise((resolve, reject) => {
             window.completeStartup = () => resolve({ data: {
-              shops: [{shopId:'shop-one',name:'測試店鋪',role:'owner'}],
-              selectedShop: {shopId:'shop-one',name:'測試店鋪',role:'owner'},
-              bootstrap: { products: [{productId:'P1',productName:'測試商品',category:'伴手禮',price:50,status:'啟用'}],
-                capacityMonth: {key:request.args[1].year + '-' + request.args[1].month,data:{}} }
+              shops: [{shopId:'shop-one',name:'測試店鋪',role:'owner'},
+                ...(window.startupSingleShop ? [] : [{shopId:'shop-two',name:'第二家店鋪',role:'viewer'}])],
+              selectedShop: request.args[1].shopId === 'shop-one' || window.startupSingleShop ? {shopId:'shop-one',name:'測試店鋪',role:'owner'} : null,
+              bootstrap: request.args[1].shopId === 'shop-one' || window.startupSingleShop ? { products: [{productId:'P1',productName:'測試商品',category:'伴手禮',price:50,status:'啟用'}],
+                capacityMonth: {key:request.args[1].year + '-' + request.args[1].month,data:{}} } : null
             } });
             window.failStartup = () => reject(new Error('測試連線中斷'));
           });
@@ -69,6 +77,51 @@ test('one session request keeps real progress pending until data and draft resto
   await expect(page.locator('.calendar-day').first()).toBeVisible();
   expect(await page.evaluate(() => window.startupCalls.length)).toBe(1);
 });
+
+for (const savedShop of [null, 'unavailable-shop']) {
+  test(`automatically loads the only shop when saved shop is ${savedShop}`, async ({ page }) => {
+    await page.addInitScript((saved) => {
+      window.startupSingleShop = true;
+      const key = 'ginJiaPos.activeShop.startup-user';
+      if (saved) localStorage.setItem(key, saved);
+      else localStorage.removeItem(key);
+    }, savedShop);
+    await page.goto('/');
+    await expect.poll(() => page.evaluate(() => typeof window.completeStartup)).toBe('function');
+    await page.evaluate(() => window.completeStartup());
+    await expect(page.locator('#startupStatus')).toBeHidden();
+    await expect(page.locator('#firebaseShopOverlay')).toBeHidden();
+    await expect(page.locator('body')).toHaveAttribute('data-shop-id', 'shop-one');
+    expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.activeShop.startup-user'))).toBe('shop-one');
+    expect(await page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
+      'initializeSession',
+    ]);
+  });
+
+  test(`requires explicit shop selection when saved shop is ${savedShop}`, async ({ page }) => {
+    await page.addInitScript((saved) => {
+      const key = 'ginJiaPos.activeShop.startup-user';
+      if (saved) localStorage.setItem(key, saved);
+      else localStorage.removeItem(key);
+    }, savedShop);
+    await page.goto('/');
+    await expect.poll(() => page.evaluate(() => typeof window.completeStartup)).toBe('function');
+    await page.evaluate(() => window.completeStartup());
+    await expect(page.locator('#firebaseShopOverlay')).toBeVisible();
+    await expect(page.locator('#firebaseShopClose')).toBeDisabled();
+    await expect(page.locator('#mainContent')).toHaveAttribute('inert', '');
+    expect(await page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
+      'initializeSession',
+    ]);
+    await page.locator('.firebase-shop-option[data-shop-id="shop-one"]').click();
+    await expect(page.locator('#startupStatus')).toBeHidden();
+    await expect(page.locator('#firebaseShopOverlay')).toBeHidden();
+    expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.activeShop.startup-user'))).toBe('shop-one');
+    expect(await page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
+      'initializeSession', 'getShopBootstrap',
+    ]);
+  });
+}
 
 test('initial request failure stays below complete and offers retry without split fallback requests', async ({
   page,
