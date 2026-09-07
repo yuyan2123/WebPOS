@@ -4484,16 +4484,35 @@ function initializeAccessibility() {
 }
 
 // src/ui/startup-progress.js
-function startupProgress(completed, message) {
+var limitedSteps = 0;
+var limitedMinimumTotal = 0;
+var displayedStep = 0;
+var displayedAt = 0;
+async function waitForMinimumDisplay() {
+  if (!displayedStep) return;
+  const elapsed = performance.now() - displayedAt;
+  const upper = Math.min(600, 450 * (limitedSteps + 1) - limitedMinimumTotal);
+  const minimum = 300 + Math.random() * (upper - 300);
+  const remaining = minimum - elapsed;
+  if (remaining <= 0) return;
+  limitedSteps++;
+  limitedMinimumTotal += minimum;
+  await new Promise((resolve) => setTimeout(resolve, remaining));
+}
+async function startupProgress(completed, message) {
+  await waitForMinimumDisplay();
   document.getElementById("startupProgress").value = completed;
   document.getElementById("startupMessage").textContent = message;
   document.getElementById("startupCount").textContent = `\u5DF2\u5B8C\u6210 ${completed} / 4 \u6B65\u9A5F\uFF08${completed * 25}%\uFF09`;
+  displayedStep = completed;
+  displayedAt = performance.now();
 }
 var painted = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 async function finishStartup() {
   await painted();
-  startupProgress(4, "\u8F09\u5165\u5B8C\u6210");
+  await startupProgress(4, "\u8F09\u5165\u5B8C\u6210");
   await painted();
+  await waitForMinimumDisplay();
   document.getElementById("startupStatus").hidden = true;
   document.querySelector("main").inert = false;
   document.querySelector("main").removeAttribute("aria-busy");
@@ -4520,9 +4539,10 @@ async function startApplication() {
   main.inert = true;
   document.querySelector(".fab-cart").inert = true;
   main.setAttribute("aria-busy", "true");
+  state.suppressDraftSave = true;
   try {
     await initializeDomain();
-    startupProgress(1, "\u6B63\u5728\u53D6\u5F97\u5E97\u92EA\u3001\u5546\u54C1\u8207\u672C\u6708\u7522\u80FD\u2026");
+    await startupProgress(1, "\u53D6\u5F97\u8CC7\u6599\u4E2D...");
     initContactMethodToggle();
     initSearchContactMethodToggle();
     initVisibleViewportFit();
@@ -4540,10 +4560,11 @@ async function startApplication() {
     toggleShippingField();
     renderCalendar(true);
     await loadInitialShopData();
-    startupProgress(2, "\u6B63\u5728\u6AA2\u67E5\u8207\u6062\u5FA9\u672C\u6A5F\u672A\u9001\u51FA\u8A02\u55AE\u2026");
+    await startupProgress(2, "\u6B63\u5728\u6AA2\u67E5\u8207\u6062\u5FA9\u672C\u6A5F\u672A\u9001\u51FA\u8A02\u55AE\u2026");
     await restoreOrderDraftOnce();
+    state.suppressDraftSave = false;
     applyRoleCapabilities();
-    startupProgress(3, "\u6B63\u5728\u5B8C\u6210\u756B\u9762\u6E32\u67D3\u2026");
+    await startupProgress(3, "\u6B63\u5728\u5B8C\u6210\u756B\u9762\u6E32\u67D3\u2026");
     initializeWorkspace();
     const requestedSection = !location.hash && new URLSearchParams(location.search).get("section");
     if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);

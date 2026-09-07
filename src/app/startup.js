@@ -46,9 +46,11 @@ export async function startApplication() {
   main.inert = true;
   document.querySelector('.fab-cart').inert = true;
   main.setAttribute('aria-busy', 'true');
+  // Initial empty renders must not overwrite a saved draft while progress is held.
+  state.suppressDraftSave = true;
   try {
     await initializeDomain();
-    startupProgress(1, '正在取得店鋪、商品與本月產能…');
+    await startupProgress(1, '取得資料中...');
     initContactMethodToggle();
     initSearchContactMethodToggle();
     initVisibleViewportFit();
@@ -70,10 +72,11 @@ export async function startApplication() {
     renderCalendar(true);
     // 商品與目前月份產能合併載入；客戶只在使用者輸入時查詢。
     await loadInitialShopData();
-    startupProgress(2, '正在檢查與恢復本機未送出訂單…');
+    await startupProgress(2, '正在檢查與恢復本機未送出訂單…');
     await restoreOrderDraftOnce();
+    state.suppressDraftSave = false;
     applyRoleCapabilities();
-    startupProgress(3, '正在完成畫面渲染…');
+    await startupProgress(3, '正在完成畫面渲染…');
     initializeWorkspace();
     const requestedSection = !location.hash && new URLSearchParams(location.search).get('section');
     if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);
