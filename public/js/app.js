@@ -1856,24 +1856,15 @@ async function showProductLoadFailure(error) {
   document.getElementById("giftProducts").innerHTML = message;
   document.getElementById("cakeProducts").innerHTML = message;
 }
-function loadInitialShopData() {
+async function loadInitialShopData() {
   const now = /* @__PURE__ */ new Date();
-  if (!isConnected()) {
-    showProductLoadFailure(new Error("\u5C1A\u672A\u9023\u63A5 Firebase"));
-    renderCalendar();
-    return;
+  const result = await call("getShopBootstrap", now.getFullYear(), now.getMonth() + 1);
+  if (!Array.isArray(result?.products) || !result?.capacityMonth?.key) {
+    throw new Error("\u521D\u59CB\u5316\u8CC7\u6599\u4E0D\u5B8C\u6574\uFF0C\u8ACB\u91CD\u65B0\u8F09\u5165");
   }
-  rpc.withSuccessHandler(function(result) {
-    handleProductsLoaded(result?.products || []);
-    if (result?.capacityMonth?.key) {
-      state.monthCapacityCache[result.capacityMonth.key] = result.capacityMonth.data || {};
-    }
-    renderCalendar();
-  }).withFailureHandler(function(error) {
-    console.warn("\u521D\u59CB\u8CC7\u6599\u8F09\u5165\u5931\u6557\uFF0C\u6539\u7528\u5546\u54C1\u91CD\u8A66\u6D41\u7A0B", error);
-    loadProducts();
-    renderCalendar();
-  }).getShopBootstrap(now.getFullYear(), now.getMonth() + 1);
+  state.monthCapacityCache[result.capacityMonth.key] = result.capacityMonth.data || {};
+  handleProductsLoaded(result.products, { skipDraft: true });
+  renderCalendar(true);
 }
 function handleProductsLoaded(products, options = {}) {
   state.allProducts = Array.isArray(products) ? products : [];
@@ -1881,7 +1872,7 @@ function handleProductsLoaded(products, options = {}) {
   renderProductCards();
   updateProductDisplays();
   updateNavVisibility();
-  restoreOrderDraftOnce();
+  if (!options.skipDraft) return restoreOrderDraftOnce();
 }
 function updateNavVisibility() {
   const activeProducts = state.allProducts.filter((p) => p.status === "\u555F\u7528");
@@ -2405,7 +2396,6 @@ function initOrderDraftPersistence() {
   form?.addEventListener("change", scheduleDraftSave);
   window.addEventListener("pos:shop-changed", function() {
     state.restoredDraftKey = null;
-    restoreOrderDraftOnce();
     applyRoleCapabilities();
   });
 }
@@ -4423,9 +4413,10 @@ function initializeAccessibility() {
     if (top !== active) {
       const previous = active;
       active = top;
-      document.querySelector("main").inert = Boolean(top);
-      document.querySelector("header").inert = Boolean(top);
-      document.querySelector(".fab-cart").inert = Boolean(top);
+      const blocked = Boolean(top) || document.querySelector("main").hasAttribute("aria-busy");
+      document.querySelector("main").inert = blocked;
+      document.querySelector("header").inert = blocked;
+      document.querySelector(".fab-cart").inert = blocked;
       if (top) {
         returns.set(top, document.activeElement);
         top.setAttribute("role", "dialog");
@@ -4492,6 +4483,31 @@ function initializeAccessibility() {
   enhance();
 }
 
+// src/ui/startup-progress.js
+function startupProgress(completed, message) {
+  document.getElementById("startupProgress").value = completed;
+  document.getElementById("startupMessage").textContent = message;
+  document.getElementById("startupCount").textContent = `\u5DF2\u5B8C\u6210 ${completed} / 4 \u6B65\u9A5F\uFF08${completed * 25}%\uFF09`;
+}
+var painted = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+async function finishStartup() {
+  await painted();
+  startupProgress(4, "\u8F09\u5165\u5B8C\u6210");
+  await painted();
+  document.getElementById("startupStatus").hidden = true;
+  document.querySelector("main").inert = false;
+  document.querySelector("main").removeAttribute("aria-busy");
+  document.querySelector(".app-navigation").inert = false;
+  document.querySelector(".fab-cart").inert = false;
+}
+function failStartup(error) {
+  console.error("application_initialization_failed", error);
+  document.getElementById("startupStatus").setAttribute("role", "alert");
+  document.getElementById("startupMessage").textContent = `\u8F09\u5165\u5931\u6557\uFF1A${error?.message || "\u8ACB\u6AA2\u67E5\u9023\u7DDA\u5F8C\u91CD\u8A66"}`;
+  document.querySelector(".startup-spinner").hidden = true;
+  document.getElementById("startupRetry").hidden = false;
+}
+
 // src/app/startup.js
 window.saveOrderDraftNow = async function() {
   clearTimeout(state.draftSaveTimer);
@@ -4502,43 +4518,39 @@ window.saveOrderDraftNow = async function() {
 async function startApplication() {
   const main = document.querySelector("main");
   main.inert = true;
+  document.querySelector(".fab-cart").inert = true;
   main.setAttribute("aria-busy", "true");
   try {
     await initializeDomain();
+    startupProgress(1, "\u6B63\u5728\u53D6\u5F97\u5E97\u92EA\u3001\u5546\u54C1\u8207\u672C\u6708\u7522\u80FD\u2026");
+    initContactMethodToggle();
+    initSearchContactMethodToggle();
+    initVisibleViewportFit();
+    showSection("customer", document.querySelector(".nav-item"));
+    setDefaultDate();
+    updateCartDisplay();
+    detectDevice();
+    initializeButtonStates();
+    initializeModalCloseHandlers();
+    initCustomerAutocomplete();
+    initEscapeToClose();
+    initAccessibleDialogs();
+    initOrderDraftPersistence();
+    initializeAccessibility();
+    toggleShippingField();
+    renderCalendar(true);
+    await loadInitialShopData();
+    startupProgress(2, "\u6B63\u5728\u6AA2\u67E5\u8207\u6062\u5FA9\u672C\u6A5F\u672A\u9001\u51FA\u8A02\u55AE\u2026");
+    await restoreOrderDraftOnce();
+    applyRoleCapabilities();
+    startupProgress(3, "\u6B63\u5728\u5B8C\u6210\u756B\u9762\u6E32\u67D3\u2026");
+    initializeWorkspace();
+    const requestedSection = !location.hash && new URLSearchParams(location.search).get("section");
+    if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);
+    await finishStartup();
   } catch (error) {
-    const alert = document.getElementById("startupStatus");
-    alert.hidden = false;
-    alert.replaceChildren(document.createTextNode("\u7121\u6CD5\u8F09\u5165\u61C9\u7528\u7A0B\u5F0F\uFF0C\u8ACB\u6AA2\u67E5\u9023\u7DDA\u5F8C\u91CD\u8A66\u3002"));
-    const retry = document.createElement("button");
-    retry.type = "button";
-    retry.textContent = "\u91CD\u65B0\u8F09\u5165";
-    retry.onclick = () => location.reload();
-    alert.append(retry);
-    console.error("domain_initialization_failed", error);
-    return;
+    failStartup(error);
   }
-  main.inert = false;
-  main.removeAttribute("aria-busy");
-  initContactMethodToggle();
-  initSearchContactMethodToggle();
-  initVisibleViewportFit();
-  showSection("customer", document.querySelector(".nav-item"));
-  setDefaultDate();
-  updateCartDisplay();
-  detectDevice();
-  initializeButtonStates();
-  initializeModalCloseHandlers();
-  initCustomerAutocomplete();
-  initEscapeToClose();
-  initAccessibleDialogs();
-  initOrderDraftPersistence();
-  initializeAccessibility();
-  initializeWorkspace();
-  toggleShippingField();
-  renderCalendar(true);
-  loadInitialShopData();
-  const requestedSection = !location.hash && new URLSearchParams(location.search).get("section");
-  if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);
 }
 if (document.readyState === "loading")
   document.addEventListener("DOMContentLoaded", startApplication, { once: true });

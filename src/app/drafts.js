@@ -262,7 +262,6 @@ export function initOrderDraftPersistence() {
   form?.addEventListener('change', scheduleDraftSave);
   window.addEventListener('pos:shop-changed', function () {
     state.restoredDraftKey = null;
-    restoreOrderDraftOnce();
     applyRoleCapabilities();
   });
 }

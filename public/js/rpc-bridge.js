@@ -236,14 +236,14 @@
         return generated;
     }
 
-    async function ensureSessionBootstrap(state) {
+    async function ensureSessionBootstrap(state, bootstrapOptions) {
         const uid = state.auth.currentUser?.uid;
         if (!uid) return;
         if (!sessionBootstrapPromise || sessionBootstrapPromise.uid !== uid) {
             const promise = rawRpc(state, 'initializeSession', [{
                 deviceId: getOrCreateDeviceId(),
                 userAgent: navigator.userAgent || '',
-            }], null);
+            }, bootstrapOptions].filter((value) => value !== undefined), null);
             promise.uid = uid;
             sessionBootstrapPromise = promise;
         }
@@ -252,6 +252,7 @@
             availableShops = result?.shops || [];
             shopsLoaded = true;
             renderShopList();
+            return result;
         } catch (error) {
             sessionBootstrapPromise = null;
             shopsLoaded = false;
@@ -679,7 +680,14 @@
     async function invoke(functionName, args) {
         const state = await ensureSignedIn();
         try {
-            await ensureSessionBootstrap(state);
+            const initial = functionName === 'getShopBootstrap';
+            const session = await ensureSessionBootstrap(state, initial ? {
+                shopId: localStorage.getItem(shopStorageKey()), year: args[0], month: args[1],
+            } : undefined);
+            if (initial && session?.bootstrap && !activeShop) {
+                await activateShop(session.selectedShop, false);
+                return session.bootstrap;
+            }
             if (GLOBAL_METHODS.has(functionName)) {
                 return await rawRpc(state, functionName, args, null);
             }

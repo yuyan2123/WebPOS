@@ -3,6 +3,9 @@ const { readFileSync } = require('node:fs');
 
 async function openManager(page) {
   await page.goto('/');
+  await page.evaluate(() => {
+    document.getElementById('startupStatus').hidden = true;
+  });
   const source = readFileSync('public/js/rpc-bridge.js', 'utf8');
   // Exercise the real bridge UI with a controllable RPC, without Firebase credentials.
   await page.addScriptTag({

@@ -25,8 +25,17 @@
 
     <!-- Header -->
     <a class="skip-link" href="#mainContent">跳至主要內容</a>
-    <div id="startupStatus" role="alert" hidden></div>
-    <header class="app-navigation">
+    <div id="startupStatus" class="startup-overlay" role="status" aria-live="polite">
+      <div class="startup-card">
+        <div class="startup-spinner" aria-hidden="true"></div>
+        <h2>正在開啟 WebPOS</h2>
+        <p id="startupMessage">正在準備應用程式…</p>
+        <progress id="startupProgress" max="4" value="0" aria-label="啟動步驟完成進度"></progress>
+        <p id="startupCount">已完成 0 / 4 步驟（0%）</p>
+        <button id="startupRetry" type="button" hidden onclick="location.reload()">重新載入</button>
+      </div>
+    </div>
+    <header class="app-navigation" inert>
       <a class="brand" href="#customer" aria-label="WebPOS 首頁"><img class="brand-mark" src="/icons/icon-192.png" width="42" height="42" alt=""><span>WebPOS<span class="brand-subtitle">訂單工作台</span></span></a>
       <nav aria-label="主要導覽">
         <div class="navigation-group"><p class="navigation-label">建立訂單</p><button type="button" onclick="showSection('customer', this)" id="nav-customer" class="nav-item" aria-label="客戶資料"><i class="fas fa-user" aria-hidden="true"></i><span>客戶資料</span></button>
@@ -51,7 +60,7 @@
     </header>
 
     <!-- Main Content -->
-    <main id="mainContent" tabindex="-1" class="workspace-main">
+    <main inert aria-busy="true" id="mainContent" tabindex="-1" class="workspace-main">
       <div class="workspace-heading"><div><p class="eyebrow">WebPOS · 訂單工作台</p><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">先填寫客戶與配送資料</p></div></div>
       <aside id="orderContext" class="order-context" aria-label="目前訂單摘要">
         <span class="context-mode" id="workspaceMode">新訂單</span>

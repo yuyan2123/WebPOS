@@ -67,9 +67,10 @@ export function initializeAccessibility() {
     if (top !== active) {
       const previous = active;
       active = top;
-      document.querySelector('main').inert = Boolean(top);
-      document.querySelector('header').inert = Boolean(top);
-      document.querySelector('.fab-cart').inert = Boolean(top);
+      const blocked = Boolean(top) || document.querySelector('main').hasAttribute('aria-busy');
+      document.querySelector('main').inert = blocked;
+      document.querySelector('header').inert = blocked;
+      document.querySelector('.fab-cart').inert = blocked;
       if (top) {
         returns.set(top, document.activeElement);
         top.setAttribute('role', 'dialog');

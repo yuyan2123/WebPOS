@@ -5,6 +5,8 @@ import {
   hasMeaningfulDraft,
   localDbPut,
   initOrderDraftPersistence,
+  restoreOrderDraftOnce,
+  applyRoleCapabilities,
 } from './drafts.js';
 import {
   initContactMethodToggle,
@@ -29,6 +31,7 @@ import { loadInitialShopData } from './catalog.js';
 import { initializeDomain } from '../platform/domain.js';
 import { initializeWorkspace } from '../ui/workspace.js';
 import { initializeAccessibility } from '../ui/accessibility.js';
+import { startupProgress, finishStartup, failStartup } from '../ui/startup-progress.js';
 
 window.saveOrderDraftNow = async function () {
   clearTimeout(state.draftSaveTimer);
@@ -41,46 +44,43 @@ window.saveOrderDraftNow = async function () {
 export async function startApplication() {
   const main = document.querySelector('main');
   main.inert = true;
+  document.querySelector('.fab-cart').inert = true;
   main.setAttribute('aria-busy', 'true');
   try {
     await initializeDomain();
+    startupProgress(1, '正在取得店鋪、商品與本月產能…');
+    initContactMethodToggle();
+    initSearchContactMethodToggle();
+    initVisibleViewportFit();
+    showSection('customer', document.querySelector('.nav-item'));
+    setDefaultDate();
+    updateCartDisplay();
+    detectDevice();
+    initializeButtonStates();
+    initializeModalCloseHandlers();
+    initCustomerAutocomplete();
+    initEscapeToClose();
+    initAccessibleDialogs();
+    initOrderDraftPersistence();
+    initializeAccessibility();
+
+    // 初始化配送方式相關欄位顯示
+    toggleShippingField();
+    // 初始化日曆 (新UI)
+    renderCalendar(true);
+    // 商品與目前月份產能合併載入；客戶只在使用者輸入時查詢。
+    await loadInitialShopData();
+    startupProgress(2, '正在檢查與恢復本機未送出訂單…');
+    await restoreOrderDraftOnce();
+    applyRoleCapabilities();
+    startupProgress(3, '正在完成畫面渲染…');
+    initializeWorkspace();
+    const requestedSection = !location.hash && new URLSearchParams(location.search).get('section');
+    if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);
+    await finishStartup();
   } catch (error) {
-    const alert = document.getElementById('startupStatus');
-    alert.hidden = false;
-    alert.replaceChildren(document.createTextNode('無法載入應用程式，請檢查連線後重試。'));
-    const retry = document.createElement('button');
-    retry.type = 'button';
-    retry.textContent = '重新載入';
-    retry.onclick = () => location.reload();
-    alert.append(retry);
-    console.error('domain_initialization_failed', error);
-    return;
+    failStartup(error);
   }
-  main.inert = false;
-  main.removeAttribute('aria-busy');
-  initContactMethodToggle();
-  initSearchContactMethodToggle();
-  initVisibleViewportFit();
-  showSection('customer', document.querySelector('.nav-item'));
-  setDefaultDate();
-  updateCartDisplay();
-  detectDevice();
-  initializeButtonStates();
-  initializeModalCloseHandlers();
-  initCustomerAutocomplete();
-  initEscapeToClose();
-  initAccessibleDialogs();
-  initOrderDraftPersistence();
-  initializeAccessibility();
-  initializeWorkspace();
-  // 初始化配送方式相關欄位顯示
-  toggleShippingField();
-  // 初始化日曆 (新UI)
-  renderCalendar(true);
-  // 商品與目前月份產能合併載入；客戶只在使用者輸入時查詢。
-  loadInitialShopData();
-  const requestedSection = !location.hash && new URLSearchParams(location.search).get('section');
-  if (requestedSection && document.getElementById(requestedSection)) showSectionById(requestedSection);
 }
 
 if (document.readyState === 'loading')

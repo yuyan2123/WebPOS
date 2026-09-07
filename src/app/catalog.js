@@ -1,5 +1,5 @@
 import { escapeHandlerArgument } from '../platform/markup.js';
-import { rpc, isConnected } from '../platform/rpc.js';
+import { call, rpc, isConnected } from '../platform/rpc.js';
 import { state } from './state.js';
 import { showAlert, setButtonLoading } from './feedback.js';
 import { updateCartDisplay } from './cart.js';
@@ -74,27 +74,15 @@ export async function showProductLoadFailure(error) {
   document.getElementById('cakeProducts').innerHTML = message;
 }
 
-export function loadInitialShopData() {
+export async function loadInitialShopData() {
   const now = new Date();
-  if (!isConnected()) {
-    showProductLoadFailure(new Error('尚未連接 Firebase'));
-    renderCalendar();
-    return;
+  const result = await call('getShopBootstrap', now.getFullYear(), now.getMonth() + 1);
+  if (!Array.isArray(result?.products) || !result?.capacityMonth?.key) {
+    throw new Error('初始化資料不完整，請重新載入');
   }
-  rpc
-    .withSuccessHandler(function (result) {
-      handleProductsLoaded(result?.products || []);
-      if (result?.capacityMonth?.key) {
-        state.monthCapacityCache[result.capacityMonth.key] = result.capacityMonth.data || {};
-      }
-      renderCalendar();
-    })
-    .withFailureHandler(function (error) {
-      console.warn('初始資料載入失敗，改用商品重試流程', error);
-      loadProducts();
-      renderCalendar();
-    })
-    .getShopBootstrap(now.getFullYear(), now.getMonth() + 1);
+  state.monthCapacityCache[result.capacityMonth.key] = result.capacityMonth.data || {};
+  handleProductsLoaded(result.products, { skipDraft: true });
+  renderCalendar(true);
 }
 
 export function handleProductsLoaded(products, options = {}) {
@@ -103,7 +91,7 @@ export function handleProductsLoaded(products, options = {}) {
   renderProductCards();
   updateProductDisplays();
   updateNavVisibility();
-  restoreOrderDraftOnce();
+  if (!options.skipDraft) return restoreOrderDraftOnce();
 }
 
 export function updateNavVisibility() {

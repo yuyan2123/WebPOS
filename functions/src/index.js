@@ -146,7 +146,12 @@ export async function executeRpc(request) {
       listMyShopsService(user),
       recordDeviceSession(user, request, securityHashSalt.value(), args[0]),
     ]);
-    return serialize({ shops, device });
+    const options = args[1];
+    if (!options) return serialize({ shops, device });
+    const selectedShop = shops.find((shop) => shop.shopId === options.shopId) || shops[0] || null;
+    const shop = selectedShop ? await requireShopAccess(user, selectedShop.shopId, "viewer") : null;
+    const bootstrap = shop ? await getShopBootstrapService(shop, options.year, options.month) : null;
+    return serialize({ shops, device, selectedShop: selectedShop ? { ...selectedShop, role: shop.role } : null, bootstrap });
   }
   if (method === "registerDeviceSession") {
     return serialize(await recordDeviceSession(user, request, securityHashSalt.value(), args[0]));
