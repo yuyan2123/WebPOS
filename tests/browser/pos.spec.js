@@ -38,6 +38,25 @@ async function openWorkspace(page, role = 'owner') {
     }),
   );
   await page.goto('/');
+  // Startup includes Wasm compilation, IndexedDB and paint; cold CI WebKit can
+  // exceed the normal 5 s interaction assertion budget. Still fail immediately
+  // on a reported startup error instead of waiting for an inert element forever.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const status = document.getElementById('startupStatus');
+          if (status.getAttribute('role') === 'alert') return 'failed';
+          return status.hidden ? 'ready' : 'loading';
+        }),
+      { timeout: 20_000, message: 'Application startup must finish or report an error' },
+    )
+    .not.toBe('loading');
+  await expect(
+    page.locator('#startupRetry'),
+    await page.locator('#startupMessage').textContent(),
+  ).toBeHidden();
+  await expect(page.locator('#startupStatus')).toBeHidden();
   await expect(page.locator('#mainContent')).not.toHaveAttribute('inert', '');
   await expect
     .poll(() => page.evaluate(() => window.__calls.some((call) => call.method === 'getShopBootstrap')))
@@ -154,6 +173,33 @@ test('accessibility checks across customer, search and calendar', async ({ page 
       result.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
     ).toEqual([]);
   }
+});
+
+test('slow Wasm startup stays blocked and becomes usable after more than five seconds', async ({ page }) => {
+  let releaseWasm;
+  const gate = new Promise((resolve) => {
+    releaseWasm = resolve;
+  });
+  await page.route('**/*.wasm', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  const opening = openWorkspace(page);
+  // Attach a rejection handler while the controlled response is held.
+  opening.catch(() => {});
+  try {
+    await expect(page.locator('#startupStatus')).toBeVisible();
+    // Deliberately cross the former startup deadline; this is the condition
+    // under test, not an arbitrary wait used to synchronize a normal action.
+    await page.waitForTimeout(6_000);
+    await expect(page.locator('#mainContent')).toHaveAttribute('inert', '');
+    await expect(page.locator('#startupProgress')).toHaveJSProperty('value', 0);
+  } finally {
+    releaseWasm();
+  }
+  expect(await opening).toEqual([]);
+  await page.locator('#customerName').fill('慢速啟動');
+  await expect(page.locator('#customerName')).toHaveValue('慢速啟動');
 });
 
 test('Rust load failure offers retry without allowing uninitialized operations', async ({ page }) => {
