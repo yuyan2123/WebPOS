@@ -418,20 +418,35 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
   await expect(page.locator('#searchName')).toBeEnabled();
 });
 
-test('order table keeps actions visible across iPad orientations and phone widths', async ({ page }, testInfo) => {
-  test.setTimeout(60_000);
-  test.skip(!['desktop', 'webkit'].includes(testInfo.project.name), 'Checks all sizes in Chromium and WebKit');
-  const errors = await openWorkspace(page);
-  await page.locator('#nav-search').click();
-  for (const width of [1366, 1180, 1024, 820, 530, 390]) {
+for (const width of [1366, 1180, 1024, 820, 530, 390]) {
+  test(`order table keeps actions visible and collapses smoothly at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !['desktop', 'webkit'].includes(testInfo.project.name),
+      'Checks all sizes in Chromium and WebKit',
+    );
+    const errors = await openWorkspace(page);
+    await page.locator('#nav-search').click();
     await page.setViewportSize({ width, height: 1000 });
-    await page.evaluate(() => (window.__orders = [{
-      orderId: 'O-layout', customerName: '余彥亨先生與很長的客戶姓名',
-      customerPhone: '0912345678', deliveryDate: '2026-09-30',
-      totalAmount: 1234567, depositAmount: 1000, remainingAmount: 1233567,
-      shippingFee: 0, deliveryType: '自取', status: '已確認',
-      items: [{ productName: '測試商品', quantity: 1, unitPrice: 1234567, subtotal: 1234567 }],
-    }]));
+    await page.evaluate(
+      () =>
+        (window.__orders = [
+          {
+            orderId: 'O-layout',
+            customerName: '余彥亨先生與很長的客戶姓名',
+            customerPhone: '0912345678',
+            deliveryDate: '2026-09-30',
+            totalAmount: 1234567,
+            depositAmount: 1000,
+            remainingAmount: 1233567,
+            shippingFee: 0,
+            deliveryType: '自取',
+            status: '已確認',
+            items: [{ productName: '測試商品', quantity: 1, unitPrice: 1234567, subtotal: 1234567 }],
+          },
+        ]),
+    );
     await page.locator('#searchName').fill('余');
     await page.locator('.btn-search').click();
     await expect(page.locator('#searchResults .btn-table-view')).toBeVisible();
@@ -463,11 +478,15 @@ test('order table keeps actions visible across iPad orientations and phone width
     await expect(page.locator('.order-items-table tbody tr')).toHaveCSS('display', 'table-row');
     await page.evaluate(() => {
       window.__collapseHeight = null;
-      document.addEventListener('animationend', function recordCollapse(event) {
-        if (event.animationName !== 'order-items-collapse') return;
-        window.__collapseHeight = event.target.closest('.order-items-row').getBoundingClientRect().height;
-        document.removeEventListener('animationend', recordCollapse, true);
-      }, true);
+      document.addEventListener(
+        'animationend',
+        function recordCollapse(event) {
+          if (event.animationName !== 'order-items-collapse') return;
+          window.__collapseHeight = event.target.closest('.order-items-row').getBoundingClientRect().height;
+          document.removeEventListener('animationend', recordCollapse, true);
+        },
+        true,
+      );
     });
     await page.locator('#searchResults td[data-label="姓名"]').click();
     await expect(page.locator('.order-items-row')).toHaveCount(0);
@@ -491,9 +510,9 @@ test('order table keeps actions visible across iPad orientations and phone width
     await page.getByRole('button', { name: '刪除', exact: true }).click();
     await expect(page.locator('#deleteConfirmModal')).toHaveClass(/active/);
     await page.keyboard.press('Escape');
-  }
-  expect(errors).toEqual([]);
-});
+    expect(errors).toEqual([]);
+  });
+}
 
 test('startup renders capacity settings and opening the panel reuses them', async ({ page }) => {
   const errors = await openWorkspace(page);
