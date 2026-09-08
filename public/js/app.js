@@ -1275,17 +1275,24 @@ function toggleOrderItems(orderId) {
   state.collapsingSearchOrderId = state.expandedSearchOrderId;
   state.expandedSearchOrderId = null;
   displayOrderTable(state.currentSearchOrders, "searchResults", "search");
-  state.orderItemsTransitionTimer = setTimeout(function() {
+  const animation = document.querySelector("#searchResults .is-collapsing .order-items-expand");
+  function finishCollapse() {
+    if (!state.orderItemsTransitionTimer) return;
+    clearTimeout(state.orderItemsTransitionTimer);
     state.collapsingSearchOrderId = null;
     state.expandedSearchOrderId = nextOrderId;
     state.orderItemsTransitionTimer = null;
     displayOrderTable(state.currentSearchOrders, "searchResults", "search");
-  }, 500);
+  }
+  state.orderItemsTransitionTimer = setTimeout(finishCollapse, 750);
+  animation?.addEventListener("animationend", function(event2) {
+    if (event2.target === animation && event2.animationName === "order-items-collapse") finishCollapse();
+  });
 }
 function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
   const collapsingClass = isCollapsing ? " is-collapsing" : "";
   if (!items || items.length === 0) {
-    return `<tr class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-empty">\u6B64\u8A02\u55AE\u6C92\u6709\u5546\u54C1\u660E\u7D30</div></div></td></tr>`;
+    return `<tr class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-scroll"><div class="order-items-empty">\u6B64\u8A02\u55AE\u6C92\u6709\u5546\u54C1\u660E\u7D30</div></div></div></td></tr>`;
   }
   let itemsHtml = "";
   items.forEach((item) => {
@@ -1342,10 +1349,12 @@ function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
                     <td colspan="${columnCount}">
                         <div class="order-items-expand">
                             <div class="order-items-scroll">
+                              <div class="order-items-content">
                                 <table class="order-items-table">
                                     <thead><tr><th>\u5546\u54C1</th><th>\u6578\u91CF</th><th>\u55AE\u50F9</th><th>\u5C0F\u8A08</th></tr></thead>
                                     <tbody>${itemsHtml}</tbody>
                                 </table>
+                              </div>
                             </div>
                         </div>
                     </td>

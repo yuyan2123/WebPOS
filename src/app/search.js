@@ -199,18 +199,26 @@ export function toggleOrderItems(orderId) {
   state.collapsingSearchOrderId = state.expandedSearchOrderId;
   state.expandedSearchOrderId = null;
   displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
-  state.orderItemsTransitionTimer = setTimeout(function () {
+  const animation = document.querySelector('#searchResults .is-collapsing .order-items-expand');
+  function finishCollapse() {
+    if (!state.orderItemsTransitionTimer) return;
+    clearTimeout(state.orderItemsTransitionTimer);
     state.collapsingSearchOrderId = null;
     state.expandedSearchOrderId = nextOrderId;
     state.orderItemsTransitionTimer = null;
     displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
-  }, 500);
+  }
+  // Follow the rendered animation; the timer only recovers if the element is removed elsewhere.
+  state.orderItemsTransitionTimer = setTimeout(finishCollapse, 750);
+  animation?.addEventListener('animationend', function (event) {
+    if (event.target === animation && event.animationName === 'order-items-collapse') finishCollapse();
+  });
 }
 
 export function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
   const collapsingClass = isCollapsing ? ' is-collapsing' : '';
   if (!items || items.length === 0) {
-    return `<tr class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-empty">此訂單沒有商品明細</div></div></td></tr>`;
+    return `<tr class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-scroll"><div class="order-items-empty">此訂單沒有商品明細</div></div></div></td></tr>`;
   }
   let itemsHtml = '';
   items.forEach((item) => {
@@ -267,10 +275,12 @@ export function renderExpandedOrderItems(items, columnCount, isCollapsing = fals
                     <td colspan="${columnCount}">
                         <div class="order-items-expand">
                             <div class="order-items-scroll">
+                              <div class="order-items-content">
                                 <table class="order-items-table">
                                     <thead><tr><th>商品</th><th>數量</th><th>單價</th><th>小計</th></tr></thead>
                                     <tbody>${itemsHtml}</tbody>
                                 </table>
+                              </div>
                             </div>
                         </div>
                     </td>

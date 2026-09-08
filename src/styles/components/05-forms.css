@@ -480,7 +480,8 @@
 }
 
 #searchResults .table tbody tr:last-child {
-  border-bottom: none;
+  /* 展開明細會改變最後一列；保留邊框厚度，避免摘要列高度跳動。 */
+  border-bottom-color: transparent;
 }
 
 #searchResults .order-summary-row {
@@ -496,9 +497,18 @@
   background: transparent;
 }
 
-#searchResults .order-items-row > td {
+#searchResults .table > tbody > .order-items-row > td {
   padding: 0;
+  border: 0;
   white-space: normal;
+}
+
+#searchResults .table > tbody > .order-items-row {
+  border: 0;
+}
+
+.order-items-content {
+  padding: 12px 10px;
 }
 
 .order-items-expand {

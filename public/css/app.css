@@ -3356,7 +3356,8 @@ button.loading::after {
 }
 
 #searchResults .table tbody tr:last-child {
-  border-bottom: none;
+  /* 展開明細會改變最後一列；保留邊框厚度，避免摘要列高度跳動。 */
+  border-bottom-color: transparent;
 }
 
 #searchResults .order-summary-row {
@@ -3372,9 +3373,18 @@ button.loading::after {
   background: transparent;
 }
 
-#searchResults .order-items-row > td {
+#searchResults .table > tbody > .order-items-row > td {
   padding: 0;
+  border: 0;
   white-space: normal;
+}
+
+#searchResults .table > tbody > .order-items-row {
+  border: 0;
+}
+
+.order-items-content {
+  padding: 12px 10px;
 }
 
 .order-items-expand {
@@ -5228,9 +5238,10 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* Compact order lists keep actions visible without turning every row into a form. */
 @media (max-width: 1100px) {
   #searchResults .table-responsive {
-    overflow: visible;
+    overflow: hidden;
   }
   #searchResults .table,
   #searchResults .table > tbody {
@@ -5243,47 +5254,91 @@ textarea:focus-visible {
   }
   #searchResults .table > tbody > tr:not(.order-items-row) {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 14px;
-    margin-bottom: 12px;
-    padding: 14px;
-    border: 1px solid #dce5e1;
-    border-radius: 14px;
-    background: #fff;
-    box-shadow: 0 4px 14px rgba(20, 42, 35, 0.06);
+    grid-template-columns: repeat(4, minmax(0, 1fr)) 94px;
+    grid-template-areas:
+      "name contact date status actions"
+      "fee total deposit remaining actions";
+    gap: 5px 10px;
+    padding: 12px;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
   #searchResults .table > tbody > tr:not(.order-items-row) > td {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 5px;
     min-width: 0;
     padding: 0;
     border: 0;
     text-align: left;
+    line-height: 1.5;
   }
-  #searchResults td[data-label]::before {
+  #searchResults td[data-label="姓名"] {
+    grid-area: name;
+  }
+  #searchResults td[data-label="聯絡方式"] {
+    grid-area: contact;
+  }
+  #searchResults td[data-label="交貨日"] {
+    grid-area: date;
+  }
+  #searchResults td[data-label="狀態"] {
+    grid-area: status;
+  }
+  #searchResults td[data-label="運費"] {
+    grid-area: fee;
+  }
+  #searchResults td[data-label="總金額"] {
+    grid-area: total;
+  }
+  #searchResults td[data-label="已付訂金"] {
+    grid-area: deposit;
+  }
+  #searchResults td[data-label="剩餘金額"] {
+    grid-area: remaining;
+  }
+  #searchResults td[data-label="操作"] {
+    grid-area: actions;
+  }
+  #searchResults td[data-label="逾期天數"] {
+    grid-column: 1 / -1;
+  }
+  #searchResults .td-fee::before,
+  #searchResults .td-amount::before,
+  #searchResults .td-deposit::before,
+  #searchResults .td-remaining::before {
     content: attr(data-label);
     color: #71817c;
     font-size: 0.68rem;
-    font-weight: 700;
+    font-weight: 400;
   }
-  #searchResults td[data-label="姓名"],
-  #searchResults td[data-label="操作"] {
-    grid-column: 1 / -1;
-  }
-  #searchResults td[data-label="姓名"] {
-    font-size: 1.05rem;
-    font-weight: 800;
-  }
-  #searchResults td[data-label="操作"] {
-    padding-top: 8px !important;
-  }
-  #searchResults .order-items-row {
-    display: block;
-    margin: -8px 0 12px;
-  }
+  #searchResults .order-items-row,
   #searchResults .order-items-row > td {
     display: block;
+  }
+}
+
+@media (max-width: 600px) {
+  #searchResults .table > tbody > tr:not(.order-items-row) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 94px;
+    grid-template-areas:
+      "name name actions"
+      "contact date actions"
+      "total remaining status"
+      "fee deposit overdue";
+    gap: 5px 8px;
+    padding: 10px;
+  }
+  #searchResults td[data-label="逾期天數"] {
+    grid-area: overdue;
+  }
+  #searchResults .td-fee,
+  #searchResults .td-amount,
+  #searchResults .td-deposit,
+  #searchResults .td-remaining {
+    font-size: 0.72rem;
   }
 }
 
@@ -5320,12 +5375,22 @@ textarea:focus-visible {
   animation: startup-card-exit 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes startup-overlay-exit {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 @keyframes startup-card-exit {
-  from { transform: scale(1); opacity: 1; }
-  to { transform: scale(1.35); opacity: 0; }
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.35);
+    opacity: 0;
+  }
 }
 .startup-overlay[hidden],
 .startup-spinner[hidden] {

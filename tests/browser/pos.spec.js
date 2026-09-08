@@ -419,10 +419,11 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
 });
 
 test('order table keeps actions visible across iPad orientations and phone widths', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
   test.skip(!['desktop', 'webkit'].includes(testInfo.project.name), 'Checks all sizes in Chromium and WebKit');
   const errors = await openWorkspace(page);
   await page.locator('#nav-search').click();
-  for (const width of [1366, 1180, 1024, 820, 390]) {
+  for (const width of [1366, 1180, 1024, 820, 530, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.evaluate(() => (window.__orders = [{
       orderId: 'O-layout', customerName: '余彥亨先生與很長的客戶姓名',
@@ -434,6 +435,10 @@ test('order table keeps actions visible across iPad orientations and phone width
     await page.locator('#searchName').fill('余');
     await page.locator('.btn-search').click();
     await expect(page.locator('#searchResults .btn-table-view')).toBeVisible();
+    if (width <= 1100) {
+      const summary = await page.locator('#searchResults .order-summary-row').boundingBox();
+      expect(summary.height).toBeLessThanOrEqual(width <= 600 ? 160 : 100);
+    }
     const wrapper = page.locator('#searchResults > .table-responsive');
     expect(await wrapper.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     for (const action of ['詳情', '刪除']) {
@@ -445,12 +450,31 @@ test('order table keeps actions visible across iPad orientations and phone width
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(tableBounds.x + tableBounds.width);
       await expect(button).toBeInViewport();
     }
-    if (!(await page.locator('#searchResults .order-summary-row').getAttribute('class')).includes('is-expanded')) {
+    const summaryRow = page.locator('#searchResults .order-summary-row');
+    if ((await summaryRow.getAttribute('class')).includes('is-expanded')) {
       await page.locator('#searchResults td[data-label="姓名"]').click();
+      await expect(page.locator('.order-items-row')).toHaveCount(0);
     }
+    const collapsedHeight = (await summaryRow.boundingBox()).height;
+    await page.locator('#searchResults td[data-label="姓名"]').click();
     await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    expect((await summaryRow.boundingBox()).height).toBeCloseTo(collapsedHeight, 1);
     await expect(page.locator('.order-items-table thead')).toBeVisible();
     await expect(page.locator('.order-items-table tbody tr')).toHaveCSS('display', 'table-row');
+    await page.evaluate(() => {
+      window.__collapseHeight = null;
+      document.addEventListener('animationend', function recordCollapse(event) {
+        if (event.animationName !== 'order-items-collapse') return;
+        window.__collapseHeight = event.target.closest('.order-items-row').getBoundingClientRect().height;
+        document.removeEventListener('animationend', recordCollapse, true);
+      }, true);
+    });
+    await page.locator('#searchResults td[data-label="姓名"]').click();
+    await expect(page.locator('.order-items-row')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__collapseHeight)).toBe(0);
+    expect((await summaryRow.boundingBox()).height).toBeCloseTo(collapsedHeight, 1);
+    await page.locator('#searchResults td[data-label="姓名"]').click();
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
     await page.getByRole('button', { name: '詳情', exact: true }).click();
     await expect(page.locator('.modal.active[role="dialog"]')).toBeVisible();
     await page.keyboard.press('Escape');
