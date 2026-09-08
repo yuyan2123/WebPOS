@@ -135,7 +135,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
                     <td data-label="交貨日">${formatDisplayDate(order.deliveryDate)}</td>`;
       if (isOverdue) {
         cells += `
-                        <td style="text-align: center;">
+                        <td data-label="逾期天數" style="text-align: center;">
                             <span class="overdue-badge ${overdueDays > 7 ? 'severe' : 'mild'}">${overdueDays} 天</span>
                         </td>`;
       }
@@ -161,8 +161,10 @@ export function displayOrderTable(orders, containerId, type = 'search') {
                     <td data-label="剩餘金額" class="td-remaining ${remainingAmount > 0 ? 'due' : 'clear'}">NT$ ${remainingAmount}</td>
                     <td data-label="狀態"><span class="status-pill ${getStatusPillClass(order.status)}">${escapeHtml(order.status)}</span></td>
                     <td data-label="操作">
+                      <div class="order-actions">
                         <button class="btn-table btn-table-view" data-oid="${escapeAttr(orderId)}" onclick="event.stopPropagation(); viewOrderDetails(this.dataset.oid)">詳情</button>
                         ${document.body.dataset.shopRole === 'viewer' ? '' : `<button class="btn-table btn-table-delete requires-editor" data-oid="${escapeAttr(orderId)}" data-cname="${escapeAttr(order.customerName)}" onclick="event.stopPropagation(); showDeleteConfirm(this.dataset.oid, this.dataset.cname)">刪除</button>`}
+                      </div>
                     </td>`;
       const rowClassAttr = rowClasses.length ? ` class="${rowClasses.join(' ')}"` : '';
       const rowClickAttr = canExpandItems

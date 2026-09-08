@@ -1223,7 +1223,7 @@ function displayOrderTable(orders, containerId, type = "search") {
                     <td data-label="\u4EA4\u8CA8\u65E5">${formatDisplayDate(order.deliveryDate)}</td>`;
     if (isOverdue) {
       cells += `
-                        <td style="text-align: center;">
+                        <td data-label="\u903E\u671F\u5929\u6578" style="text-align: center;">
                             <span class="overdue-badge ${overdueDays > 7 ? "severe" : "mild"}">${overdueDays} \u5929</span>
                         </td>`;
     }
@@ -1244,8 +1244,10 @@ function displayOrderTable(orders, containerId, type = "search") {
                     <td data-label="\u5269\u9918\u91D1\u984D" class="td-remaining ${remainingAmount > 0 ? "due" : "clear"}">NT$ ${remainingAmount}</td>
                     <td data-label="\u72C0\u614B"><span class="status-pill ${getStatusPillClass(order.status)}">${escapeHtml(order.status)}</span></td>
                     <td data-label="\u64CD\u4F5C">
+                      <div class="order-actions">
                         <button class="btn-table btn-table-view" data-oid="${escapeAttr(orderId)}" onclick="event.stopPropagation(); viewOrderDetails(this.dataset.oid)">\u8A73\u60C5</button>
                         ${document.body.dataset.shopRole === "viewer" ? "" : `<button class="btn-table btn-table-delete requires-editor" data-oid="${escapeAttr(orderId)}" data-cname="${escapeAttr(order.customerName)}" onclick="event.stopPropagation(); showDeleteConfirm(this.dataset.oid, this.dataset.cname)">\u522A\u9664</button>`}
+                      </div>
                     </td>`;
     const rowClassAttr = rowClasses.length ? ` class="${rowClasses.join(" ")}"` : "";
     const rowClickAttr = canExpandItems ? ` onclick="toggleOrderItems('${escapeHandlerArgument(orderId)}')"` : "";
@@ -1863,6 +1865,11 @@ async function loadInitialShopData() {
     throw new Error("\u521D\u59CB\u5316\u8CC7\u6599\u4E0D\u5B8C\u6574\uFF0C\u8ACB\u91CD\u65B0\u8F09\u5165");
   }
   state.monthCapacityCache[result.capacityMonth.key] = result.capacityMonth.data || {};
+  if (result.capacitySettings?.weekday && Array.isArray(result.capacitySettings.dateOverrides)) {
+    state.capacitySettings = result.capacitySettings;
+    state.capacitySettingsLoaded = true;
+    renderCapacitySettingsUI();
+  }
   handleProductsLoaded(result.products, { skipDraft: true });
   renderCalendar(true);
 }

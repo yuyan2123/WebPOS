@@ -10,6 +10,7 @@ import { escapeHtml } from './customers.js';
 import { renderCalendar } from './calendar.js';
 import { renderProductCards } from './products.js';
 import { getEffectivePrice } from './pricing.js';
+import { renderCapacitySettingsUI } from './capacity.js';
 
 export function setDeliveryDate() {
   const dateBtn = window.event?.currentTarget || window.event?.target;
@@ -81,6 +82,11 @@ export async function loadInitialShopData() {
     throw new Error('初始化資料不完整，請重新載入');
   }
   state.monthCapacityCache[result.capacityMonth.key] = result.capacityMonth.data || {};
+  if (result.capacitySettings?.weekday && Array.isArray(result.capacitySettings.dateOverrides)) {
+    state.capacitySettings = result.capacitySettings;
+    state.capacitySettingsLoaded = true;
+    renderCapacitySettingsUI();
+  }
   handleProductsLoaded(result.products, { skipDraft: true });
   renderCalendar(true);
 }

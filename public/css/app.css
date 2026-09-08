@@ -1286,12 +1286,16 @@ button.loading::after {
   font-weight: bold;
   font-size: 20px;
   user-select: none;
-  touch-action: none;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
   z-index: 2;
+}
+
+/* 優先於通用 [role="button"] 樣式，避免垂直偏移被瀏覽器接管為捲動。 */
+.slider-track .slider-thumb {
+  touch-action: none;
 }
 
 .slider-thumb:hover {
@@ -3304,6 +3308,8 @@ button.loading::after {
 }
 
 #searchResults .table-responsive {
+  width: 100%;
+  min-width: 0;
   background: white;
   border-radius: 12px;
   overflow: hidden;
@@ -3322,7 +3328,7 @@ button.loading::after {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8rem;
-  min-width: 900px;
+  table-layout: fixed;
 }
 
 #searchResults .table thead tr {
@@ -3337,7 +3343,7 @@ button.loading::after {
   color: #64748b;
   font-size: 0.75rem;
   letter-spacing: 0.3px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 #searchResults .table tbody tr {
@@ -3463,6 +3469,30 @@ button.loading::after {
   padding: 12px 10px;
   color: #374151;
   vertical-align: middle;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#searchResults .table > thead > tr > th:last-child {
+  width: 116px;
+}
+
+#searchResults .table > thead > tr > th:nth-child(2),
+#searchResults .table > thead > tr > th:nth-child(3) {
+  width: 100px;
+}
+
+#searchResults .order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#searchResults .order-actions .btn-table {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  margin: 0;
   white-space: nowrap;
 }
 
@@ -4649,7 +4679,6 @@ body .firebase-shop-option.active {
   #gift,
   #cake,
   #giftbox,
-  #search,
   #settings {
     padding-right: 74px;
   }
@@ -5199,23 +5228,22 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 1100px) {
   #searchResults .table-responsive {
     overflow: visible;
   }
-  #searchResults table,
-  #searchResults tbody {
+  #searchResults .table,
+  #searchResults .table > tbody {
     display: block;
     width: 100%;
     min-width: 0;
   }
-  #searchResults thead {
+  #searchResults .table > thead {
     display: none;
   }
-  #searchResults tr.order-summary-row,
-  #searchResults tbody > tr:not(.order-items-row) {
+  #searchResults .table > tbody > tr:not(.order-items-row) {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 14px;
     margin-bottom: 12px;
     padding: 14px;
@@ -5224,8 +5252,7 @@ textarea:focus-visible {
     background: #fff;
     box-shadow: 0 4px 14px rgba(20, 42, 35, 0.06);
   }
-  #searchResults tr.order-summary-row td,
-  #searchResults tbody > tr:not(.order-items-row) td {
+  #searchResults .table > tbody > tr:not(.order-items-row) > td {
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -5249,7 +5276,6 @@ textarea:focus-visible {
     font-weight: 800;
   }
   #searchResults td[data-label="操作"] {
-    flex-direction: row !important;
     padding-top: 8px !important;
   }
   #searchResults .order-items-row {

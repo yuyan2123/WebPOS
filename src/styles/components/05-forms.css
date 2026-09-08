@@ -432,6 +432,8 @@
 }
 
 #searchResults .table-responsive {
+  width: 100%;
+  min-width: 0;
   background: white;
   border-radius: 12px;
   overflow: hidden;
@@ -450,7 +452,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8rem;
-  min-width: 900px;
+  table-layout: fixed;
 }
 
 #searchResults .table thead tr {
@@ -465,7 +467,7 @@
   color: #64748b;
   font-size: 0.75rem;
   letter-spacing: 0.3px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 #searchResults .table tbody tr {

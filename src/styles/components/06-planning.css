@@ -55,6 +55,30 @@
   padding: 12px 10px;
   color: #374151;
   vertical-align: middle;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#searchResults .table > thead > tr > th:last-child {
+  width: 116px;
+}
+
+#searchResults .table > thead > tr > th:nth-child(2),
+#searchResults .table > thead > tr > th:nth-child(3) {
+  width: 100px;
+}
+
+#searchResults .order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#searchResults .order-actions .btn-table {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  margin: 0;
   white-space: nowrap;
 }
 

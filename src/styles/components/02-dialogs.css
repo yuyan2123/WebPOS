@@ -75,12 +75,16 @@
   font-weight: bold;
   font-size: 20px;
   user-select: none;
-  touch-action: none;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
   z-index: 2;
+}
+
+/* 優先於通用 [role="button"] 樣式，避免垂直偏移被瀏覽器接管為捲動。 */
+.slider-track .slider-thumb {
+  touch-action: none;
 }
 
 .slider-thumb:hover {

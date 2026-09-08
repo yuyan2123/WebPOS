@@ -19,13 +19,13 @@ async function openWorkspace(page, role = 'owner') {
     window.posApi = {call:async (method,args) => {
       window.__calls.push({method,args});
       if (window.__fail === method) throw new Error('測試連線中斷');
-      if (method === 'getShopBootstrap') return {products,capacityMonth:{key:'2026-9',data:{}}};
+      if (method === 'getShopBootstrap') return {products,capacityMonth:{key:'2026-9',data:{}},capacitySettings:{weekday:{'1':{dayOfWeek:1,maxQuantity:120,enabled:true}},dateOverrides:[{id:'2027-01-02',date:'2027-01-02',maxQuantity:45,enabled:true}]}};
       if (method === 'getProducts') return products;
       if (method === 'getMonthCapacityStatus') return {};
       if (method === 'getCapacitySettings') return {weekday:{},dateOverrides:[]};
       if (method === 'searchCustomers') return window.__customers || [];
-      if (method === 'searchOrders') return {orders:[],pagination:{hasMore:false,nextCursor:null}};
-      if (method === 'searchOverdueOrders') return [];
+      if (method === 'searchOrders') return {orders:window.__orders || [],pagination:{hasMore:false,nextCursor:null}};
+      if (method === 'searchOverdueOrders') return window.__orders || [];
       if (method === 'generateDailyReport') return window.__report || {date:args[1] && args[1] !== args[0] ? args[0] + ' ~ ' + args[1] : args[0],totalRevenue:100,totalOrders:1,totalItems:2,productSales:[{productName:'<img src=x onerror=alert(1)>',quantity:2,amount:100}]};
       if (method === 'getDemandStats') return {orderCount:1,productStats:[{name:'原味餅',loose:2,inbox:0,total:2}],giftboxStats:[]};
       if (method === 'submitOrder') return window.__capacity && !args[1].confirmed ? {needConfirm:true,capacityStatus:{date:args[0].deliveryDate,limit:1,currentQuantity:1,newOrderQuantity:2,projectedQuantity:3,exceededQuantity:2}} : {success:true,orderId:'O-test'};
@@ -324,6 +324,62 @@ test('payment preview uses shared Rust rules and confirmation supports keyboard'
   expect(errors).toEqual([]);
 });
 
+test('confirmation sliders keep diagonal touch drags until release', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'Uses Chromium native touch input on mobile');
+  const errors = await openWorkspace(page);
+  const touch = await page.context().newCDPSession(page);
+  for (const [kind, method] of [
+    ['status', 'updateOrderStatus'],
+    ['delete', 'deleteOrder'],
+  ]) {
+    await page.evaluate((kind) => {
+      if (kind === 'status') window.showStatusConfirm('O-test', '完成');
+      else window.showDeleteConfirm('O-test', '測試');
+    }, kind);
+    const thumb = page.locator(`#${kind}SliderThumb`);
+    await expect(thumb).toBeVisible();
+    await expect(thumb).toHaveCSS('touch-action', 'none');
+    await thumb.evaluate((element) => {
+      window.__sliderCancels = 0;
+      element.addEventListener('pointercancel', () => window.__sliderCancels++);
+    });
+    // A short diagonal drag must reset; a full one confirms only after release.
+    for (const complete of [false, true]) {
+      const box = await thumb.boundingBox();
+      const track = await thumb.locator('..').boundingBox();
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      const distance = complete ? track.width - box.width - 4 : 30;
+      await touch.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x, y }],
+      });
+      for (let step = 1; step <= 8; step++) {
+        await touch.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: x + (distance * step) / 8, y: y - step * 7 }],
+        });
+      }
+      expect(await page.evaluate(() => window.__sliderCancels)).toBe(0);
+      expect(
+        await page.evaluate((method) => window.__calls.some((call) => call.method === method), method),
+      ).toBe(false);
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      if (complete) {
+        await expect
+          .poll(() =>
+            page.evaluate((method) => window.__calls.filter((call) => call.method === method).length, method),
+          )
+          .toBe(1);
+      } else {
+        await expect(thumb).toHaveCSS('left', '2px');
+      }
+    }
+  }
+  await touch.detach();
+  expect(errors).toEqual([]);
+});
+
 test('catalog CRUD form, reports and demand remain accessible through management', async ({ page }) => {
   const errors = await openWorkspace(page);
   await openManagementPanel(page, 'products');
@@ -360,6 +416,75 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
   await expect(page.locator('#capDayEnabled0')).toBeDisabled();
   await page.locator('#nav-search').click();
   await expect(page.locator('#searchName')).toBeEnabled();
+});
+
+test('order table keeps actions visible across iPad orientations and phone widths', async ({ page }, testInfo) => {
+  test.skip(!['desktop', 'webkit'].includes(testInfo.project.name), 'Checks all sizes in Chromium and WebKit');
+  const errors = await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  for (const width of [1366, 1180, 1024, 820, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.evaluate(() => (window.__orders = [{
+      orderId: 'O-layout', customerName: '余彥亨先生與很長的客戶姓名',
+      customerPhone: '0912345678', deliveryDate: '2026-09-30',
+      totalAmount: 1234567, depositAmount: 1000, remainingAmount: 1233567,
+      shippingFee: 0, deliveryType: '自取', status: '已確認',
+      items: [{ productName: '測試商品', quantity: 1, unitPrice: 1234567, subtotal: 1234567 }],
+    }]));
+    await page.locator('#searchName').fill('余');
+    await page.locator('.btn-search').click();
+    await expect(page.locator('#searchResults .btn-table-view')).toBeVisible();
+    const wrapper = page.locator('#searchResults > .table-responsive');
+    expect(await wrapper.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    for (const action of ['詳情', '刪除']) {
+      const button = page.getByRole('button', { name: action, exact: true });
+      await button.scrollIntoViewIfNeeded();
+      const bounds = await button.boundingBox();
+      const tableBounds = await wrapper.boundingBox();
+      expect(bounds.x).toBeGreaterThanOrEqual(tableBounds.x);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(tableBounds.x + tableBounds.width);
+      await expect(button).toBeInViewport();
+    }
+    if (!(await page.locator('#searchResults .order-summary-row').getAttribute('class')).includes('is-expanded')) {
+      await page.locator('#searchResults td[data-label="姓名"]').click();
+    }
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    await expect(page.locator('.order-items-table thead')).toBeVisible();
+    await expect(page.locator('.order-items-table tbody tr')).toHaveCSS('display', 'table-row');
+    await page.getByRole('button', { name: '詳情', exact: true }).click();
+    await expect(page.locator('.modal.active[role="dialog"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: '刪除', exact: true }).click();
+    await expect(page.locator('#deleteConfirmModal')).toHaveClass(/active/);
+    await page.keyboard.press('Escape');
+    if (width === 1180 || width === 390) {
+      await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+      await page.screenshot({ path: `artifacts/order-table-${testInfo.project.name}-${width}.png` });
+    }
+    await page.locator('.btn-overdue').click();
+    await expect(page.locator('#searchResults td[data-label="逾期天數"]')).toBeVisible();
+    expect(await wrapper.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.getByRole('button', { name: '刪除', exact: true }).click();
+    await expect(page.locator('#deleteConfirmModal')).toHaveClass(/active/);
+    await page.keyboard.press('Escape');
+  }
+  expect(errors).toEqual([]);
+});
+
+test('startup renders capacity settings and opening the panel reuses them', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  // Already rendered while the settings panel is still hidden.
+  await expect(page.locator('#capDay1')).toHaveValue('120');
+  await expect(page.locator('#capDayEnabled1')).toBeChecked();
+  await expect(page.locator('#overrideTableBody')).toContainText('2027-01-02');
+  await expect(page.locator('#overrideTableBody')).toContainText('45');
+  await openManagementPanel(page, 'capacity');
+  await expect(page.locator('#capDay1')).toBeVisible();
+  await expect(page.locator('#capDay1')).toHaveValue('120');
+  await openManagementPanel(page, 'products');
+  await openManagementPanel(page, 'capacity');
+  expect(await page.evaluate(() => window.__calls.filter((call) => call.method === 'getCapacitySettings'))).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
 for (const role of ['owner', 'editor']) {

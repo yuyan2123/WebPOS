@@ -14,12 +14,14 @@ export async function getShopBootstrap(shop, yearValue, monthValue) {
 
   const [products, capacitySettings] = await Promise.all([
     getProducts(shop),
-    getCapacitySettings(shop, startDate, endDate),
+    // 設定頁需要所有日期覆寫；同一份設定也供當月產能計算使用。
+    getCapacitySettings(shop),
   ]);
   const capacityUsage = await getCapacityRangeData(shop, startDate, endDate, capacitySettings);
 
   return {
     products,
+    capacitySettings,
     capacityMonth: {
       key: `${year}-${month}`,
       data: buildMonthCapacityStatus(capacitySettings, capacityUsage, year, month),
