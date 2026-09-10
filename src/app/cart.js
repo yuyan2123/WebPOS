@@ -47,7 +47,7 @@ export function addToCartFromModal() {
     finalPrice = specialPrice;
     isSpecialPrice = true;
   }
-  const cart = state.currentModalProduct.category === '伴手禮' ? state.giftCart : state.cakeCart;
+  const cart = state.giftCart;
   const existing = cart.find((i) => i.productId === state.currentModalProduct.productId);
   const cartItem = {
     ...state.currentModalProduct,

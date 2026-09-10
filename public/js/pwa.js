@@ -1,6 +1,7 @@
 (function() {
   "use strict";
   let installPrompt = null;
+  let updateRequested = false;
 
   function showMessage(title, message, actions, iconClass = "fa-mobile-alt") {
     let banner = document.getElementById("pwaBanner");
@@ -88,6 +89,7 @@
         }
         updateButton.disabled = true;
         updateStatus.textContent = '正在更新…';
+        updateRequested = true;
         worker.postMessage({ type: 'SKIP_WAITING' });
       }
       function offerUpdate(worker) {
@@ -153,6 +155,9 @@
       if (refreshing) return;
       refreshing = true;
       try { await window.saveOrderDraftNow?.(); } catch (error) { console.warn("更新前草稿保存失敗", error); refreshing = false; return; }
+      if (updateRequested) {
+        try { sessionStorage.setItem('ginJiaPos.updateReload', '1'); } catch { /* Storage may be unavailable. */ }
+      }
       location.reload();
     });
   });

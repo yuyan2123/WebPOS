@@ -9,6 +9,10 @@ import { loadCapacitySettings } from './capacity.js';
 //        導航和區塊切換 (新UI)
 // ==========================================
 export function showSection(sectionName, navElement, panel) {
+  if (sectionName === 'cake') {
+    sectionName = 'gift';
+    navElement = undefined;
+  }
   if (sectionName === 'settings' && !panel) {
     const active = document.querySelector('.settings-section.active');
     return showSettingsSection(active?.id.replace('settings', '').toLowerCase() || 'products');

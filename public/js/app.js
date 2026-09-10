@@ -282,7 +282,7 @@ var state = {
   acDebounceTimer: null,
   acResultsCache: [],
   customerSearchCache: /* @__PURE__ */ new Map(),
-  currentProductFilter: "\u5168\u90E8",
+  currentProductFilter: null,
   searchDatepickerInstance: null,
   reportDatepickerInstance: null,
   buttonClickStates: /* @__PURE__ */ new Set(),
@@ -523,8 +523,8 @@ function updateCartModalDisplay() {
                             ${item.notes ? `<div class="cart-giftbox-notes">${escapeHtml(item.notes)}</div>` : ""}
                         </div>`;
     } else {
-      const iconClass = item.category === "\u4F34\u624B\u79AE" ? "gift" : "cake";
-      const iconName = item.category === "\u4F34\u624B\u79AE" ? "fa-cookie-bite" : "fa-birthday-cake";
+      const iconClass = "gift";
+      const iconName = "fa-box-open";
       let priceHtml = `NT$ ${item.price}`;
       if (item.isSpecialPrice && item.originalPrice !== item.price) {
         priceHtml = `<span class="original">NT$ ${item.originalPrice}</span>NT$ ${item.price}`;
@@ -572,8 +572,8 @@ function updateCartItemQuantity(index, change) {
       else updateCartDisplay();
     }
   } else {
-    const cart = item.category === "\u4F34\u624B\u79AE" ? state.giftCart : state.cakeCart;
-    const originalItem = cart.find((i) => i.productId === item.productId);
+    const cart = state.giftCart.includes(item) ? state.giftCart : state.cakeCart;
+    const originalItem = cart.find((i) => i === item);
     if (originalItem) {
       originalItem.quantity += change;
       if (originalItem.quantity < 1) removeFromCartModal(index);
@@ -586,9 +586,8 @@ function removeFromCartModal(index) {
   const item = allItems[index];
   if (!item) return;
   if (item.type === "giftbox") state.giftboxCart = state.giftboxCart.filter((i) => i.id !== item.id);
-  else if (item.category === "\u4F34\u624B\u79AE")
-    state.giftCart = state.giftCart.filter((i) => i.productId !== item.productId);
-  else state.cakeCart = state.cakeCart.filter((i) => i.productId !== item.productId);
+  else if (state.giftCart.includes(item)) state.giftCart = state.giftCart.filter((i) => i !== item);
+  else state.cakeCart = state.cakeCart.filter((i) => i !== item);
   updateCartDisplay();
 }
 
@@ -719,7 +718,7 @@ function addToCartFromModal() {
     finalPrice = specialPrice;
     isSpecialPrice = true;
   }
-  const cart = state.currentModalProduct.category === "\u4F34\u624B\u79AE" ? state.giftCart : state.cakeCart;
+  const cart = state.giftCart;
   const existing = cart.find((i) => i.productId === state.currentModalProduct.productId);
   const cartItem = {
     ...state.currentModalProduct,
@@ -1830,9 +1829,7 @@ function setDeliveryDate() {
 }
 function loadProducts() {
   const giftContainer = document.getElementById("giftProducts");
-  const cakeContainer = document.getElementById("cakeProducts");
   giftContainer.innerHTML = '<p style="text-align: center; padding: 20px;">\u8F09\u5165\u5546\u54C1\u4E2D...</p>';
-  cakeContainer.innerHTML = '<p style="text-align: center; padding: 20px;">\u8F09\u5165\u5546\u54C1\u4E2D...</p>';
   if (isConnected()) {
     rpc.withSuccessHandler(handleProductsLoaded).withFailureHandler(function(error) {
       showProductLoadFailure(error);
@@ -1855,7 +1852,7 @@ async function showProductLoadFailure(error) {
   }) : null;
   if (cached?.products?.length) {
     handleProductsLoaded(cached.products, { skipCache: true });
-    document.querySelectorAll("#giftProducts, #cakeProducts").forEach(function(container) {
+    document.querySelectorAll("#giftProducts").forEach(function(container) {
       container.insertAdjacentHTML(
         "afterbegin",
         `<div class="product-stale-banner col-span-full"><i class="fas fa-cloud-slash"></i> \u7121\u6CD5\u9023\u7DDA\uFF0C\u986F\u793A ${formatDisplayDate(cached.updatedAt)} \u7684\u5546\u54C1\u8CC7\u6599 <button type="button" onclick="loadProducts()">\u91CD\u8A66</button></div>`
@@ -1865,7 +1862,6 @@ async function showProductLoadFailure(error) {
   }
   const message = `<div class="product-load-error col-span-full" role="alert"><i class="fas fa-wifi"></i><strong>\u5546\u54C1\u8F09\u5165\u5931\u6557</strong><span>${escapeHtml(error?.message || "\u8ACB\u6AA2\u67E5\u7DB2\u8DEF\u9023\u7DDA")}</span><button type="button" onclick="loadProducts()">\u91CD\u65B0\u8F09\u5165</button></div>`;
   document.getElementById("giftProducts").innerHTML = message;
-  document.getElementById("cakeProducts").innerHTML = message;
 }
 async function loadInitialShopData() {
   const now = /* @__PURE__ */ new Date();
@@ -1892,21 +1888,28 @@ function handleProductsLoaded(products, options = {}) {
 }
 function updateNavVisibility() {
   const activeProducts = state.allProducts.filter((p) => p.status === "\u555F\u7528");
-  const hasGift = activeProducts.some((p) => p.category === "\u4F34\u624B\u79AE");
-  const hasCake = activeProducts.some((p) => p.category === "\u559C\u9905");
   const hasGiftbox = activeProducts.some((p) => p.giftBoxEnabled === "\u662F");
-  document.getElementById("nav-gift").style.display = hasGift ? "" : "none";
-  document.getElementById("nav-cake").style.display = hasCake ? "" : "none";
   document.getElementById("nav-giftbox").style.display = hasGiftbox ? "" : "none";
 }
 function updateProductDisplays() {
-  loadProductsByCategory("\u4F34\u624B\u79AE", "gift");
-  loadProductsByCategory("\u559C\u9905", "cake");
+  const select = document.getElementById("catalogCategory");
+  const previous = select.value;
+  const categories = [
+    ...new Set(
+      state.allProducts.filter((p) => p.status === "\u555F\u7528").map((p) => p.category).filter(Boolean)
+    )
+  ];
+  select.replaceChildren(
+    new Option("\u5168\u90E8\u985E\u5225", ""),
+    ...categories.map((category) => new Option(category, category))
+  );
+  select.value = categories.includes(previous) ? previous : "";
+  loadProductsByCategory(select.value, "gift");
 }
 function loadProductsByCategory(category, containerId) {
   const query = document.getElementById(containerId + "ProductSearch")?.value.trim().toLocaleLowerCase() || "";
   const products = state.allProducts.filter(
-    (p) => p.category === category && p.status === "\u555F\u7528" && (!query || `${p.productName} ${p.description || ""}`.toLocaleLowerCase().includes(query))
+    (p) => (!category || p.category === category) && p.status === "\u555F\u7528" && (!query || `${p.productName} ${p.description || ""}`.toLocaleLowerCase().includes(query))
   );
   const container = document.getElementById(containerId + "Products");
   container.classList.remove("loading");
@@ -1915,9 +1918,9 @@ function loadProductsByCategory(category, containerId) {
     return;
   }
   const companyBanner = state.isCompanyCustomer ? '<div class="company-mode-banner col-span-full"><i class="fas fa-building"></i>\u76EE\u524D\u70BA\u4F01\u696D\u5BA2\u6236\u6A21\u5F0F\uFF0C\u5546\u54C1\u5DF2\u5957\u7528\u4F01\u696D\u50F9\u683C</div>' : "";
-  const iconClass = category === "\u4F34\u624B\u79AE" ? "fa-cookie-bite" : "fa-birthday-cake";
-  const bgClass = category === "\u4F34\u624B\u79AE" ? "bg-orange-50 text-orange-300" : "bg-pink-50 text-pink-300";
-  const hoverBorderClass = category === "\u4F34\u624B\u79AE" ? "hover:border-orange-300" : "hover:border-pink-300";
+  const iconClass = "fa-box-open";
+  const bgClass = "bg-orange-50 text-orange-300";
+  const hoverBorderClass = "hover:border-orange-300";
   container.innerHTML = companyBanner + products.map((p) => {
     const effectivePrice = getEffectivePrice(p);
     const isCompanyPriceActive = state.isCompanyCustomer && p.companyPrice && parseFloat(p.companyPrice) > 0 && parseFloat(p.companyPrice) !== parseFloat(p.price);
@@ -1942,7 +1945,7 @@ function loadProductsByCategory(category, containerId) {
                                 <i class="fas fa-edit"></i> \u8A73\u60C5
                             </button>
                             <div class="w-px h-6 bg-gray-300"></div>
-                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}', '${escapeHandlerArgument(category)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
+                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -1950,13 +1953,13 @@ function loadProductsByCategory(category, containerId) {
                 </div>`;
   }).join("");
 }
-function addToCartDirectly(productId, category) {
+function addToCartDirectly(productId) {
   event.stopPropagation();
   const btn = window.event?.currentTarget || window.event?.target;
   if (btn.dataset.animating === "true") {
     const product2 = state.allProducts.find((p) => p.productId === productId);
     if (!product2) return;
-    const cart2 = category === "\u4F34\u624B\u79AE" ? state.giftCart : state.cakeCart;
+    const cart2 = state.giftCart;
     const existingItem2 = cart2.find(
       (item) => item.productId === productId && !item.isSpecialPrice && !item.isCompanyPrice === !state.isCompanyCustomer && (!item.notes || item.notes === "")
     );
@@ -1968,7 +1971,7 @@ function addToCartDirectly(productId, category) {
         productName: product2.productName,
         price: getEffectivePrice(product2),
         quantity: 1,
-        category,
+        category: product2.category,
         isSpecialPrice: false,
         isCompanyPrice: state.isCompanyCustomer,
         notes: ""
@@ -1979,7 +1982,7 @@ function addToCartDirectly(productId, category) {
   }
   const product = state.allProducts.find((p) => p.productId === productId);
   if (!product) return;
-  const cart = category === "\u4F34\u624B\u79AE" ? state.giftCart : state.cakeCart;
+  const cart = state.giftCart;
   const existingItem = cart.find(
     (item) => item.productId === productId && !item.isSpecialPrice && !item.isCompanyPrice === !state.isCompanyCustomer && (!item.notes || item.notes === "")
   );
@@ -1991,7 +1994,7 @@ function addToCartDirectly(productId, category) {
       productName: product.productName,
       price: getEffectivePrice(product),
       quantity: 1,
-      category,
+      category: product.category,
       isSpecialPrice: false,
       isCompanyPrice: state.isCompanyCustomer,
       notes: ""
@@ -2014,9 +2017,15 @@ function addToCartDirectly(productId, category) {
 function renderProductCards() {
   const grid = document.getElementById("productsCardGrid");
   const tabsContainer = document.getElementById("productsFilterTabs");
-  const categories = ["\u5168\u90E8", ...new Set(state.allProducts.map((p) => p.category))];
+  document.getElementById("productCategoryOptions").replaceChildren(
+    ...[...new Set(state.allProducts.map((p) => p.category).filter(Boolean))].map(
+      (category) => new Option(category, category)
+    )
+  );
+  if (state.currentProductFilter !== null && !state.allProducts.some((p) => p.category === state.currentProductFilter))
+    state.currentProductFilter = null;
+  const categories = [null, ...new Set(state.allProducts.map((p) => p.category))];
   const categoryCounts = /* @__PURE__ */ Object.create(null);
-  categoryCounts["\u5168\u90E8"] = state.allProducts.length;
   state.allProducts.forEach((p) => {
     categoryCounts[p.category] = (categoryCounts[p.category] || 0) + 1;
   });
@@ -2025,12 +2034,12 @@ function renderProductCards() {
       const button = document.createElement("button");
       button.type = "button";
       button.classList.toggle("active", category === state.currentProductFilter);
-      button.textContent = `${category} (${categoryCounts[category]})`;
+      button.textContent = `${category === null ? "\u5168\u90E8" : category} (${category === null ? state.allProducts.length : categoryCounts[category]})`;
       button.onclick = () => filterProductsByCategory(category);
       return button;
     })
   );
-  const filtered = state.currentProductFilter === "\u5168\u90E8" ? state.allProducts : state.allProducts.filter((p) => p.category === state.currentProductFilter);
+  const filtered = state.currentProductFilter === null ? state.allProducts : state.allProducts.filter((p) => p.category === state.currentProductFilter);
   if (filtered.length === 0) {
     grid.innerHTML = `<div class="products-empty" style="grid-column: 1/-1;">
                     <i class="fas fa-box-open"></i>
@@ -2101,10 +2110,9 @@ function showAddProduct() {
   document.getElementById("productSpecialPrice").value = "";
   document.getElementById("productCompanyPrice").value = "";
   document.getElementById("productDescription").value = "";
-  document.getElementById("productCategory").value = "\u4F34\u624B\u79AE";
+  document.getElementById("productCategory").value = "";
   document.getElementById("productStatus").value = "\u555F\u7528";
   document.getElementById("productGiftBoxEnabled").value = "\u662F";
-  syncProductOptionButtons("productCategory");
   syncProductOptionButtons("productStatus");
   syncProductOptionButtons("productGiftBoxEnabled");
   document.getElementById("productEditModal").classList.add("active");
@@ -2119,7 +2127,7 @@ function saveProduct() {
   const data = {
     productId: document.getElementById("editProductId").value,
     productName: document.getElementById("productName").value.trim(),
-    category: document.getElementById("productCategory").value,
+    category: document.getElementById("productCategory").value.trim(),
     price: parseInt(document.getElementById("productPrice").value),
     status: document.getElementById("productStatus").value,
     description: document.getElementById("productDescription").value.trim(),
@@ -2127,6 +2135,10 @@ function saveProduct() {
     specialPrice: specialPriceValue ? parseInt(specialPriceValue) : "",
     companyPrice: document.getElementById("productCompanyPrice").value.trim() ? parseInt(document.getElementById("productCompanyPrice").value.trim()) : ""
   };
+  if (!data.category) {
+    showAlert("\u8ACB\u586B\u5BEB\u5546\u54C1\u985E\u5225", "error");
+    return;
+  }
   if (!data.productName || !data.price) {
     showAlert("\u8ACB\u586B\u5BEB\u5546\u54C1\u540D\u7A31\u548C\u50F9\u683C", "error");
     return;
@@ -2166,7 +2178,6 @@ function editProduct(productId) {
   document.getElementById("productStatus").value = p.status;
   document.getElementById("productDescription").value = p.description || "";
   document.getElementById("productGiftBoxEnabled").value = p.giftBoxEnabled || "\u662F";
-  syncProductOptionButtons("productCategory");
   syncProductOptionButtons("productStatus");
   syncProductOptionButtons("productGiftBoxEnabled");
   document.getElementById("productEditModal").classList.add("active");
@@ -3326,6 +3337,10 @@ function renderDemandResults(result, startDate, endDate) {
 
 // src/app/navigation.js
 function showSection(sectionName, navElement, panel) {
+  if (sectionName === "cake") {
+    sectionName = "gift";
+    navElement = void 0;
+  }
   if (sectionName === "settings" && !panel) {
     const active = document.querySelector(".settings-section.active");
     return showSettingsSection(active?.id.replace("settings", "").toLowerCase() || "products");
@@ -3961,17 +3976,12 @@ function loadOrderForEditing(orderDetails) {
           isSpecialPrice: item.isSpecialPrice || false
           // 使用訂單中記錄的特價狀態
         };
-        if (product.category === "\u4F34\u624B\u79AE") {
-          state.giftCart.push(cartItem);
-        } else if (product.category === "\u559C\u9905") {
-          state.cakeCart.push(cartItem);
-        }
+        state.giftCart.push(cartItem);
       } else {
         const tempProduct = {
           productId: item.productId || generateUniqueId("TEMP"),
           productName: item.productName,
-          category: "\u4F34\u624B\u79AE",
-          // 預設類別
+          category: item.category || "",
           price: parseFloat(item.unitPrice) || 0,
           originalPrice: item.originalPrice || parseFloat(item.unitPrice) || 0,
           isSpecialPrice: item.isSpecialPrice || false,
@@ -4235,8 +4245,8 @@ Object.assign(window, {
 var sections = {
   customer: ["\u5EFA\u7ACB\u8A02\u55AE", "\u5148\u586B\u5BEB\u5BA2\u6236\u8207\u914D\u9001\u8CC7\u6599"],
   date: ["\u4EA4\u8CA8\u5B89\u6392", "\u9078\u64C7\u65E5\u671F\uFF0C\u638C\u63E1\u6BCF\u65E5\u4F9B\u61C9\u91CF"],
-  gift: ["\u4F34\u624B\u79AE", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
-  cake: ["\u559C\u9905", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
+  gift: ["\u5546\u54C1", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
+  cake: ["\u5546\u54C1", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
   giftbox: ["\u79AE\u76D2\u7D44\u5408", "\u9078\u64C7\u898F\u683C\uFF0C\u81EA\u7531\u642D\u914D\u5167\u5BB9"],
   search: ["\u8A02\u55AE\u7BA1\u7406", "\u67E5\u8A62\u9032\u5EA6\u3001\u4ED8\u6B3E\u8207\u4EA4\u8CA8\u8CC7\u8A0A"],
   settings: ["\u5546\u54C1\u7BA1\u7406", "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1"]
@@ -4276,12 +4286,9 @@ function refreshWorkspace() {
   document.getElementById("workspaceMode").textContent = state.isEditingOrder ? "\u7DE8\u8F2F\u8A02\u55AE" : "\u65B0\u8A02\u55AE";
 }
 function initializeWorkspace() {
-  for (const [id, category] of [
-    ["gift", "\u4F34\u624B\u79AE"],
-    ["cake", "\u559C\u9905"]
-  ]) {
-    document.getElementById(id + "ProductSearch").addEventListener("input", () => loadProductsByCategory(category, id));
-  }
+  const refreshCatalog = () => loadProductsByCategory(document.getElementById("catalogCategory").value, "gift");
+  document.getElementById("giftProductSearch").addEventListener("input", refreshCatalog);
+  document.getElementById("catalogCategory").addEventListener("change", refreshCatalog);
   document.getElementById("workspaceCart").addEventListener("click", toggleCartModal);
   const managementToggle = document.getElementById("managementToggle");
   const managementLinks = document.getElementById("managementLinks");
@@ -4557,6 +4564,12 @@ window.saveOrderDraftNow = async function() {
   if (key && hasMeaningfulDraft(draft)) await localDbPut("drafts", key, draft);
 };
 async function startApplication() {
+  let updating = false;
+  try {
+    updating = sessionStorage.getItem("ginJiaPos.updateReload") === "1";
+    sessionStorage.removeItem("ginJiaPos.updateReload");
+  } catch {
+  }
   const main = document.querySelector("main");
   main.inert = true;
   document.querySelector(".fab-cart").inert = true;
@@ -4564,7 +4577,7 @@ async function startApplication() {
   state.suppressDraftSave = true;
   try {
     await initializeDomain();
-    await startupProgress(1, "\u53D6\u5F97\u8CC7\u6599\u4E2D...");
+    await startupProgress(1, updating ? "\u66F4\u65B0\u4E2D..." : "\u53D6\u5F97\u8CC7\u6599\u4E2D...");
     initContactMethodToggle();
     initSearchContactMethodToggle();
     initVisibleViewportFit();

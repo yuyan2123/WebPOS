@@ -447,7 +447,8 @@ body[data-section="settings"] .fab-cart {
   font-size: 13px;
   color: var(--pos-ink-soft);
 }
-.catalog-search input {
+.catalog-search input,
+.catalog-search select {
   width: 100%;
   min-height: 46px;
   padding: 10px 14px;

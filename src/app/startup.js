@@ -42,6 +42,13 @@ window.saveOrderDraftNow = async function () {
 
 // 頁面載入時初始化
 export async function startApplication() {
+  let updating = false;
+  try {
+    updating = sessionStorage.getItem('ginJiaPos.updateReload') === '1';
+    sessionStorage.removeItem('ginJiaPos.updateReload');
+  } catch {
+    /* Continue normal startup when session storage is unavailable. */
+  }
   const main = document.querySelector('main');
   main.inert = true;
   document.querySelector('.fab-cart').inert = true;
@@ -50,7 +57,7 @@ export async function startApplication() {
   state.suppressDraftSave = true;
   try {
     await initializeDomain();
-    await startupProgress(1, '取得資料中...');
+    await startupProgress(1, updating ? '更新中...' : '取得資料中...');
     initContactMethodToggle();
     initSearchContactMethodToggle();
     initVisibleViewportFit();

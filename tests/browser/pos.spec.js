@@ -21,6 +21,7 @@ async function openWorkspace(page, role = 'owner') {
       if (window.__fail === method) throw new Error('測試連線中斷');
       if (method === 'getShopBootstrap') return {products,capacityMonth:{key:'2026-9',data:{}},capacitySettings:{weekday:{'1':{dayOfWeek:1,maxQuantity:120,enabled:true}},dateOverrides:[{id:'2027-01-02',date:'2027-01-02',maxQuantity:45,enabled:true}]}};
       if (method === 'getProducts') return products;
+      if (method === 'getOrderDetails') return window.__orderDetails;
       if (method === 'getMonthCapacityStatus') return {};
       if (method === 'getCapacitySettings') return {weekday:{},dateOverrides:[]};
       if (method === 'searchCustomers') return window.__customers || [];
@@ -72,7 +73,7 @@ async function openManagementPanel(page, panel) {
 
 test('all sections remain reachable, route history works, no horizontal overflow', async ({ page }) => {
   const errors = await openWorkspace(page);
-  for (const section of ['date', 'gift', 'cake', 'giftbox', 'search', 'customer']) {
+  for (const section of ['date', 'gift', 'giftbox', 'search', 'customer']) {
     await page.locator('#nav-' + section).click();
     await expect(page.locator('#' + section)).toHaveClass(/active/);
     await expect(page.locator('#nav-' + section)).toHaveAttribute('aria-current', 'page');
@@ -385,6 +386,7 @@ test('catalog CRUD form, reports and demand remain accessible through management
   await openManagementPanel(page, 'products');
   await page.locator('.btn-add-product').click();
   await page.locator('#productName').fill('新商品');
+  await page.locator('#productCategory').fill('手工點心');
   await page.locator('#productPrice').fill('88');
   await page.locator('#productEditModal button[onclick="saveProduct()"]').click();
   await expect(page.locator('#productsCardGrid')).toContainText('新商品');
@@ -526,7 +528,9 @@ test('startup renders capacity settings and opening the panel reuses them', asyn
   await expect(page.locator('#capDay1')).toHaveValue('120');
   await openManagementPanel(page, 'products');
   await openManagementPanel(page, 'capacity');
-  expect(await page.evaluate(() => window.__calls.filter((call) => call.method === 'getCapacitySettings'))).toEqual([]);
+  expect(
+    await page.evaluate(() => window.__calls.filter((call) => call.method === 'getCapacitySettings')),
+  ).toEqual([]);
   expect(errors).toEqual([]);
 });
 
@@ -641,7 +645,9 @@ for (const result of ['current', 'available', 'failed']) {
         if (updateResult === 'available') {
           const worker = new EventTarget();
           worker.state = 'installing';
-          worker.postMessage = (message) => { window.__updateMessage = message; };
+          worker.postMessage = (message) => {
+            window.__updateMessage = message;
+          };
           registration.installing = worker;
           registration.dispatchEvent(new Event('updatefound'));
           setTimeout(() => {
@@ -664,18 +670,24 @@ for (const result of ['current', 'available', 'failed']) {
     const deviceBox = await page.locator('#settingsDevice').boundingBox();
     expect(systemBox.y + systemBox.height).toBeLessThanOrEqual(deviceBox.y);
     await page.locator('#systemCheckUpdate').click();
-    await expect(page.locator('#systemUpdateStatus')).toHaveText({
-      current: '目前已是最新版本。',
-      available: '有新版本可更新。',
-      failed: '檢查更新失敗，請稍後重試。',
-    }[result]);
+    await expect(page.locator('#systemUpdateStatus')).toHaveText(
+      {
+        current: '目前已是最新版本。',
+        available: '有新版本可更新。',
+        failed: '檢查更新失敗，請稍後重試。',
+      }[result],
+    );
     if (result === 'available') {
       await expect(page.locator('#systemCheckUpdate')).toHaveText('更新');
-      await page.evaluate(() => { document.body.dataset.draftDirty = 'true'; });
+      await page.evaluate(() => {
+        document.body.dataset.draftDirty = 'true';
+      });
       await page.locator('#systemCheckUpdate').click();
       await expect(page.locator('#systemUpdateStatus')).toContainText('仍有訂單草稿');
       expect(await page.evaluate(() => window.__updateMessage)).toBeUndefined();
-      await page.evaluate(() => { document.body.dataset.draftDirty = 'false'; });
+      await page.evaluate(() => {
+        document.body.dataset.draftDirty = 'false';
+      });
       await page.locator('#systemCheckUpdate').click();
       expect(await page.evaluate(() => window.__updateMessage)).toEqual({ type: 'SKIP_WAITING' });
     }
@@ -732,5 +744,46 @@ test('management navigation has one entry per panel and restores direct routes',
   await page.goto('/#settings');
   await expect(page.locator('#settingsProducts')).toBeVisible();
   await expect(page.locator('#nav-products')).toHaveAttribute('aria-current', 'page');
+  expect(errors).toEqual([]);
+});
+
+test('custom categories support unified catalog, cart and order editing', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  await expect(page.locator('#nav-gift')).toHaveText('商品');
+  await expect(page.locator('#nav-cake')).toHaveCount(0);
+  await openManagementPanel(page, 'products');
+  await page.locator('.btn-add-product').click();
+  await expect(page.locator('#productCategory')).toHaveValue('');
+  await page.locator('#productName').fill('烏龍茶');
+  await page.locator('#productCategory').fill(' 茶飲 ');
+  await page.locator('#productPrice').fill('80');
+  await page.locator('#productEditModal button[onclick="saveProduct()"]').click();
+  await expect(page.locator('#productsCardGrid')).toContainText('茶飲');
+  await expect(page.locator('#productCategoryOptions option[value="茶飲"]')).toHaveCount(1);
+  await page.locator('#nav-gift').click();
+  await expect(page.locator('#giftProducts')).toContainText('原味餅');
+  await expect(page.locator('#giftProducts')).toContainText('喜餅');
+  await expect(page.locator('#giftProducts')).toContainText('烏龍茶');
+  await page.locator('#catalogCategory').selectOption('茶飲');
+  await expect(page.locator('#giftProducts')).not.toContainText('原味餅');
+  await page.locator('#giftProducts button').last().click();
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#cartModalBody')).toContainText('烏龍茶');
+  await page.locator('#cartModalBody .cart-qty-btn').last().click();
+  await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
+  await page.locator('#cartModalBody .cart-delete-btn').click();
+  await expect(page.locator('#workspaceQuantity')).toHaveText('0 件商品');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => {
+    window.__orderDetails = {
+      orderId: 'custom-order',
+      customerName: '測試',
+      items: [{ productId: 'P-new', productName: '烏龍茶', unitPrice: 80, quantity: 3 }],
+    };
+    window.editOrder('custom-order');
+  });
+  await expect(page.locator('#workspaceQuantity')).toHaveText('3 件商品');
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#cartModalBody')).toContainText('烏龍茶');
   expect(errors).toEqual([]);
 });

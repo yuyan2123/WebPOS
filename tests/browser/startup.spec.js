@@ -92,7 +92,9 @@ for (const savedShop of [null, 'unavailable-shop']) {
     await expect(page.locator('#startupStatus')).toBeHidden();
     await expect(page.locator('#firebaseShopOverlay')).toBeHidden();
     await expect(page.locator('body')).toHaveAttribute('data-shop-id', 'shop-one');
-    expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.activeShop.startup-user'))).toBe('shop-one');
+    expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.activeShop.startup-user'))).toBe(
+      'shop-one',
+    );
     expect(await page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
       'initializeSession',
     ]);
@@ -116,9 +118,12 @@ for (const savedShop of [null, 'unavailable-shop']) {
     await page.locator('.firebase-shop-option[data-shop-id="shop-one"]').click();
     await expect(page.locator('#startupStatus')).toBeHidden();
     await expect(page.locator('#firebaseShopOverlay')).toBeHidden();
-    expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.activeShop.startup-user'))).toBe('shop-one');
+    expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.activeShop.startup-user'))).toBe(
+      'shop-one',
+    );
     expect(await page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
-      'initializeSession', 'getShopBootstrap',
+      'initializeSession',
+      'getShopBootstrap',
     ]);
   });
 }
@@ -140,4 +145,28 @@ test('initial request failure stays below complete and offers retry without spli
   await expect.poll(() => page.evaluate(() => typeof window.completeStartup)).toBe('function');
   await page.evaluate(() => window.completeStartup());
   await expect(page.locator('#startupStatus')).toBeHidden();
+});
+
+test('update reload message is consumed once and normal reload restores loading text', async ({ page }) => {
+  await page.addInitScript(() => {
+    const serviceWorker = new EventTarget();
+    const registration = new EventTarget();
+    serviceWorker.controller = {};
+    registration.waiting = {
+      postMessage: () => serviceWorker.dispatchEvent(new Event('controllerchange')),
+    };
+    serviceWorker.register = async () => registration;
+    Object.defineProperty(navigator, 'serviceWorker', { value: serviceWorker });
+  });
+  await page.goto('/');
+  await expect(page.locator('#startupMessage')).toHaveText('取得資料中...');
+  await expect.poll(() => page.evaluate(() => typeof window.completeStartup)).toBe('function');
+  await page.evaluate(() => window.completeStartup());
+  await expect(page.locator('#startupStatus')).toBeHidden();
+  await page.locator('#pwaUpdate').click();
+  await expect(page.locator('#startupStatus')).toBeVisible();
+  await expect(page.locator('#startupMessage')).toHaveText('更新中...');
+  expect(await page.evaluate(() => sessionStorage.getItem('ginJiaPos.updateReload'))).toBeNull();
+  await page.reload();
+  await expect(page.locator('#startupMessage')).toHaveText('取得資料中...');
 });

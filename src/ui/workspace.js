@@ -8,8 +8,8 @@ import { loadProductsByCategory } from '../app/catalog.js';
 const sections = {
   customer: ['建立訂單', '先填寫客戶與配送資料'],
   date: ['交貨安排', '選擇日期，掌握每日供應量'],
-  gift: ['伴手禮', '挑選商品，隨時檢視訂單'],
-  cake: ['喜餅', '挑選商品，隨時檢視訂單'],
+  gift: ['商品', '挑選商品，隨時檢視訂單'],
+  cake: ['商品', '挑選商品，隨時檢視訂單'],
   giftbox: ['禮盒組合', '選擇規格，自由搭配內容'],
   search: ['訂單管理', '查詢進度、付款與交貨資訊'],
   settings: ['商品管理', '新增、編輯與管理商品'],
@@ -52,14 +52,10 @@ export function refreshWorkspace() {
 }
 
 export function initializeWorkspace() {
-  for (const [id, category] of [
-    ['gift', '伴手禮'],
-    ['cake', '喜餅'],
-  ]) {
-    document
-      .getElementById(id + 'ProductSearch')
-      .addEventListener('input', () => loadProductsByCategory(category, id));
-  }
+  const refreshCatalog = () =>
+    loadProductsByCategory(document.getElementById('catalogCategory').value, 'gift');
+  document.getElementById('giftProductSearch').addEventListener('input', refreshCatalog);
+  document.getElementById('catalogCategory').addEventListener('change', refreshCatalog);
   document.getElementById('workspaceCart').addEventListener('click', toggleCartModal);
   const managementToggle = document.getElementById('managementToggle');
   const managementLinks = document.getElementById('managementLinks');

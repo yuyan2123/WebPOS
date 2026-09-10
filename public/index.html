@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f5f">
-    <meta name="app-version" content="13.2+6214798702aa">
-    <meta name="app-updated-at" content="2026-09-08T04:26:08.806Z">
+    <meta name="app-version" content="13.2+cc926dda9356">
+    <meta name="app-updated-at" content="2026-09-10T05:12:46.767Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -45,8 +45,7 @@
       <nav aria-label="主要導覽">
         <div class="navigation-group"><p class="navigation-label">建立訂單</p><button type="button" onclick="showSection('customer', this)" id="nav-customer" class="nav-item" aria-label="客戶資料"><i class="fas fa-user" aria-hidden="true"></i><span>客戶資料</span></button>
 <button type="button" onclick="showSection('date', this)" id="nav-date" class="nav-item" aria-label="交貨日期"><i class="fas fa-calendar" aria-hidden="true"></i><span>交貨日期</span></button>
-<button type="button" onclick="showSection('gift', this)" id="nav-gift" class="nav-item" aria-label="伴手禮"><i class="fas fa-cookie" aria-hidden="true"></i><span>伴手禮</span></button>
-<button type="button" onclick="showSection('cake', this)" id="nav-cake" class="nav-item" aria-label="喜餅"><i class="fas fa-birthday-cake" aria-hidden="true"></i><span>喜餅</span></button>
+<button type="button" onclick="showSection('gift', this)" id="nav-gift" class="nav-item" aria-label="商品"><i class="fas fa-box-open" aria-hidden="true"></i><span>商品</span></button>
 <button type="button" onclick="showSection('giftbox', this)" id="nav-giftbox" class="nav-item" aria-label="禮盒組合"><i class="fas fa-box" aria-hidden="true"></i><span>禮盒組合</span></button></div>
         <div class="navigation-group management">
           <p class="navigation-label">管理</p>
@@ -202,18 +201,12 @@
             </div>
         </section>
 
-        <!-- 伴手禮頁 -->
+        <!-- 商品頁 -->
         <section id="gift" class="content-section max-w-6xl mx-auto pb-24">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">伴手禮選購</h2>
-            <label class="catalog-search"><span>搜尋伴手禮</span><input type="search" id="giftProductSearch" placeholder="輸入商品名稱或特色" autocomplete="off"></label>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">商品選購</h2>
+            <label class="catalog-search"><span>搜尋商品</span><input type="search" id="giftProductSearch" placeholder="輸入商品名稱或特色" autocomplete="off"></label>
+            <label class="catalog-search"><span>商品類別</span><select id="catalogCategory" aria-label="商品類別"><option value="">全部類別</option></select></label>
             <div id="giftProducts" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">載入中...</div>
-        </section>
-
-        <!-- 喜餅頁 -->
-        <section id="cake" class="content-section max-w-6xl mx-auto pb-24">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">喜餅選購</h2>
-            <label class="catalog-search"><span>搜尋喜餅</span><input type="search" id="cakeProductSearch" placeholder="輸入商品名稱或特色" autocomplete="off"></label>
-            <div id="cakeProducts" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">載入中...</div>
         </section>
 
         <!-- 禮盒頁 -->
@@ -530,7 +523,7 @@
 
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
-            <p>WebPOS 系統 &copy; 2025. All Rights Reserved.</p>
+            <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
             <p>Website content edited by yuyan2123. Version v.13.2</p>
         </footer>
 
@@ -655,11 +648,9 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">類別</label>
-                            <div class="grove-btn-group" id="productCategoryGroup">
-                                <button type="button" data-value="伴手禮" onclick="selectProductOption('productCategory', this)">伴手禮</button>
-                                <button type="button" data-value="喜餅" onclick="selectProductOption('productCategory', this)">喜餅</button>
-                            </div>
-                            <input type="hidden" id="productCategory" value="伴手禮">
+                            <input type="text" id="productCategory" aria-label="類別" list="productCategoryOptions" maxlength="60" placeholder="輸入或選擇類別" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                            <datalist id="productCategoryOptions"></datalist>
+                            <p class="text-sm text-gray-500">可自行輸入新類別，儲存後即可用於商品篩選。</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">

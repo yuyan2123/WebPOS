@@ -39,7 +39,7 @@ export const state = {
   acDebounceTimer: null,
   acResultsCache: [],
   customerSearchCache: new Map(),
-  currentProductFilter: '全部',
+  currentProductFilter: null,
   searchDatepickerInstance: null,
   reportDatepickerInstance: null,
   buttonClickStates: new Set(),

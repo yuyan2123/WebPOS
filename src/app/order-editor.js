@@ -138,17 +138,13 @@ export function loadOrderForEditing(orderDetails) {
           originalPrice: item.originalPrice || product.price, // 使用訂單中記錄的原價
           isSpecialPrice: item.isSpecialPrice || false, // 使用訂單中記錄的特價狀態
         };
-        if (product.category === '伴手禮') {
-          state.giftCart.push(cartItem);
-        } else if (product.category === '喜餅') {
-          state.cakeCart.push(cartItem);
-        }
+        state.giftCart.push(cartItem);
       } else {
         // 如果找不到對應產品，創建一個臨時產品項目
         const tempProduct = {
           productId: item.productId || generateUniqueId('TEMP'),
           productName: item.productName,
-          category: '伴手禮', // 預設類別
+          category: item.category || '',
           price: parseFloat(item.unitPrice) || 0,
           originalPrice: item.originalPrice || parseFloat(item.unitPrice) || 0,
           isSpecialPrice: item.isSpecialPrice || false,

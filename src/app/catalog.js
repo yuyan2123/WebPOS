@@ -30,9 +30,7 @@ export function setDeliveryDate() {
 export function loadProducts() {
   // 顯示載入狀態
   const giftContainer = document.getElementById('giftProducts');
-  const cakeContainer = document.getElementById('cakeProducts');
   giftContainer.innerHTML = '<p style="text-align: center; padding: 20px;">載入商品中...</p>';
-  cakeContainer.innerHTML = '<p style="text-align: center; padding: 20px;">載入商品中...</p>';
   // 檢查是否在 Google Apps Script 環境中
   if (isConnected()) {
     rpc
@@ -62,7 +60,7 @@ export async function showProductLoadFailure(error) {
     : null;
   if (cached?.products?.length) {
     handleProductsLoaded(cached.products, { skipCache: true });
-    document.querySelectorAll('#giftProducts, #cakeProducts').forEach(function (container) {
+    document.querySelectorAll('#giftProducts').forEach(function (container) {
       container.insertAdjacentHTML(
         'afterbegin',
         `<div class="product-stale-banner col-span-full"><i class="fas fa-cloud-slash"></i> 無法連線，顯示 ${formatDisplayDate(cached.updatedAt)} 的商品資料 <button type="button" onclick="loadProducts()">重試</button></div>`,
@@ -72,7 +70,6 @@ export async function showProductLoadFailure(error) {
   }
   const message = `<div class="product-load-error col-span-full" role="alert"><i class="fas fa-wifi"></i><strong>商品載入失敗</strong><span>${escapeHtml(error?.message || '請檢查網路連線')}</span><button type="button" onclick="loadProducts()">重新載入</button></div>`;
   document.getElementById('giftProducts').innerHTML = message;
-  document.getElementById('cakeProducts').innerHTML = message;
 }
 
 export async function loadInitialShopData() {
@@ -102,17 +99,27 @@ export function handleProductsLoaded(products, options = {}) {
 
 export function updateNavVisibility() {
   const activeProducts = state.allProducts.filter((p) => p.status === '啟用');
-  const hasGift = activeProducts.some((p) => p.category === '伴手禮');
-  const hasCake = activeProducts.some((p) => p.category === '喜餅');
   const hasGiftbox = activeProducts.some((p) => p.giftBoxEnabled === '是');
-  document.getElementById('nav-gift').style.display = hasGift ? '' : 'none';
-  document.getElementById('nav-cake').style.display = hasCake ? '' : 'none';
   document.getElementById('nav-giftbox').style.display = hasGiftbox ? '' : 'none';
 }
 
 export function updateProductDisplays() {
-  loadProductsByCategory('伴手禮', 'gift');
-  loadProductsByCategory('喜餅', 'cake');
+  const select = document.getElementById('catalogCategory');
+  const previous = select.value;
+  const categories = [
+    ...new Set(
+      state.allProducts
+        .filter((p) => p.status === '啟用')
+        .map((p) => p.category)
+        .filter(Boolean),
+    ),
+  ];
+  select.replaceChildren(
+    new Option('全部類別', ''),
+    ...categories.map((category) => new Option(category, category)),
+  );
+  select.value = categories.includes(previous) ? previous : '';
+  loadProductsByCategory(select.value, 'gift');
 }
 
 export function loadProductsByCategory(category, containerId) {
@@ -123,7 +130,7 @@ export function loadProductsByCategory(category, containerId) {
       .toLocaleLowerCase() || '';
   const products = state.allProducts.filter(
     (p) =>
-      p.category === category &&
+      (!category || p.category === category) &&
       p.status === '啟用' &&
       (!query || `${p.productName} ${p.description || ''}`.toLocaleLowerCase().includes(query)),
   );
@@ -137,9 +144,9 @@ export function loadProductsByCategory(category, containerId) {
   const companyBanner = state.isCompanyCustomer
     ? '<div class="company-mode-banner col-span-full"><i class="fas fa-building"></i>目前為企業客戶模式，商品已套用企業價格</div>'
     : '';
-  const iconClass = category === '伴手禮' ? 'fa-cookie-bite' : 'fa-birthday-cake';
-  const bgClass = category === '伴手禮' ? 'bg-orange-50 text-orange-300' : 'bg-pink-50 text-pink-300';
-  const hoverBorderClass = category === '伴手禮' ? 'hover:border-orange-300' : 'hover:border-pink-300';
+  const iconClass = 'fa-box-open';
+  const bgClass = 'bg-orange-50 text-orange-300';
+  const hoverBorderClass = 'hover:border-orange-300';
   container.innerHTML =
     companyBanner +
     products
@@ -171,7 +178,7 @@ export function loadProductsByCategory(category, containerId) {
                                 <i class="fas fa-edit"></i> 詳情
                             </button>
                             <div class="w-px h-6 bg-gray-300"></div>
-                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}', '${escapeHandlerArgument(category)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
+                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -181,7 +188,7 @@ export function loadProductsByCategory(category, containerId) {
       .join('');
 }
 
-export function addToCartDirectly(productId, category) {
+export function addToCartDirectly(productId) {
   // 防止事件冒泡觸發卡片點擊
   event.stopPropagation();
   const btn = window.event?.currentTarget || window.event?.target;
@@ -190,7 +197,7 @@ export function addToCartDirectly(productId, category) {
     // 仍然加入購物車，但不重複動畫
     const product = state.allProducts.find((p) => p.productId === productId);
     if (!product) return;
-    const cart = category === '伴手禮' ? state.giftCart : state.cakeCart;
+    const cart = state.giftCart;
     const existingItem = cart.find(
       (item) =>
         item.productId === productId &&
@@ -206,7 +213,7 @@ export function addToCartDirectly(productId, category) {
         productName: product.productName,
         price: getEffectivePrice(product),
         quantity: 1,
-        category: category,
+        category: product.category,
         isSpecialPrice: false,
         isCompanyPrice: state.isCompanyCustomer,
         notes: '',
@@ -217,7 +224,7 @@ export function addToCartDirectly(productId, category) {
   }
   const product = state.allProducts.find((p) => p.productId === productId);
   if (!product) return;
-  const cart = category === '伴手禮' ? state.giftCart : state.cakeCart;
+  const cart = state.giftCart;
   // 尋找購物車中是否已有該商品（且非特價、無備註的標準品項）
   const existingItem = cart.find(
     (item) =>
@@ -234,7 +241,7 @@ export function addToCartDirectly(productId, category) {
       productName: product.productName,
       price: getEffectivePrice(product),
       quantity: 1,
-      category: category,
+      category: product.category,
       isSpecialPrice: false,
       isCompanyPrice: state.isCompanyCustomer,
       notes: '',

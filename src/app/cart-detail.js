@@ -55,8 +55,8 @@ export function updateCartModalDisplay() {
                         </div>`;
       } else {
         // 判斷類別圖示
-        const iconClass = item.category === '伴手禮' ? 'gift' : 'cake';
-        const iconName = item.category === '伴手禮' ? 'fa-cookie-bite' : 'fa-birthday-cake';
+        const iconClass = 'gift';
+        const iconName = 'fa-box-open';
         // 構建價格顯示
         let priceHtml = `NT$ ${item.price}`;
         if (item.isSpecialPrice && item.originalPrice !== item.price) {
@@ -107,8 +107,8 @@ export function updateCartItemQuantity(index, change) {
       else updateCartDisplay();
     }
   } else {
-    const cart = item.category === '伴手禮' ? state.giftCart : state.cakeCart;
-    const originalItem = cart.find((i) => i.productId === item.productId);
+    const cart = state.giftCart.includes(item) ? state.giftCart : state.cakeCart;
+    const originalItem = cart.find((i) => i === item);
     if (originalItem) {
       originalItem.quantity += change;
       if (originalItem.quantity < 1) removeFromCartModal(index);
@@ -122,8 +122,7 @@ export function removeFromCartModal(index) {
   const item = allItems[index];
   if (!item) return;
   if (item.type === 'giftbox') state.giftboxCart = state.giftboxCart.filter((i) => i.id !== item.id);
-  else if (item.category === '伴手禮')
-    state.giftCart = state.giftCart.filter((i) => i.productId !== item.productId);
-  else state.cakeCart = state.cakeCart.filter((i) => i.productId !== item.productId);
+  else if (state.giftCart.includes(item)) state.giftCart = state.giftCart.filter((i) => i !== item);
+  else state.cakeCart = state.cakeCart.filter((i) => i !== item);
   updateCartDisplay();
 }

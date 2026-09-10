@@ -10,10 +10,21 @@ import { showConfirmModal, closeConfirmModal } from './dialogs.js';
 export function renderProductCards() {
   const grid = document.getElementById('productsCardGrid');
   const tabsContainer = document.getElementById('productsFilterTabs');
+  document
+    .getElementById('productCategoryOptions')
+    .replaceChildren(
+      ...[...new Set(state.allProducts.map((p) => p.category).filter(Boolean))].map(
+        (category) => new Option(category, category),
+      ),
+    );
+  if (
+    state.currentProductFilter !== null &&
+    !state.allProducts.some((p) => p.category === state.currentProductFilter)
+  )
+    state.currentProductFilter = null;
   // 建立類別篩選 tabs
-  const categories = ['全部', ...new Set(state.allProducts.map((p) => p.category))];
+  const categories = [null, ...new Set(state.allProducts.map((p) => p.category))];
   const categoryCounts = Object.create(null);
-  categoryCounts['全部'] = state.allProducts.length;
   state.allProducts.forEach((p) => {
     categoryCounts[p.category] = (categoryCounts[p.category] || 0) + 1;
   });
@@ -22,14 +33,14 @@ export function renderProductCards() {
       const button = document.createElement('button');
       button.type = 'button';
       button.classList.toggle('active', category === state.currentProductFilter);
-      button.textContent = `${category} (${categoryCounts[category]})`;
+      button.textContent = `${category === null ? '全部' : category} (${category === null ? state.allProducts.length : categoryCounts[category]})`;
       button.onclick = () => filterProductsByCategory(category);
       return button;
     }),
   );
   // 篩選商品
   const filtered =
-    state.currentProductFilter === '全部'
+    state.currentProductFilter === null
       ? state.allProducts
       : state.allProducts.filter((p) => p.category === state.currentProductFilter);
   if (filtered.length === 0) {
@@ -123,10 +134,9 @@ export function showAddProduct() {
   document.getElementById('productSpecialPrice').value = '';
   document.getElementById('productCompanyPrice').value = '';
   document.getElementById('productDescription').value = '';
-  document.getElementById('productCategory').value = '伴手禮';
+  document.getElementById('productCategory').value = '';
   document.getElementById('productStatus').value = '啟用';
   document.getElementById('productGiftBoxEnabled').value = '是';
-  syncProductOptionButtons('productCategory');
   syncProductOptionButtons('productStatus');
   syncProductOptionButtons('productGiftBoxEnabled');
   document.getElementById('productEditModal').classList.add('active');
@@ -144,7 +154,7 @@ export function saveProduct() {
   const data = {
     productId: document.getElementById('editProductId').value,
     productName: document.getElementById('productName').value.trim(),
-    category: document.getElementById('productCategory').value,
+    category: document.getElementById('productCategory').value.trim(),
     price: parseInt(document.getElementById('productPrice').value),
     status: document.getElementById('productStatus').value,
     description: document.getElementById('productDescription').value.trim(),
@@ -154,6 +164,10 @@ export function saveProduct() {
       ? parseInt(document.getElementById('productCompanyPrice').value.trim())
       : '',
   };
+  if (!data.category) {
+    showAlert('請填寫商品類別', 'error');
+    return;
+  }
   if (!data.productName || !data.price) {
     showAlert('請填寫商品名稱和價格', 'error');
     return;
@@ -198,7 +212,6 @@ export function editProduct(productId) {
   document.getElementById('productStatus').value = p.status;
   document.getElementById('productDescription').value = p.description || '';
   document.getElementById('productGiftBoxEnabled').value = p.giftBoxEnabled || '是';
-  syncProductOptionButtons('productCategory');
   syncProductOptionButtons('productStatus');
   syncProductOptionButtons('productGiftBoxEnabled');
   document.getElementById('productEditModal').classList.add('active');
