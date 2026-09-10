@@ -384,6 +384,23 @@ textarea:focus-visible {
   }
 }
 
+/* Keep monetary labels on their own line across platform font metrics. */
+@media (min-width: 601px) and (max-width: 1100px) {
+  #searchResults .table > tbody > tr:not(.order-items-row) {
+    padding-block: 10px;
+    row-gap: 4px;
+  }
+  #searchResults .table > tbody > tr:not(.order-items-row) > :is(.td-fee, .td-amount, .td-deposit, .td-remaining) {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 600px) {
   #searchResults .table > tbody > tr:not(.order-items-row) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 94px;
