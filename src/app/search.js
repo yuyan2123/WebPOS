@@ -79,6 +79,10 @@ export function handleSearchResults(orders) {
 
 export function displayOrderTable(orders, containerId, type = 'search') {
   const container = document.getElementById(containerId);
+  if (containerId === 'searchResults' && state.orderItemsTransition) {
+    state.orderItemsTransition = null;
+    state.collapsingSearchOrderId = null;
+  }
   state.currentOrderTableType = type;
   if (type === 'search') {
     state.currentSearchOrders = orders || [];
@@ -189,7 +193,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
 }
 
 export function toggleOrderItems(orderId) {
-  if (state.orderItemsTransitionTimer) return;
+  if (state.orderItemsTransition) return;
   const nextOrderId = state.expandedSearchOrderId === orderId ? null : orderId;
   if (!state.expandedSearchOrderId) {
     state.expandedSearchOrderId = nextOrderId;
@@ -200,35 +204,20 @@ export function toggleOrderItems(orderId) {
   state.expandedSearchOrderId = null;
   displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
   const animation = document.querySelector('#searchResults .is-collapsing .order-items-expand');
-  function finishCollapse() {
-    if (!state.orderItemsTransitionTimer) return;
-    clearTimeout(state.orderItemsTransitionTimer);
-    state.collapsingSearchOrderId = null;
-    state.expandedSearchOrderId = nextOrderId;
-    state.orderItemsTransitionTimer = null;
-    displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
-  }
-  // Rendering may start late in a busy/background tab. Never let the recovery
-  // timer remove a row while its CSS animation is still pending or running.
-  function recoverCollapse() {
-    const running =
-      animation?.isConnected &&
-      animation
-        .getAnimations()
-        .some(
-          (effect) =>
-            effect.animationName === 'order-items-collapse' &&
-            (effect.pending || effect.playState === 'running'),
-        );
-    if (running) {
-      state.orderItemsTransitionTimer = setTimeout(recoverCollapse, 250);
-      return;
-    }
-    finishCollapse();
-  }
-  state.orderItemsTransitionTimer = setTimeout(recoverCollapse, 750);
-  animation?.addEventListener('animationend', function (event) {
-    if (event.target === animation && event.animationName === 'order-items-collapse') finishCollapse();
+  // Capture the actual CSS animation, including its pending/delayed phase.
+  // A timer or animationend event can race with WebKit's rendering/event queues.
+  const transition = {};
+  state.orderItemsTransition = transition;
+  const effects = animation?.getAnimations() || [];
+  Promise.allSettled(effects.map((effect) => effect.finished)).then(() => {
+    requestAnimationFrame(() => {
+      if (state.orderItemsTransition !== transition) return;
+      state.orderItemsTransition = null;
+      state.collapsingSearchOrderId = null;
+      if (!animation?.isConnected) return;
+      state.expandedSearchOrderId = nextOrderId;
+      displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
+    });
   });
 }
 

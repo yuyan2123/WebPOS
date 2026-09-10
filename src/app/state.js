@@ -20,7 +20,7 @@ export const state = {
   editingOrderId: null,
   expandedSearchOrderId: null,
   collapsingSearchOrderId: null,
-  orderItemsTransitionTimer: null,
+  orderItemsTransition: null,
   currentSearchOrders: [],
   currentOrderTableType: null,
   currentContactMethod: 'phone',

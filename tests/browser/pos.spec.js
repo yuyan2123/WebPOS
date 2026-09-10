@@ -420,6 +420,36 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
   await expect(page.locator('#searchName')).toBeEnabled();
 });
 
+// Observe the actual animation timeline and geometry before the app removes
+// the row. Native animationend delivery is not a cross-browser completion clock.
+async function observeCollapseCompletion(page) {
+  await page.evaluate(() => {
+    window.__collapseResult = null;
+    const observer = new MutationObserver(() => {
+      const element = document.querySelector('.is-collapsing .order-items-expand');
+      if (!element) return;
+      const effect = element
+        .getAnimations()
+        .find((animation) => animation.animationName === 'order-items-collapse');
+      if (!effect) return;
+      observer.disconnect();
+      effect.finished.then(
+        () => {
+          window.__collapseResult = {
+            state: effect.playState,
+            connected: element.isConnected,
+            height: element.closest('.order-items-row').getBoundingClientRect().height,
+          };
+        },
+        () => {
+          window.__collapseResult = 'cancelled';
+        },
+      );
+    });
+    observer.observe(document.getElementById('searchResults'), { childList: true, subtree: true });
+  });
+}
+
 for (const width of [1366, 1180, 1024, 820, 530, 390]) {
   test(`order table keeps actions visible and collapses smoothly at ${width}px`, async ({
     page,
@@ -478,21 +508,14 @@ for (const width of [1366, 1180, 1024, 820, 530, 390]) {
     expect((await summaryRow.boundingBox()).height).toBeCloseTo(collapsedHeight, 1);
     await expect(page.locator('.order-items-table thead')).toBeVisible();
     await expect(page.locator('.order-items-table tbody tr')).toHaveCSS('display', 'table-row');
-    await page.evaluate(() => {
-      window.__collapseHeight = null;
-      document.addEventListener(
-        'animationend',
-        function recordCollapse(event) {
-          if (event.animationName !== 'order-items-collapse') return;
-          window.__collapseHeight = event.target.closest('.order-items-row').getBoundingClientRect().height;
-          document.removeEventListener('animationend', recordCollapse, true);
-        },
-        true,
-      );
-    });
+    await observeCollapseCompletion(page);
     await page.locator('#searchResults td[data-label="姓名"]').click();
     await expect(page.locator('.order-items-row')).toHaveCount(0);
-    expect(await page.evaluate(() => window.__collapseHeight)).toBe(0);
+    expect(await page.evaluate(() => window.__collapseResult)).toEqual({
+      state: 'finished',
+      connected: true,
+      height: 0,
+    });
     expect((await summaryRow.boundingBox()).height).toBeCloseTo(collapsedHeight, 1);
     await page.locator('#searchResults td[data-label="姓名"]').click();
     await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
@@ -516,50 +539,49 @@ for (const width of [1366, 1180, 1024, 820, 530, 390]) {
   });
 }
 
-test('collapse recovery waits for a delayed animation before removing the row', async ({ page }) => {
-  const errors = await openWorkspace(page);
-  await page.addStyleTag({
-    content: '.order-items-row.is-collapsing .order-items-expand { animation-delay: 1s; }',
+for (const suppressEvents of [false, true]) {
+  test(`collapse waits for delayed animation with native events ${suppressEvents ? 'suppressed' : 'enabled'}`, async ({
+    page,
+  }) => {
+    const errors = await openWorkspace(page);
+    if (suppressEvents)
+      await page.evaluate(() => {
+        document.addEventListener('animationend', (event) => event.stopImmediatePropagation(), true);
+      });
+    await page.addStyleTag({
+      content: '.order-items-row.is-collapsing .order-items-expand { animation-delay: 1s; }',
+    });
+    await page.locator('#nav-search').click();
+    await page.evaluate(() => {
+      window.__orders = [
+        {
+          orderId: 'O-delayed',
+          customerName: '延遲動畫',
+          deliveryDate: '2026-09-30',
+          totalAmount: 50,
+          status: '已確認',
+          items: [{ productName: '測試商品', quantity: 1, unitPrice: 50, subtotal: 50 }],
+        },
+      ];
+    });
+    await page.locator('#searchName').fill('延遲');
+    await page.locator('.btn-search').click();
+    const name = page.locator('#searchResults td[data-label="姓名"]');
+    await name.click();
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    await observeCollapseCompletion(page);
+    await name.click();
+    await expect(page.locator('.order-items-row')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__collapseResult)).toEqual({
+      state: 'finished',
+      connected: true,
+      height: 0,
+    });
+    await name.click();
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    expect(errors).toEqual([]);
   });
-  await page.locator('#nav-search').click();
-  await page.evaluate(() => {
-    window.__orders = [
-      {
-        orderId: 'O-delayed',
-        customerName: '延遲動畫',
-        deliveryDate: '2026-09-30',
-        totalAmount: 50,
-        status: '已確認',
-        items: [{ productName: '測試商品', quantity: 1, unitPrice: 50, subtotal: 50 }],
-      },
-    ];
-  });
-  await page.locator('#searchName').fill('延遲');
-  await page.locator('.btn-search').click();
-  const name = page.locator('#searchResults td[data-label="姓名"]');
-  await name.click();
-  await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
-  await page.evaluate(() => {
-    window.__delayedCollapseHeight = null;
-    document.addEventListener(
-      'animationend',
-      (event) => {
-        if (event.animationName === 'order-items-collapse') {
-          window.__delayedCollapseHeight = event.target
-            .closest('.order-items-row')
-            .getBoundingClientRect().height;
-        }
-      },
-      true,
-    );
-  });
-  await name.click();
-  await expect(page.locator('.order-items-row')).toHaveCount(0);
-  expect(await page.evaluate(() => window.__delayedCollapseHeight)).toBe(0);
-  await name.click();
-  await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
-  expect(errors).toEqual([]);
-});
+}
 
 test('startup renders capacity settings and opening the panel reuses them', async ({ page }) => {
   const errors = await openWorkspace(page);
