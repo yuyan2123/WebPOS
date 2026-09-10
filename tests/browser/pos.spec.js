@@ -138,6 +138,8 @@ test('customer, date, cart, gift-box, keyboard dialog and scoped draft', async (
 test('search failure is recoverable and enter submits filters', async ({ page }) => {
   await openWorkspace(page);
   await page.locator('#nav-search').click();
+  await expect(page.locator('#searchStatus')).toBeDisabled();
+  await expect(page.locator('.search-form-group').filter({ has: page.locator('#searchStatus') })).toBeHidden();
   await page.locator('#searchName').fill('測試');
   await page.evaluate(() => (window.__fail = 'searchOrders'));
   await page.locator('#searchName').press('Enter');
@@ -145,6 +147,8 @@ test('search failure is recoverable and enter submits filters', async ({ page })
   await page.evaluate(() => (window.__fail = null));
   await page.locator('#searchName').press('Enter');
   await expect(page.locator('#searchResults')).toContainText('未找到');
+  const criteria = await page.evaluate(() => window.__calls.filter((call) => call.method === 'searchOrders').at(-1).args[0]);
+  expect(criteria).not.toHaveProperty('status');
 });
 
 test('accessibility checks across customer, search and calendar', async ({ page }, testInfo) => {
@@ -210,6 +214,27 @@ test('Rust load failure offers retry without allowing uninitialized operations',
   await expect(page.locator('#startupStatus')).toContainText('重新載入');
   await expect(page.locator('main')).toHaveAttribute('inert', '');
 });
+
+for (const field of ['customerName', 'customerPhone']) {
+  test(`customer requires only one identity field: ${field}`, async ({ page }) => {
+    const errors = await openWorkspace(page);
+    await page.getByRole('button', { name: '儲存並下一步' }).click();
+    await expect(page.locator('#alertContainer')).toContainText('至少填寫一項');
+    await expect(page.locator('#customer')).toBeVisible();
+    const value = field === 'customerName' ? '只有姓名' : '0912345678';
+    await page.locator('#' + field).fill(value);
+    await page.getByRole('button', { name: '儲存並下一步' }).click();
+    await expect(page.locator('#workspaceCustomer')).toHaveText(value);
+    await page.locator('.calendar-day:not(:disabled)').first().click();
+    await page.locator('#btn-confirm-date').click();
+    await page.locator('#giftProducts button').last().click();
+    await page.locator('#workspaceCart').click();
+    await expect(page.locator('#checkoutBtn')).not.toHaveClass(/checkout-not-ready/);
+    await page.locator('#checkoutBtn').click();
+    await expect.poll(() => page.evaluate(() => window.__calls.some((call) => call.method === 'submitOrder'))).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}
 
 async function prepareOrder(page) {
   await page.locator('#customerName').fill('測試客戶');
@@ -664,10 +689,13 @@ test('customer autocomplete and product filtering preserve selection and recover
   await expect(page.locator('#customerAddress')).toHaveValue('測試地址');
   await expect(page.locator('#contactMethodLine')).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#nav-gift').click();
-  await page.locator('#giftProductSearch').fill('不存在');
-  await expect(page.locator('#giftProducts')).toContainText('找不到符合的商品');
-  await page.locator('#giftProductSearch').fill('原味');
+  await page.locator('#catalogFilterTabs').getByRole('button', { name: '喜餅 (1)', exact: true }).click();
+  await expect(page.locator('#giftProducts')).not.toContainText('原味餅');
+  await page.locator('#catalogFilterTabs').getByRole('button', { name: '伴手禮 (1)', exact: true }).click();
   await expect(page.locator('#giftProducts')).toContainText('原味餅');
+  await expect(page.locator('#catalogFilterTabs').getByRole('button', { name: '伴手禮 (1)', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#catalogFilterTabs').getByRole('button', { name: '全部類別 (2)', exact: true }).click();
+  await expect(page.locator('#giftProducts')).toContainText('喜餅');
   expect(errors).toEqual([]);
 });
 
@@ -831,7 +859,7 @@ test('custom categories support unified catalog, cart and order editing', async 
   await expect(page.locator('#giftProducts')).toContainText('原味餅');
   await expect(page.locator('#giftProducts')).toContainText('喜餅');
   await expect(page.locator('#giftProducts')).toContainText('烏龍茶');
-  await page.locator('#catalogCategory').selectOption('茶飲');
+  await page.locator('#catalogFilterTabs').getByRole('button', { name: '茶飲 (1)', exact: true }).click();
   await expect(page.locator('#giftProducts')).not.toContainText('原味餅');
   await page.locator('#giftProducts button').last().click();
   await page.locator('#workspaceCart').click();

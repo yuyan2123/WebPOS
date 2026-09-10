@@ -5218,7 +5218,7 @@ body[data-shop-role="viewer"] button[onclick^="deleteDateOverride"] {
   display: none !important;
 }
 
-body[data-permission-notice="readonly"] #search .search-header::after {
+body[data-permission-notice="readonly"] #search .search-quick-actions::after {
   content: "僅檢視權限";
   margin-left: auto;
   padding: 5px 10px;
@@ -5908,27 +5908,6 @@ body[data-section="settings"] .fab-cart {
 .customer-ac-item {
   width: 100%;
   text-align: left;
-}
-.catalog-search {
-  display: block;
-  max-width: 440px;
-  margin-bottom: 22px;
-}
-.catalog-search span {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: var(--pos-ink-soft);
-}
-.catalog-search input,
-.catalog-search select {
-  width: 100%;
-  min-height: 46px;
-  padding: 10px 14px;
-  border: 1px solid var(--pos-line-strong);
-  border-radius: 9px;
-  background: white;
-  font-size: 14px;
 }
 .giftbox-action-buttons {
   flex-wrap: wrap;

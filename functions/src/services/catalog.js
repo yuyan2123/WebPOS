@@ -115,8 +115,8 @@ export async function getProductsByIds(user, productIds = []) {
 
 export function customerReference(user, customerOrPhone) {
   const customer = customerOrPhone && typeof customerOrPhone === "object" ? customerOrPhone : { phone: customerOrPhone };
-  const contactType = normalizeContactType(customer.contactType || (customer.lineId ? "line" : "phone"));
-  const contactValue = text(customer.contactValue || (contactType === "line" ? customer.lineId : customer.phone));
+  const contactType = normalizeContactType(customer.contactType ?? customer.customerContactType ?? (customer.lineId || customer.customerLineId ? "line" : "phone"));
+  const contactValue = text(customer.contactValue ?? customer.customerContactValue ?? (contactType === "line" ? (customer.lineId ?? customer.customerLineId) : (customer.phone ?? customer.customerPhone)));
   // LINE is an opt-out from entering a phone number, not a shared customer ID.
   // Include the customer name so separate LINE customers do not overwrite one another.
   const referenceValue = contactType === "line" && normalizeContactValue(contactType, contactValue) === "line"
@@ -129,9 +129,8 @@ export function customerRecord(customer, timestamp = Timestamp.now(), existing =
   const contactType = normalizeContactType(customer?.contactType ?? customer?.customerContactType ?? (customer?.lineId || customer?.customerLineId ? "line" : "phone"));
   const contactValue = text(customer?.contactValue ?? customer?.customerContactValue ?? (contactType === "line" ? (customer?.lineId ?? customer?.customerLineId) : (customer?.phone ?? customer?.customerPhone)));
   const contactNormalized = normalizeContactValue(contactType, contactValue);
-  assert(contactNormalized, contactType === "line" ? "請輸入 LINE ID" : "請輸入客戶電話");
   const name = text(customer?.name ?? customer?.customerName);
-  assert(name, "請輸入客戶姓名");
+  assert(name || contactNormalized, "客戶姓名或聯絡方式請至少填寫一項");
   assert(name.length <= 100 && contactValue.length <= 128, "客戶資料過長");
   assert(text(customer?.address ?? customer?.customerAddress).length <= 500, "客戶地址過長");
 

@@ -264,12 +264,8 @@ export function saveCustomer() {
   const recipientName = document.getElementById('recipientName').value.trim();
   const recipientPhone = document.getElementById('recipientPhone').value.trim();
   const deliveryType = document.getElementById('deliveryTypeValue').value;
-  if (!name) {
-    showAlert('請輸入客戶姓名', 'error');
-    return;
-  }
-  if (!contactValue) {
-    showAlert('請輸入客戶電話', 'error');
+  if (!name && !contactValue) {
+    showAlert('客戶姓名或聯絡方式請至少填寫一項', 'error');
     return;
   }
   state.currentCustomer = {

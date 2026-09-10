@@ -104,40 +104,50 @@ export function updateNavVisibility() {
 }
 
 export function updateProductDisplays() {
-  const select = document.getElementById('catalogCategory');
-  const previous = select.value;
+  const tabs = document.getElementById('catalogFilterTabs');
+  const previous = tabs.dataset.category || '';
+  const activeProducts = state.allProducts.filter((p) => p.status === '啟用');
   const categories = [
     ...new Set(
-      state.allProducts
-        .filter((p) => p.status === '啟用')
+      activeProducts
         .map((p) => p.category)
         .filter(Boolean),
     ),
   ];
-  select.replaceChildren(
-    new Option('全部類別', ''),
-    ...categories.map((category) => new Option(category, category)),
+  const selected = categories.includes(previous) ? previous : '';
+  tabs.dataset.category = selected;
+  tabs.replaceChildren(
+    ...['', ...categories].map((category) => {
+      const button = document.createElement('button');
+      const count = category
+        ? activeProducts.filter((p) => p.category === category).length
+        : activeProducts.length;
+      button.type = 'button';
+      button.classList.toggle('active', category === selected);
+      button.setAttribute('aria-pressed', String(category === selected));
+      button.textContent = `${category || '全部類別'} (${count})`;
+      button.onclick = () => {
+        tabs.dataset.category = category;
+        for (const tab of tabs.children) {
+          tab.classList.toggle('active', tab === button);
+          tab.setAttribute('aria-pressed', String(tab === button));
+        }
+        loadProductsByCategory(category, 'gift');
+      };
+      return button;
+    }),
   );
-  select.value = categories.includes(previous) ? previous : '';
-  loadProductsByCategory(select.value, 'gift');
+  loadProductsByCategory(selected, 'gift');
 }
 
 export function loadProductsByCategory(category, containerId) {
-  const query =
-    document
-      .getElementById(containerId + 'ProductSearch')
-      ?.value.trim()
-      .toLocaleLowerCase() || '';
   const products = state.allProducts.filter(
-    (p) =>
-      (!category || p.category === category) &&
-      p.status === '啟用' &&
-      (!query || `${p.productName} ${p.description || ''}`.toLocaleLowerCase().includes(query)),
+    (p) => (!category || p.category === category) && p.status === '啟用',
   );
   const container = document.getElementById(containerId + 'Products');
   container.classList.remove('loading');
   if (products.length === 0) {
-    container.innerHTML = `<div class="col-span-full workspace-empty" role="status"><h3>${query ? '找不到符合的商品' : '目前沒有啟用的商品'}</h3><p>${query ? '試試其他名稱，或清除搜尋條件。' : '可在「管理」的「商品管理」新增或啟用商品。'}</p></div>`;
+    container.innerHTML = '<div class="col-span-full workspace-empty" role="status"><h3>目前沒有啟用的商品</h3><p>可在「管理」的「商品管理」新增或啟用商品。</p></div>';
     return;
   }
   // 企業客戶模式提示 banner

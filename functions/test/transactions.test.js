@@ -55,6 +55,24 @@ function transactionStore(t) {
   return { records, batches };
 }
 
+test("orders accept either customer name or contact and reject both missing", async (t) => {
+  const { records } = transactionStore(t);
+  const shop = { shopId: "regression-shop", shopRef: db.doc("shops/regression-shop") };
+  for (const customer of [{ name: "只有姓名" }, { phone: "0912345678" }]) {
+    const data = { ...order(), clientRequestId: JSON.stringify(customer), customer };
+    const result = await createOrder(shop, data);
+    await updateOrder(shop, { ...data, orderId: result.orderId });
+    const saved = records.get(`shops/regression-shop/orders/${result.orderId}`);
+    assert.equal(saved.customerName, customer.name || "");
+    assert.equal(saved.customerPhone, customer.phone || "");
+    await assert.rejects(updateOrder(shop, { ...data, orderId: result.orderId, customer: {} }), /至少填寫一項/);
+  }
+  const customers = [...records.entries()].filter(([path]) => path.includes('/customers/')).map(([, value]) => value);
+  assert.ok(customers.some((customer) => customer.name === "只有姓名" && customer.phone === ""));
+  assert.ok(customers.some((customer) => customer.name === "" && customer.phone === "0912345678"));
+  await assert.rejects(createOrder(shop, { ...order(), customer: { name: " ", phone: " " } }), /至少填寫一項/);
+});
+
 test("create/replay/payment/edit/cancel/delete preserve transaction and capacity behavior", async (t) => {
   const { records, batches } = transactionStore(t);
   const shop = { shopId: "regression-shop", shopRef: db.doc("shops/regression-shop") };

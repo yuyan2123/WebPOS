@@ -778,7 +778,7 @@ function updateCartDisplay() {
   }
   document.getElementById("cartTotalAmount").textContent = orderTotals.totalAmount;
   const checkoutBtn = document.getElementById("checkoutBtn");
-  const notReady = totalCount === 0 || !state.currentCustomer.name || !state.currentCustomer.contactValue && !state.currentCustomer.phone || !state.currentDeliveryDate || !navigator.onLine || document.body.dataset.shopRole === "viewer";
+  const notReady = totalCount === 0 || !state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone || !state.currentDeliveryDate || !navigator.onLine || document.body.dataset.shopRole === "viewer";
   checkoutBtn.classList.toggle("checkout-not-ready", notReady);
   if (state.isEditingOrder) {
     checkoutBtn.textContent = "\u66F4\u65B0\u8A02\u55AE";
@@ -1121,12 +1121,11 @@ function searchOrders() {
     contactType: state.currentSearchContactMethod,
     name: document.getElementById("searchName").value.trim(),
     date: document.getElementById("searchDate").value,
-    status: document.getElementById("searchStatus")?.value || "",
     pageSize: 30,
     cursor: null,
     paginated: true
   };
-  if (!criteria.contact && !criteria.name && !criteria.date && !criteria.status) {
+  if (!criteria.contact && !criteria.name && !criteria.date) {
     showAlert("\u8ACB\u81F3\u5C11\u63D0\u4F9B\u4E00\u500B\u641C\u5C0B\u689D\u4EF6", "error");
     return;
   }
@@ -1897,29 +1896,45 @@ function updateNavVisibility() {
   document.getElementById("nav-giftbox").style.display = hasGiftbox ? "" : "none";
 }
 function updateProductDisplays() {
-  const select = document.getElementById("catalogCategory");
-  const previous = select.value;
+  const tabs = document.getElementById("catalogFilterTabs");
+  const previous = tabs.dataset.category || "";
+  const activeProducts = state.allProducts.filter((p) => p.status === "\u555F\u7528");
   const categories = [
     ...new Set(
-      state.allProducts.filter((p) => p.status === "\u555F\u7528").map((p) => p.category).filter(Boolean)
+      activeProducts.map((p) => p.category).filter(Boolean)
     )
   ];
-  select.replaceChildren(
-    new Option("\u5168\u90E8\u985E\u5225", ""),
-    ...categories.map((category) => new Option(category, category))
+  const selected = categories.includes(previous) ? previous : "";
+  tabs.dataset.category = selected;
+  tabs.replaceChildren(
+    ...["", ...categories].map((category) => {
+      const button = document.createElement("button");
+      const count = category ? activeProducts.filter((p) => p.category === category).length : activeProducts.length;
+      button.type = "button";
+      button.classList.toggle("active", category === selected);
+      button.setAttribute("aria-pressed", String(category === selected));
+      button.textContent = `${category || "\u5168\u90E8\u985E\u5225"} (${count})`;
+      button.onclick = () => {
+        tabs.dataset.category = category;
+        for (const tab of tabs.children) {
+          tab.classList.toggle("active", tab === button);
+          tab.setAttribute("aria-pressed", String(tab === button));
+        }
+        loadProductsByCategory(category, "gift");
+      };
+      return button;
+    })
   );
-  select.value = categories.includes(previous) ? previous : "";
-  loadProductsByCategory(select.value, "gift");
+  loadProductsByCategory(selected, "gift");
 }
 function loadProductsByCategory(category, containerId) {
-  const query = document.getElementById(containerId + "ProductSearch")?.value.trim().toLocaleLowerCase() || "";
   const products = state.allProducts.filter(
-    (p) => (!category || p.category === category) && p.status === "\u555F\u7528" && (!query || `${p.productName} ${p.description || ""}`.toLocaleLowerCase().includes(query))
+    (p) => (!category || p.category === category) && p.status === "\u555F\u7528"
   );
   const container = document.getElementById(containerId + "Products");
   container.classList.remove("loading");
   if (products.length === 0) {
-    container.innerHTML = `<div class="col-span-full workspace-empty" role="status"><h3>${query ? "\u627E\u4E0D\u5230\u7B26\u5408\u7684\u5546\u54C1" : "\u76EE\u524D\u6C92\u6709\u555F\u7528\u7684\u5546\u54C1"}</h3><p>${query ? "\u8A66\u8A66\u5176\u4ED6\u540D\u7A31\uFF0C\u6216\u6E05\u9664\u641C\u5C0B\u689D\u4EF6\u3002" : "\u53EF\u5728\u300C\u7BA1\u7406\u300D\u7684\u300C\u5546\u54C1\u7BA1\u7406\u300D\u65B0\u589E\u6216\u555F\u7528\u5546\u54C1\u3002"}</p></div>`;
+    container.innerHTML = '<div class="col-span-full workspace-empty" role="status"><h3>\u76EE\u524D\u6C92\u6709\u555F\u7528\u7684\u5546\u54C1</h3><p>\u53EF\u5728\u300C\u7BA1\u7406\u300D\u7684\u300C\u5546\u54C1\u7BA1\u7406\u300D\u65B0\u589E\u6216\u555F\u7528\u5546\u54C1\u3002</p></div>';
     return;
   }
   const companyBanner = state.isCompanyCustomer ? '<div class="company-mode-banner col-span-full"><i class="fas fa-building"></i>\u76EE\u524D\u70BA\u4F01\u696D\u5BA2\u6236\u6A21\u5F0F\uFF0C\u5546\u54C1\u5DF2\u5957\u7528\u4F01\u696D\u50F9\u683C</div>' : "";
@@ -2638,12 +2653,8 @@ function saveCustomer() {
   const recipientName = document.getElementById("recipientName").value.trim();
   const recipientPhone = document.getElementById("recipientPhone").value.trim();
   const deliveryType = document.getElementById("deliveryTypeValue").value;
-  if (!name) {
-    showAlert("\u8ACB\u8F38\u5165\u5BA2\u6236\u59D3\u540D", "error");
-    return;
-  }
-  if (!contactValue) {
-    showAlert("\u8ACB\u8F38\u5165\u5BA2\u6236\u96FB\u8A71", "error");
+  if (!name && !contactValue) {
+    showAlert("\u5BA2\u6236\u59D3\u540D\u6216\u806F\u7D61\u65B9\u5F0F\u8ACB\u81F3\u5C11\u586B\u5BEB\u4E00\u9805", "error");
     return;
   }
   state.currentCustomer = {
@@ -3419,7 +3430,7 @@ function submitOrder() {
     return;
   }
   if (checkoutBtn.classList.contains("checkout-not-ready") || !navigator.onLine || document.body.dataset.shopRole === "viewer") {
-    if (!state.currentCustomer.name || !state.currentCustomer.contactValue && !state.currentCustomer.phone) {
+    if (!state.currentCustomer.name && (!state.currentCustomer.contactValue && !state.currentCustomer.phone)) {
       showAlert("\u8ACB\u5148\u5132\u5B58\u5BA2\u6236\u8CC7\u8A0A", "error");
     } else if (!navigator.onLine) {
       showAlert("\u76EE\u524D\u96E2\u7DDA\uFF0C\u8349\u7A3F\u5DF2\u4FDD\u5B58\uFF1B\u6062\u5FA9\u9023\u7DDA\u5F8C\u624D\u80FD\u9001\u51FA\u8A02\u55AE", "error");
@@ -4282,7 +4293,7 @@ function navigateFromUrl() {
 function refreshWorkspace() {
   const customer = document.getElementById("workspaceCustomer");
   if (!customer) return;
-  customer.textContent = state.currentCustomer.name || "\u5C1A\u672A\u586B\u5BEB\u5BA2\u6236";
+  customer.textContent = state.currentCustomer.name || state.currentCustomer.contactValue || state.currentCustomer.phone || "\u5C1A\u672A\u586B\u5BEB\u5BA2\u6236";
   document.getElementById("workspaceDate").textContent = state.currentDeliveryDate || "\u5C1A\u672A\u9078\u64C7\u65E5\u671F";
   const items = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
   const quantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -4291,9 +4302,6 @@ function refreshWorkspace() {
   document.getElementById("workspaceMode").textContent = state.isEditingOrder ? "\u7DE8\u8F2F\u8A02\u55AE" : "\u65B0\u8A02\u55AE";
 }
 function initializeWorkspace() {
-  const refreshCatalog = () => loadProductsByCategory(document.getElementById("catalogCategory").value, "gift");
-  document.getElementById("giftProductSearch").addEventListener("input", refreshCatalog);
-  document.getElementById("catalogCategory").addEventListener("change", refreshCatalog);
   document.getElementById("workspaceCart").addEventListener("click", toggleCartModal);
   const managementToggle = document.getElementById("managementToggle");
   const managementLinks = document.getElementById("managementLinks");

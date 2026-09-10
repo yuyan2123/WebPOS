@@ -436,27 +436,6 @@ body[data-section="settings"] .fab-cart {
   width: 100%;
   text-align: left;
 }
-.catalog-search {
-  display: block;
-  max-width: 440px;
-  margin-bottom: 22px;
-}
-.catalog-search span {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: var(--pos-ink-soft);
-}
-.catalog-search input,
-.catalog-search select {
-  width: 100%;
-  min-height: 46px;
-  padding: 10px 14px;
-  border: 1px solid var(--pos-line-strong);
-  border-radius: 9px;
-  background: white;
-  font-size: 14px;
-}
 .giftbox-action-buttons {
   flex-wrap: wrap;
 }

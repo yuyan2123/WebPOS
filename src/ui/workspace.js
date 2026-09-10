@@ -3,7 +3,6 @@ import { showSection, showSettingsSection } from '../app/navigation.js';
 import { searchOrders, searchOverdueOrders } from '../app/search.js';
 import { toggleCartModal } from '../app/cart.js';
 import { getTaipeiDate } from '../app/platform.js';
-import { loadProductsByCategory } from '../app/catalog.js';
 
 const sections = {
   customer: ['建立訂單', '先填寫客戶與配送資料'],
@@ -42,7 +41,7 @@ function navigateFromUrl() {
 export function refreshWorkspace() {
   const customer = document.getElementById('workspaceCustomer');
   if (!customer) return;
-  customer.textContent = state.currentCustomer.name || '尚未填寫客戶';
+  customer.textContent = state.currentCustomer.name || state.currentCustomer.contactValue || state.currentCustomer.phone || '尚未填寫客戶';
   document.getElementById('workspaceDate').textContent = state.currentDeliveryDate || '尚未選擇日期';
   const items = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
   const quantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -52,10 +51,6 @@ export function refreshWorkspace() {
 }
 
 export function initializeWorkspace() {
-  const refreshCatalog = () =>
-    loadProductsByCategory(document.getElementById('catalogCategory').value, 'gift');
-  document.getElementById('giftProductSearch').addEventListener('input', refreshCatalog);
-  document.getElementById('catalogCategory').addEventListener('change', refreshCatalog);
   document.getElementById('workspaceCart').addEventListener('click', toggleCartModal);
   const managementToggle = document.getElementById('managementToggle');
   const managementLinks = document.getElementById('managementLinks');

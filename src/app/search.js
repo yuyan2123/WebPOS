@@ -16,12 +16,11 @@ export function searchOrders() {
     contactType: state.currentSearchContactMethod,
     name: document.getElementById('searchName').value.trim(),
     date: document.getElementById('searchDate').value,
-    status: document.getElementById('searchStatus')?.value || '',
     pageSize: 30,
     cursor: null,
     paginated: true,
   };
-  if (!criteria.contact && !criteria.name && !criteria.date && !criteria.status) {
+  if (!criteria.contact && !criteria.name && !criteria.date) {
     showAlert('請至少提供一個搜尋條件', 'error');
     return;
   }

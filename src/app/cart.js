@@ -119,8 +119,7 @@ export function updateCartDisplay() {
   const checkoutBtn = document.getElementById('checkoutBtn');
   const notReady =
     totalCount === 0 ||
-    !state.currentCustomer.name ||
-    (!state.currentCustomer.contactValue && !state.currentCustomer.phone) ||
+    (!state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone) ||
     !state.currentDeliveryDate ||
     !navigator.onLine ||
     document.body.dataset.shopRole === 'viewer';

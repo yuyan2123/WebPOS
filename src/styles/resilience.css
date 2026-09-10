@@ -282,7 +282,7 @@ body[data-shop-role="viewer"] button[onclick^="deleteDateOverride"] {
   display: none !important;
 }
 
-body[data-permission-notice="readonly"] #search .search-header::after {
+body[data-permission-notice="readonly"] #search .search-quick-actions::after {
   content: "僅檢視權限";
   margin-left: auto;
   padding: 5px 10px;

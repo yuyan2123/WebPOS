@@ -47,6 +47,7 @@ function normalizeOrderInput(orderData = {}) {
     customer.contactValue || (customerContactType === "line" ? customer.lineId : customer.phone),
   );
   const customerContactNormalized = normalizeContactValue(customerContactType, customerContactValue);
+  assert(text(customer.name) || customerContactNormalized, "客戶姓名或聯絡方式請至少填寫一項");
   const items = Array.isArray(orderData.items) ? orderData.items.map(normalizeItem) : [];
   assert(items.length > 0 && items.length <= 200, "購物車品項數量不正確");
 
@@ -94,11 +95,6 @@ function orderResult(snapshot) {
 
 export async function createOrder(user, orderData) {
   const input = normalizeOrderInput(orderData);
-  assert(input.customerName, "請輸入客戶姓名");
-  assert(
-    input.customerContactNormalized,
-    input.customerContactType === "line" ? "請輸入 LINE ID" : "請輸入客戶電話",
-  );
 
   const orderId = orderDocumentId(input.clientRequestId);
   const orderRef = tenantCollection(user, COLLECTIONS.orders).doc(orderId);

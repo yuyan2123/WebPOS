@@ -22,7 +22,7 @@ export function submitOrder() {
     document.body.dataset.shopRole === 'viewer'
   ) {
     if (
-      !state.currentCustomer.name ||
+      !state.currentCustomer.name &&
       (!state.currentCustomer.contactValue && !state.currentCustomer.phone)
     ) {
       showAlert('請先儲存客戶資訊', 'error');
