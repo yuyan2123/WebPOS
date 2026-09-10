@@ -49,7 +49,7 @@ export function renderCapacitySettingsUI() {
       '<div class="day-name">' +
       escapeHtml(state.weekdayNames[i]) +
       '</div>' +
-      '<input type="number" min="0" placeholder="0" aria-label="星期' +
+      '<input type="number" inputmode="numeric" step="1" min="0" placeholder="0" aria-label="星期' +
       escapeAttr(state.weekdayNames[i]) +
       '供應量上限" value="' +
       val +

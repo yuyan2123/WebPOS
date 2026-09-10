@@ -882,3 +882,55 @@ test('custom categories support unified catalog, cart and order editing', async 
   await expect(page.locator('#cartModalBody')).toContainText('烏龍茶');
   expect(errors).toEqual([]);
 });
+
+test('numeric fields restrict text and preserve phone zeros and decimal amounts', async ({ page }) => {
+  await openWorkspace(page);
+  const phone = page.locator('#customerPhone');
+  await expect(phone).toHaveAttribute('inputmode', 'numeric');
+  await phone.fill('0912345678');
+  await phone.pressSequentially('abc');
+  await expect(phone).toHaveValue('0912345678');
+  await phone.evaluate((input) => {
+    input.value = '09中文12-34';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(phone).toHaveValue('091234');
+  await page.locator('#contactMethodLine').click();
+  await expect(phone).toHaveValue('LINE');
+  await page.locator('#contactMethodPhone').click();
+  await expect(phone).toHaveAttribute('inputmode', 'numeric');
+  const result = await page.evaluate(() => {
+    const amount = document.getElementById('shippingFee');
+    amount.value = '12.5';
+    amount.dispatchEvent(new Event('input', { bubbles: true }));
+    const quantity = document.getElementById('modalQuantity');
+    return {
+      amount: amount.value,
+      amountMode: amount.inputMode,
+      quantityMode: quantity.inputMode,
+      rejectsText: !quantity.dispatchEvent(
+        new InputEvent('beforeinput', {
+          data: '中文',
+          inputType: 'insertText',
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+      rejectsExponent: !quantity.dispatchEvent(
+        new InputEvent('beforeinput', {
+          data: 'e',
+          inputType: 'insertText',
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    };
+  });
+  expect(result).toEqual({
+    amount: '12.5',
+    amountMode: 'decimal',
+    quantityMode: 'numeric',
+    rejectsText: true,
+    rejectsExponent: true,
+  });
+});

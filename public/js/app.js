@@ -1,3 +1,25 @@
+// src/ui/numeric-inputs.js
+function numericInput(target) {
+  return target instanceof HTMLInputElement && !target.readOnly && (target.inputMode === "numeric" || target.inputMode === "decimal");
+}
+document.addEventListener(
+  "beforeinput",
+  (event2) => {
+    if (!numericInput(event2.target) || event2.isComposing || !event2.data) return;
+    const allowed = event2.target.inputMode === "decimal" ? /^[0-9.]+$/ : /^[0-9]+$/;
+    if (!allowed.test(event2.data)) event2.preventDefault();
+  },
+  true
+);
+function cleanNumericInput(event2) {
+  const input = event2.target;
+  if (!numericInput(input) || event2.isComposing) return;
+  const value = input.inputMode === "decimal" ? input.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1") : input.value.replace(/[^0-9]/g, "");
+  if (value !== input.value) input.value = value;
+}
+document.addEventListener("input", cleanNumericInput, true);
+document.addEventListener("compositionend", cleanNumericInput, true);
+
 // src/platform/gestures.js
 var preventGesture = (event2) => {
   event2.preventDefault();
@@ -1462,7 +1484,7 @@ function renderCapacitySettingsUI() {
     var col = document.createElement("div");
     col.className = "capacity-day-col" + (isActive ? " active" : "");
     var val = setting.maxQuantity === "" || setting.maxQuantity === null ? "" : setting.maxQuantity;
-    col.innerHTML = '<div class="day-name">' + escapeHtml(state.weekdayNames[i]) + '</div><input type="number" min="0" placeholder="0" aria-label="\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u4E0A\u9650" value="' + val + '" data-day="' + i + '" id="capDay' + i + '"><label class="day-toggle" for="capDayEnabled' + i + '"><input type="checkbox" aria-label="\u555F\u7528\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u9650\u5236" ' + (isActive ? "checked" : "") + ' data-day="' + i + '" id="capDayEnabled' + i + '"><span class="slider" aria-hidden="true"></span></label>';
+    col.innerHTML = '<div class="day-name">' + escapeHtml(state.weekdayNames[i]) + '</div><input type="number" inputmode="numeric" step="1" min="0" placeholder="0" aria-label="\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u4E0A\u9650" value="' + val + '" data-day="' + i + '" id="capDay' + i + '"><label class="day-toggle" for="capDayEnabled' + i + '"><input type="checkbox" aria-label="\u555F\u7528\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u9650\u5236" ' + (isActive ? "checked" : "") + ' data-day="' + i + '" id="capDayEnabled' + i + '"><span class="slider" aria-hidden="true"></span></label>';
     grid.appendChild(col);
   }
   grid.querySelectorAll('input[type="number"], input[type="checkbox"]').forEach(function(el) {
@@ -2465,7 +2487,7 @@ function selectContactMethod(method, clearValue = true) {
   document.getElementById("contactMethodLine")?.classList.toggle("active", state.currentContactMethod === "line");
   if (input) {
     input.type = state.currentContactMethod === "phone" ? "tel" : "text";
-    input.inputMode = state.currentContactMethod === "phone" ? "tel" : "none";
+    input.inputMode = state.currentContactMethod === "phone" ? "numeric" : "none";
     input.placeholder = state.currentContactMethod === "phone" ? "09xx-xxx-xxx" : "";
     input.readOnly = state.currentContactMethod === "line";
     input.setAttribute("aria-label", state.currentContactMethod === "phone" ? "\u5BA2\u6236\u96FB\u8A71" : "\u806F\u7D61\u65B9\u5F0F LINE");
@@ -2495,7 +2517,7 @@ function selectSearchContactMethod(method, clearValue = true) {
   document.getElementById("searchContactLine")?.classList.toggle("active", state.currentSearchContactMethod === "line");
   if (!input) return;
   input.type = state.currentSearchContactMethod === "phone" ? "tel" : "text";
-  input.inputMode = state.currentSearchContactMethod === "phone" ? "tel" : "none";
+  input.inputMode = state.currentSearchContactMethod === "phone" ? "numeric" : "none";
   input.placeholder = state.currentSearchContactMethod === "phone" ? "\u8F38\u5165\u96FB\u8A71\u865F\u78BC" : "";
   input.readOnly = state.currentSearchContactMethod === "line";
   input.setAttribute(

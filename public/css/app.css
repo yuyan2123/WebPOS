@@ -6196,6 +6196,117 @@ body #firebaseAccountBadge {
   }
 }
 
+/* Order lookup: one compact filter panel, with results only after a query. */
+#search .search-container {
+  padding: 24px;
+}
+#search .search-quick-actions {
+  padding: 0 0 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--pos-line);
+  gap: 12px;
+}
+#search .search-quick-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 18px;
+  font-size: 14px;
+  box-shadow: none;
+}
+#search .search-form {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+#search .search-form-grid {
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+#search .search-form-group {
+  min-width: 0;
+}
+#search .search-form-group > label,
+#search .search-contact-heading {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 10px;
+}
+#search .search-contact-heading {
+  justify-content: space-between;
+  gap: 12px;
+}
+#search .search-contact-heading label {
+  margin: 0;
+  white-space: nowrap;
+}
+#search .contact-method-toggle {
+  display: flex;
+  gap: 4px;
+}
+#search .contact-method-toggle button {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+#search .search-form-group input {
+  min-height: 52px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+#search .search-actions {
+  justify-content: flex-end;
+}
+#search .search-actions button {
+  min-height: 48px;
+  justify-content: center;
+}
+#search .btn-search {
+  order: 1;
+  min-width: 160px;
+}
+#searchResults:empty {
+  display: none;
+}
+@media (max-width: 899px) {
+  #search .search-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #search .search-form-group:first-child {
+    grid-column: 1 / -1;
+  }
+  #search .search-contact-heading {
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 540px) {
+  #search .search-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #search .search-quick-actions {
+    gap: 8px;
+  }
+  #search .search-quick-actions button {
+    flex: 1 1 auto;
+    padding: 10px 12px;
+  }
+  #search .search-actions {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+  }
+  #search .btn-search {
+    min-width: 0;
+  }
+}
+
 /* Shared notifications, aligned with the workspace palette. */
 .alert-container {
   width: 400px;

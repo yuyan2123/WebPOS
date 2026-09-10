@@ -29,7 +29,7 @@ export function selectContactMethod(method, clearValue = true) {
     ?.classList.toggle('active', state.currentContactMethod === 'line');
   if (input) {
     input.type = state.currentContactMethod === 'phone' ? 'tel' : 'text';
-    input.inputMode = state.currentContactMethod === 'phone' ? 'tel' : 'none';
+    input.inputMode = state.currentContactMethod === 'phone' ? 'numeric' : 'none';
     input.placeholder = state.currentContactMethod === 'phone' ? '09xx-xxx-xxx' : '';
     input.readOnly = state.currentContactMethod === 'line';
     input.setAttribute('aria-label', state.currentContactMethod === 'phone' ? '客戶電話' : '聯絡方式 LINE');
@@ -65,7 +65,7 @@ export function selectSearchContactMethod(method, clearValue = true) {
     ?.classList.toggle('active', state.currentSearchContactMethod === 'line');
   if (!input) return;
   input.type = state.currentSearchContactMethod === 'phone' ? 'tel' : 'text';
-  input.inputMode = state.currentSearchContactMethod === 'phone' ? 'tel' : 'none';
+  input.inputMode = state.currentSearchContactMethod === 'phone' ? 'numeric' : 'none';
   input.placeholder = state.currentSearchContactMethod === 'phone' ? '輸入電話號碼' : '';
   input.readOnly = state.currentSearchContactMethod === 'line';
   input.setAttribute(
