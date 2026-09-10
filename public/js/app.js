@@ -1283,7 +1283,17 @@ function toggleOrderItems(orderId) {
     state.orderItemsTransitionTimer = null;
     displayOrderTable(state.currentSearchOrders, "searchResults", "search");
   }
-  state.orderItemsTransitionTimer = setTimeout(finishCollapse, 750);
+  function recoverCollapse() {
+    const running = animation?.isConnected && animation.getAnimations().some(
+      (effect) => effect.animationName === "order-items-collapse" && (effect.pending || effect.playState === "running")
+    );
+    if (running) {
+      state.orderItemsTransitionTimer = setTimeout(recoverCollapse, 250);
+      return;
+    }
+    finishCollapse();
+  }
+  state.orderItemsTransitionTimer = setTimeout(recoverCollapse, 750);
   animation?.addEventListener("animationend", function(event2) {
     if (event2.target === animation && event2.animationName === "order-items-collapse") finishCollapse();
   });

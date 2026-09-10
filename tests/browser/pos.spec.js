@@ -516,6 +516,51 @@ for (const width of [1366, 1180, 1024, 820, 530, 390]) {
   });
 }
 
+test('collapse recovery waits for a delayed animation before removing the row', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  await page.addStyleTag({
+    content: '.order-items-row.is-collapsing .order-items-expand { animation-delay: 1s; }',
+  });
+  await page.locator('#nav-search').click();
+  await page.evaluate(() => {
+    window.__orders = [
+      {
+        orderId: 'O-delayed',
+        customerName: '延遲動畫',
+        deliveryDate: '2026-09-30',
+        totalAmount: 50,
+        status: '已確認',
+        items: [{ productName: '測試商品', quantity: 1, unitPrice: 50, subtotal: 50 }],
+      },
+    ];
+  });
+  await page.locator('#searchName').fill('延遲');
+  await page.locator('.btn-search').click();
+  const name = page.locator('#searchResults td[data-label="姓名"]');
+  await name.click();
+  await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+  await page.evaluate(() => {
+    window.__delayedCollapseHeight = null;
+    document.addEventListener(
+      'animationend',
+      (event) => {
+        if (event.animationName === 'order-items-collapse') {
+          window.__delayedCollapseHeight = event.target
+            .closest('.order-items-row')
+            .getBoundingClientRect().height;
+        }
+      },
+      true,
+    );
+  });
+  await name.click();
+  await expect(page.locator('.order-items-row')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__delayedCollapseHeight)).toBe(0);
+  await name.click();
+  await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+  expect(errors).toEqual([]);
+});
+
 test('startup renders capacity settings and opening the panel reuses them', async ({ page }) => {
   const errors = await openWorkspace(page);
   // Already rendered while the settings panel is still hidden.

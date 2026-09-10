@@ -208,8 +208,25 @@ export function toggleOrderItems(orderId) {
     state.orderItemsTransitionTimer = null;
     displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
   }
-  // Follow the rendered animation; the timer only recovers if the element is removed elsewhere.
-  state.orderItemsTransitionTimer = setTimeout(finishCollapse, 750);
+  // Rendering may start late in a busy/background tab. Never let the recovery
+  // timer remove a row while its CSS animation is still pending or running.
+  function recoverCollapse() {
+    const running =
+      animation?.isConnected &&
+      animation
+        .getAnimations()
+        .some(
+          (effect) =>
+            effect.animationName === 'order-items-collapse' &&
+            (effect.pending || effect.playState === 'running'),
+        );
+    if (running) {
+      state.orderItemsTransitionTimer = setTimeout(recoverCollapse, 250);
+      return;
+    }
+    finishCollapse();
+  }
+  state.orderItemsTransitionTimer = setTimeout(recoverCollapse, 750);
   animation?.addEventListener('animationend', function (event) {
     if (event.target === animation && event.animationName === 'order-items-collapse') finishCollapse();
   });
