@@ -1,6 +1,0 @@
-output/
-__pycache__/
-.venv/
-*.local
-.firebase/
-*-debug.log

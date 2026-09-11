@@ -9,8 +9,7 @@ node_modules/
 !.env.example
 .secret.*
 migration/data.json
-legacy-apps-script/*
-!legacy-apps-script/data_trans/
+legacy-apps-script/
 *.local
 .agents/
 .claude/

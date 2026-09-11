@@ -83,8 +83,7 @@ functions/
   scripts/backfill-contacts.js  Phone/LINE contact schema migration
 migration/
   ExportForFirebase.gs     One-time Google Sheets exporter
-legacy-apps-script/        Local-only source snapshot and workbooks (ignored by Git)
-  data_trans/              Tracked migration tools, tests and documentation
+legacy-apps-script/        Local-only legacy files and migration tools (ignored by Git)
 firebase.json              Hosting, Functions, Firestore, emulator config
 firestore.rules            Denies direct browser access to POS records
 ```
@@ -184,15 +183,6 @@ with matching IDs. It has no dry run or membership/owner verification and rebuil
 totals from the input export alone. Repeating an import can overwrite later POS edits; it
 is intended for an initial migration into an empty destination shop. Writes are not one
 atomic transaction. Run the contact backfill below after importing the older customer schema.
-
-### Move an Excel workbook
-
-Use [the Excel migration guide](legacy-apps-script/data_trans/README.md) for `.xlsx` input.
-`convert.py` produces import JSON and a reconciliation report in an ignored `output/`
-directory. `import.mjs` requires an explicit project and account, verifies destination-shop
-ownership, previews by default, and writes only with `--apply`. It detects conflicts and
-supports rerunning imports without overwriting existing records by default. Its JSON format
-belongs to that workflow; use its importer rather than `functions/scripts/import-data.js`.
 
 ### Upgrade an existing Firebase shop
 
