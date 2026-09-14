@@ -7,16 +7,86 @@ import { showAlert, setButtonLoading, handleError } from './feedback.js';
 import { updateProductDisplays, updateNavVisibility } from './catalog.js';
 import { showConfirmModal, closeConfirmModal } from './dialogs.js';
 
+export function closeCategoryOptions() {
+  document.getElementById('productCategoryOptions').hidden = true;
+  document.getElementById('productCategoryToggle').setAttribute('aria-expanded', 'false');
+}
+
+function renderCategoryOptions(filter = '') {
+  const input = document.getElementById('productCategory');
+  const options = document.getElementById('productCategoryOptions');
+  const categories = [...new Set(state.allProducts.map((p) => p.category).filter(Boolean))];
+  options.replaceChildren(
+    ...categories
+      .filter((category) => category.includes(filter.trim()))
+      .map((category) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = category;
+        button.setAttribute('aria-pressed', String(category === input.value));
+        button.onclick = () => {
+          input.value = category;
+          closeCategoryOptions();
+          document.getElementById('productCategoryToggle').focus();
+        };
+        return button;
+      }),
+  );
+  if (!options.childElementCount) {
+    const empty = document.createElement('p');
+    empty.textContent = '沒有符合的類別，可直接輸入新類別。';
+    options.append(empty);
+  }
+}
+
+function initializeCategoryPicker() {
+  const picker = document.getElementById('productCategoryPicker');
+  closeCategoryOptions();
+  if (picker.dataset.initialized) return;
+  picker.dataset.initialized = 'true';
+  const input = document.getElementById('productCategory');
+  const toggle = document.getElementById('productCategoryToggle');
+  const options = document.getElementById('productCategoryOptions');
+  const open = (filter = '') => {
+    renderCategoryOptions(filter);
+    options.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+  };
+  toggle.addEventListener('click', () => {
+    toggle.focus();
+    if (options.hidden) open();
+    else closeCategoryOptions();
+  });
+  input.addEventListener('click', () => open());
+  input.addEventListener('input', () => open(input.value));
+  picker.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (options.hidden) open();
+      const buttons = [...options.querySelectorAll('button')];
+      const index = buttons.indexOf(document.activeElement);
+      const next = event.key === 'ArrowDown' ? index + 1 : index < 0 ? buttons.length - 1 : index - 1;
+      buttons[(next + buttons.length) % buttons.length]?.focus();
+    }
+  });
+  document.addEventListener('keyup', (event) => {
+    if (event.key === 'Tab' && !picker.contains(document.activeElement)) closeCategoryOptions();
+  });
+  // Close after hit testing: collapsing this in-flow menu on pointerdown/blur
+  // would move the tapped control before its click, especially in Safari.
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!picker.contains(event.target)) closeCategoryOptions();
+    },
+    true,
+  );
+}
+
 export function renderProductCards() {
   const grid = document.getElementById('productsCardGrid');
   const tabsContainer = document.getElementById('productsFilterTabs');
-  document
-    .getElementById('productCategoryOptions')
-    .replaceChildren(
-      ...[...new Set(state.allProducts.map((p) => p.category).filter(Boolean))].map(
-        (category) => new Option(category, category),
-      ),
-    );
+  renderCategoryOptions();
   if (
     state.currentProductFilter !== null &&
     !state.allProducts.some((p) => p.category === state.currentProductFilter)
@@ -127,6 +197,7 @@ export function syncProductOptionButtons(inputId) {
 }
 
 export function showAddProduct() {
+  initializeCategoryPicker();
   document.getElementById('productEditModalTitle').textContent = '新增商品';
   document.getElementById('editProductId').value = '';
   document.getElementById('productName').value = '';
@@ -145,6 +216,7 @@ export function showAddProduct() {
 }
 
 export function closeProductEditModal() {
+  closeCategoryOptions();
   document.getElementById('productEditModal').classList.remove('active');
 }
 
@@ -202,6 +274,7 @@ export function handleProductSaved(result) {
 export function editProduct(productId) {
   const p = state.allProducts.find((p) => p.productId === productId);
   if (!p) return;
+  initializeCategoryPicker();
   document.getElementById('productEditModalTitle').textContent = '編輯商品';
   document.getElementById('editProductId').value = p.productId;
   document.getElementById('productName').value = p.productName;

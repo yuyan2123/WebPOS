@@ -2,6 +2,7 @@ import { closeCartModal } from '../app/cart.js';
 import { closeCapacityWarningModal } from '../app/checkout.js';
 import { closeDeleteConfirmModal, closeStatusConfirmModal, closeDepositModal } from '../app/payments.js';
 import { closeConfirmModal } from '../app/dialogs.js';
+import { closeCategoryOptions } from '../app/products.js';
 
 const selector = '.modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverlay';
 const focusable =
@@ -112,6 +113,11 @@ export function initializeAccessibility() {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (active.id === 'productEditModal' && !document.getElementById('productCategoryOptions').hidden) {
+          closeCategoryOptions();
+          document.getElementById('productCategoryToggle').focus();
+          return;
+        }
         if (close[active.id]) close[active.id]();
         else if (!['firebaseAuthOverlay', 'firebaseShopOverlay'].includes(active.id))
           active.classList.remove('active');

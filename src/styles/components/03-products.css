@@ -1,3 +1,71 @@
+.product-category-control {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.product-category-control input {
+  min-width: 0;
+  font-size: 16px;
+}
+
+.product-category-control button {
+  flex: 0 0 44px;
+  min-height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f1f8f5;
+  color: #1f6f5f;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Keep the menu in the scrolling form so the modal cannot clip its options. */
+.product-category-options {
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: 6px;
+  padding: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.product-category-options button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 16px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.product-category-options button:hover,
+.product-category-options button[aria-pressed="true"] {
+  background: #e4f2ed;
+  color: #17584c;
+}
+
+.product-category-picker button:focus-visible {
+  outline: 2px solid #1f6f5f;
+  outline-offset: -2px;
+}
+
+.product-category-options p {
+  padding: 10px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
 .cart-item-icon {
   width: 44px;
   height: 44px;

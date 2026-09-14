@@ -2056,14 +2056,79 @@ function addToCartDirectly(productId) {
 }
 
 // src/app/products.js
+function closeCategoryOptions() {
+  document.getElementById("productCategoryOptions").hidden = true;
+  document.getElementById("productCategoryToggle").setAttribute("aria-expanded", "false");
+}
+function renderCategoryOptions(filter = "") {
+  const input = document.getElementById("productCategory");
+  const options = document.getElementById("productCategoryOptions");
+  const categories = [...new Set(state.allProducts.map((p) => p.category).filter(Boolean))];
+  options.replaceChildren(
+    ...categories.filter((category) => category.includes(filter.trim())).map((category) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = category;
+      button.setAttribute("aria-pressed", String(category === input.value));
+      button.onclick = () => {
+        input.value = category;
+        closeCategoryOptions();
+        document.getElementById("productCategoryToggle").focus();
+      };
+      return button;
+    })
+  );
+  if (!options.childElementCount) {
+    const empty = document.createElement("p");
+    empty.textContent = "\u6C92\u6709\u7B26\u5408\u7684\u985E\u5225\uFF0C\u53EF\u76F4\u63A5\u8F38\u5165\u65B0\u985E\u5225\u3002";
+    options.append(empty);
+  }
+}
+function initializeCategoryPicker() {
+  const picker = document.getElementById("productCategoryPicker");
+  closeCategoryOptions();
+  if (picker.dataset.initialized) return;
+  picker.dataset.initialized = "true";
+  const input = document.getElementById("productCategory");
+  const toggle = document.getElementById("productCategoryToggle");
+  const options = document.getElementById("productCategoryOptions");
+  const open = (filter = "") => {
+    renderCategoryOptions(filter);
+    options.hidden = false;
+    toggle.setAttribute("aria-expanded", "true");
+  };
+  toggle.addEventListener("click", () => {
+    toggle.focus();
+    if (options.hidden) open();
+    else closeCategoryOptions();
+  });
+  input.addEventListener("click", () => open());
+  input.addEventListener("input", () => open(input.value));
+  picker.addEventListener("keydown", (event2) => {
+    if (event2.key === "ArrowDown" || event2.key === "ArrowUp") {
+      event2.preventDefault();
+      if (options.hidden) open();
+      const buttons = [...options.querySelectorAll("button")];
+      const index = buttons.indexOf(document.activeElement);
+      const next = event2.key === "ArrowDown" ? index + 1 : index < 0 ? buttons.length - 1 : index - 1;
+      buttons[(next + buttons.length) % buttons.length]?.focus();
+    }
+  });
+  document.addEventListener("keyup", (event2) => {
+    if (event2.key === "Tab" && !picker.contains(document.activeElement)) closeCategoryOptions();
+  });
+  document.addEventListener(
+    "click",
+    (event2) => {
+      if (!picker.contains(event2.target)) closeCategoryOptions();
+    },
+    true
+  );
+}
 function renderProductCards() {
   const grid = document.getElementById("productsCardGrid");
   const tabsContainer = document.getElementById("productsFilterTabs");
-  document.getElementById("productCategoryOptions").replaceChildren(
-    ...[...new Set(state.allProducts.map((p) => p.category).filter(Boolean))].map(
-      (category) => new Option(category, category)
-    )
-  );
+  renderCategoryOptions();
   if (state.currentProductFilter !== null && !state.allProducts.some((p) => p.category === state.currentProductFilter))
     state.currentProductFilter = null;
   const categories = [null, ...new Set(state.allProducts.map((p) => p.category))];
@@ -2145,6 +2210,7 @@ function syncProductOptionButtons(inputId) {
   group.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.value === value));
 }
 function showAddProduct() {
+  initializeCategoryPicker();
   document.getElementById("productEditModalTitle").textContent = "\u65B0\u589E\u5546\u54C1";
   document.getElementById("editProductId").value = "";
   document.getElementById("productName").value = "";
@@ -2161,6 +2227,7 @@ function showAddProduct() {
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }
 function closeProductEditModal() {
+  closeCategoryOptions();
   document.getElementById("productEditModal").classList.remove("active");
 }
 function saveProduct() {
@@ -2210,6 +2277,7 @@ function handleProductSaved(result) {
 function editProduct(productId) {
   const p = state.allProducts.find((p2) => p2.productId === productId);
   if (!p) return;
+  initializeCategoryPicker();
   document.getElementById("productEditModalTitle").textContent = "\u7DE8\u8F2F\u5546\u54C1";
   document.getElementById("editProductId").value = p.productId;
   document.getElementById("productName").value = p.productName;
@@ -4517,6 +4585,11 @@ function initializeAccessibility() {
       if (event2.key === "Escape") {
         event2.preventDefault();
         event2.stopImmediatePropagation();
+        if (active.id === "productEditModal" && !document.getElementById("productCategoryOptions").hidden) {
+          closeCategoryOptions();
+          document.getElementById("productCategoryToggle").focus();
+          return;
+        }
         if (close[active.id]) close[active.id]();
         else if (!["firebaseAuthOverlay", "firebaseShopOverlay"].includes(active.id))
           active.classList.remove("active");

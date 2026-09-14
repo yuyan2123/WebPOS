@@ -842,6 +842,50 @@ test('management navigation has one entry per panel and restores direct routes',
   expect(errors).toEqual([]);
 });
 
+test.describe('product category picker touch support', () => {
+  test.use({ hasTouch: true });
+
+  test('custom category menu supports touch selection and keyboard dismissal', async ({ page }) => {
+    const errors = await openWorkspace(page);
+    await openManagementPanel(page, 'products');
+    await page.locator('.btn-add-product').click();
+    const toggle = page.getByRole('button', { name: '選擇商品類別', exact: true });
+    const options = page.locator('#productCategoryOptions');
+    await toggle.tap();
+    await expect(options).toBeVisible();
+    await options.getByRole('button', { name: '伴手禮', exact: true }).tap();
+    await expect(page.locator('#productCategory')).toHaveValue('伴手禮');
+    await expect(options).toBeHidden();
+    await toggle.tap();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(options).toBeHidden();
+    await toggle.tap();
+    await page.keyboard.press('Escape');
+    await expect(options).toBeHidden();
+    await expect(page.locator('#productEditModal')).toBeVisible();
+    await toggle.tap();
+    await page.locator('#productName').tap();
+    await expect(options).toBeHidden();
+    await page.locator('#productCategory').fill('新類別');
+    await expect(options).toContainText('可直接輸入新類別');
+    await page.locator('#productEditModal button[onclick="closeProductEditModal()"]').first().click();
+    await page.locator('.btn-card-edit').first().click();
+    await expect(page.locator('#productCategory')).toHaveValue('伴手禮');
+    await expect(options).toBeHidden();
+    await toggle.tap();
+    await options.getByRole('button', { name: '喜餅', exact: true }).tap();
+    await page.locator('#productEditModal button[onclick="saveProduct()"]').click();
+    await expect(page.locator('#productEditModal')).toBeHidden();
+    expect(
+      await page.evaluate(
+        () => window.__calls.find((call) => call.method === 'saveProduct').args[0].category,
+      ),
+    ).toBe('喜餅');
+    expect(errors).toEqual([]);
+  });
+});
+
 test('custom categories support unified catalog, cart and order editing', async ({ page }) => {
   const errors = await openWorkspace(page);
   await expect(page.locator('#nav-gift')).toHaveText('商品');
@@ -854,7 +898,7 @@ test('custom categories support unified catalog, cart and order editing', async 
   await page.locator('#productPrice').fill('80');
   await page.locator('#productEditModal button[onclick="saveProduct()"]').click();
   await expect(page.locator('#productsCardGrid')).toContainText('茶飲');
-  await expect(page.locator('#productCategoryOptions option[value="茶飲"]')).toHaveCount(1);
+  await expect(page.locator('#productCategoryOptions button').filter({ hasText: '茶飲' })).toHaveCount(1);
   await page.locator('#nav-gift').click();
   await expect(page.locator('#giftProducts')).toContainText('原味餅');
   await expect(page.locator('#giftProducts')).toContainText('喜餅');
