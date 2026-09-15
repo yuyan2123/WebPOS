@@ -845,14 +845,22 @@ test('management navigation has one entry per panel and restores direct routes',
 test.describe('product category picker touch support', () => {
   test.use({ hasTouch: true });
 
-  test('custom category menu supports touch selection and keyboard dismissal', async ({ page }) => {
+  test('custom category menu supports touch selection and keyboard dismissal', async ({ page }, testInfo) => {
     const errors = await openWorkspace(page);
     await openManagementPanel(page, 'products');
     await page.locator('.btn-add-product').click();
     const toggle = page.getByRole('button', { name: '選擇商品類別', exact: true });
     const options = page.locator('#productCategoryOptions');
+    await page.locator('#productEditModal .modal-content').evaluate(async (element) => {
+      await Promise.all(element.getAnimations().map((animation) => animation.finished));
+    });
+    const priceBefore = await page.locator('#productPrice').boundingBox();
     await toggle.tap();
     await expect(options).toBeVisible();
+    const priceAfter = await page.locator('#productPrice').boundingBox();
+    expect(Math.abs(priceAfter.y - priceBefore.y)).toBeLessThan(1);
+    expect(await options.evaluate((element) => element.parentElement.id)).toBe('productEditModal');
+    await page.screenshot({ path: testInfo.outputPath('category-popup.png') });
     await options.getByRole('button', { name: '伴手禮', exact: true }).tap();
     await expect(page.locator('#productCategory')).toHaveValue('伴手禮');
     await expect(options).toBeHidden();

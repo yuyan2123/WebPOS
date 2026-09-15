@@ -20,12 +20,14 @@
   touch-action: manipulation;
 }
 
-/* Keep the menu in the scrolling form so the modal cannot clip its options. */
+/* Float above the form, outside the modal-content scrolling/clipping area. */
 .product-category-options {
+  position: absolute;
+  z-index: 2;
   max-height: 220px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  margin-top: 6px;
+  margin: 0;
   padding: 4px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -55,7 +57,8 @@
   color: #17584c;
 }
 
-.product-category-picker button:focus-visible {
+.product-category-picker button:focus-visible,
+.product-category-options button:focus-visible {
   outline: 2px solid #1f6f5f;
   outline-offset: -2px;
 }

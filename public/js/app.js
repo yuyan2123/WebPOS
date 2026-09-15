@@ -2092,10 +2092,36 @@ function initializeCategoryPicker() {
   const input = document.getElementById("productCategory");
   const toggle = document.getElementById("productCategoryToggle");
   const options = document.getElementById("productCategoryOptions");
+  const modal = document.getElementById("productEditModal");
+  modal.append(options);
+  const contains = (target) => picker.contains(target) || options.contains(target);
+  const position = () => {
+    if (options.hidden) return;
+    const anchor = picker.getBoundingClientRect();
+    const bounds = modal.getBoundingClientRect();
+    const form = picker.closest(".overflow-y-auto").getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const top = Math.max(bounds.top, viewport?.offsetTop || 0) + 8;
+    const bottom = Math.min(bounds.bottom, (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight)) - 8;
+    if (anchor.bottom <= Math.max(form.top, top) || anchor.top >= Math.min(form.bottom, bottom)) {
+      closeCategoryOptions();
+      return;
+    }
+    const width = Math.min(Math.max(anchor.width, 220), bounds.width - 16);
+    options.style.width = `${width}px`;
+    const below = Math.max(0, bottom - anchor.bottom - 6);
+    const above = Math.max(0, anchor.top - top - 6);
+    const upwards = below < Math.min(220, options.scrollHeight + 2) && above > below;
+    options.style.maxHeight = `${Math.min(220, upwards ? above : below)}px`;
+    options.style.left = `${Math.max(8, Math.min(anchor.left - bounds.left, bounds.width - width - 8))}px`;
+    options.style.top = `${(upwards ? anchor.top - 6 - options.offsetHeight : anchor.bottom + 6) - bounds.top}px`;
+  };
   const open = (filter = "") => {
     renderCategoryOptions(filter);
     options.hidden = false;
     toggle.setAttribute("aria-expanded", "true");
+    options.scrollTop = 0;
+    position();
   };
   toggle.addEventListener("click", () => {
     toggle.focus();
@@ -2104,7 +2130,7 @@ function initializeCategoryPicker() {
   });
   input.addEventListener("click", () => open());
   input.addEventListener("input", () => open(input.value));
-  picker.addEventListener("keydown", (event2) => {
+  const navigate = (event2) => {
     if (event2.key === "ArrowDown" || event2.key === "ArrowUp") {
       event2.preventDefault();
       if (options.hidden) open();
@@ -2113,14 +2139,28 @@ function initializeCategoryPicker() {
       const next = event2.key === "ArrowDown" ? index + 1 : index < 0 ? buttons.length - 1 : index - 1;
       buttons[(next + buttons.length) % buttons.length]?.focus();
     }
-  });
+  };
+  picker.addEventListener("keydown", navigate);
+  options.addEventListener("keydown", navigate);
+  options.addEventListener("click", (event2) => event2.stopPropagation());
+  modal.addEventListener(
+    "scroll",
+    (event2) => {
+      if (event2.target !== options) position();
+    },
+    true
+  );
+  modal.addEventListener("animationend", position);
+  window.addEventListener("resize", position);
+  window.visualViewport?.addEventListener("resize", position);
+  window.visualViewport?.addEventListener("scroll", position);
   document.addEventListener("keyup", (event2) => {
-    if (event2.key === "Tab" && !picker.contains(document.activeElement)) closeCategoryOptions();
+    if (event2.key === "Tab" && !contains(document.activeElement)) closeCategoryOptions();
   });
   document.addEventListener(
     "click",
     (event2) => {
-      if (!picker.contains(event2.target)) closeCategoryOptions();
+      if (!contains(event2.target)) closeCategoryOptions();
     },
     true
   );
