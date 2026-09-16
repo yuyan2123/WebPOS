@@ -1,4 +1,5 @@
 import { printerRequest, validatePrinterUrl } from '../platform/printer-client.js';
+import { diagnosePrinter } from '../platform/printer-diagnostics.js';
 import { call } from '../platform/rpc.js';
 import { currentLocalScope } from './drafts.js';
 import { renderReceipt } from './receipt.js';
@@ -298,6 +299,28 @@ export function initializePrinter() {
       void previewOrder('', true);
     } catch (error) {
       element('printer-status').textContent = error.message;
+    }
+  });
+  element('printer-diagnose').addEventListener('click', async () => {
+    if (active || !canPrint()) return;
+    const expectedGeneration = generation;
+    const controller = new AbortController();
+    const output = element('printer-diagnostic-result');
+    active = controller;
+    updateControls();
+    output.hidden = false;
+    try {
+      await diagnosePrinter(element('printer-url').value.trim(), {
+        signal: controller.signal,
+        report: (text) => {
+          if (generation === expectedGeneration) output.textContent = text;
+        },
+      });
+    } catch (error) {
+      if (generation === expectedGeneration) output.textContent = error.message;
+    } finally {
+      if (active === controller) active = null;
+      updateControls();
     }
   });
 }

@@ -164,6 +164,52 @@ async function configurePrinter(page) {
   await expect(page.locator('#printer-status')).toContainText('已連線');
 }
 
+test('printer diagnostics compare HTTPS and WSS without auth or changing saved settings', async ({
+  page,
+}) => {
+  await mockPrinter(page);
+  await page.addInitScript(() => {
+    const fetchOriginal = window.fetch.bind(window);
+    window.__diagnosticFetches = [];
+    window.fetch = (input, options) => {
+      const url = String(input);
+      if (url === 'https://192.168.50.214/health' || url === 'https://xiao-printer.local/health') {
+        window.__diagnosticFetches.push({ url, mode: options.mode, credentials: options.credentials });
+        return Promise.resolve(new Response(''));
+      }
+      return fetchOriginal(input, options);
+    };
+  });
+  await openWorkspace(page);
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-url').fill('wss://192.168.50.214/ws');
+  await page.locator('#printer-token').fill('do-not-transmit');
+  await page.locator('#printer-diagnose').click();
+  const result = page.locator('#printer-diagnostic-result');
+  await expect(result).toContainText('診斷完成');
+  await expect(result).toContainText('HTTPS 192.168.50.214：收到 HTTP 回應');
+  await expect(result).toContainText('WSS 192.168.50.214：握手成功');
+  await expect(result).toContainText('WSS xiao-printer.local：握手成功');
+  await expect(result).not.toContainText('do-not-transmit');
+  expect(await page.evaluate(() => window.__printerFrames)).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.printer.test-user:test-shop'))).toBeNull();
+  expect(
+    await page.evaluate(() =>
+      window.__diagnosticFetches.every(
+        (request) => request.mode === 'no-cors' && request.credentials === 'omit',
+      ),
+    ),
+  ).toBe(true);
+  await page.evaluate(() => {
+    window.__printerMode = 'handshake-error';
+  });
+  await page.locator('#printer-diagnose').click();
+  await expect(result).toContainText('診斷完成');
+  await expect(result).toContainText('WSS 192.168.50.214：失敗');
+  await expect(result).toContainText('WSS xiao-printer.local：失敗');
+  await expect(page.locator('#printer-diagnose')).toBeEnabled();
+});
+
 test('printer settings, exact raster preview, chunk acknowledgements and no duplicate send', async ({
   page,
 }, testInfo) => {

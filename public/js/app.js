@@ -3682,6 +3682,90 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
   }
 }
 
+// src/platform/printer-diagnostics.js
+async function diagnosePrinter(value, { signal, report, timeoutMs = 8e3 } = {}) {
+  const current = new URL(validatePrinterUrl(value));
+  const urls = [current.href];
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(current.hostname)) {
+    const named = new URL(current);
+    named.hostname = "xiao-printer.local";
+    urls.push(named.href);
+  }
+  const lines = [
+    `\u6A21\u5F0F\uFF1A${navigator.standalone || matchMedia("(display-mode: standalone)").matches ? "PWA" : "\u700F\u89BD\u5668"}`,
+    `\u7248\u672C\uFF1A${document.querySelector('meta[name="app-version"]')?.content || "\u672A\u77E5"}`,
+    `\u4F86\u6E90\uFF1A${location.origin}`,
+    `\u5B89\u5168\u74B0\u5883\uFF1A${window.isSecureContext ? "\u662F" : "\u5426"}`,
+    "\u50C5\u6E2C TLS\uFF0FWebSocket \u63E1\u624B\uFF0C\u4E0D\u50B3\u91D1\u9470\u6216\u5217\u5370\u5167\u5BB9\u3002"
+  ];
+  const output = (line) => {
+    lines.push(line);
+    report?.(lines.join("\n"));
+  };
+  report?.(lines.join("\n"));
+  async function probe(label, operation) {
+    if (signal?.aborted) throw new Error("\u8A3A\u65B7\u5DF2\u53D6\u6D88");
+    const started = performance.now();
+    output(`${label}\uFF1A\u6E2C\u8A66\u4E2D\u2026`);
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    let result;
+    try {
+      result = await operation(controller.signal);
+    } catch {
+      result = timedOut ? "\u903E\u6642" : controller.signal.aborted ? "\u53D6\u6D88" : "\u5931\u6557\uFF08\u700F\u89BD\u5668\u672A\u63D0\u4F9B\u5E95\u5C64\u539F\u56E0\uFF09";
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    }
+    lines.pop();
+    output(`${label}\uFF1A${result}\uFF1B${Math.round(performance.now() - started)} ms`);
+  }
+  for (const url of urls) {
+    const https = new URL(url);
+    https.protocol = "https:";
+    https.pathname = "/health";
+    await probe(`HTTPS ${https.host}`, async (probeSignal) => {
+      await fetch(https.href, {
+        mode: "no-cors",
+        credentials: "omit",
+        cache: "no-store",
+        redirect: "error",
+        signal: probeSignal
+      });
+      return "\u6536\u5230 HTTP \u56DE\u61C9\uFF08TLS \u5DF2\u901A\u904E\uFF09";
+    });
+    await probe(
+      `WSS ${https.host}`,
+      (probeSignal) => new Promise((resolve, reject) => {
+        const ws = new WebSocket(url);
+        const finish = (error, result) => {
+          ws.onopen = ws.onerror = ws.onclose = null;
+          probeSignal.removeEventListener("abort", abort);
+          ws.close();
+          error ? reject(error) : resolve(result);
+        };
+        const abort = () => finish(new Error("\u53D6\u6D88"));
+        probeSignal.addEventListener("abort", abort, { once: true });
+        ws.onopen = () => finish(null, "\u63E1\u624B\u6210\u529F");
+        ws.onerror = () => finish(new Error("\u9023\u7DDA\u5931\u6557"));
+        ws.onclose = (event2) => finish(null, `\u9023\u7DDA\u95DC\u9589 ${event2.code}`);
+        if (probeSignal.aborted) abort();
+      })
+    );
+  }
+  output(
+    "\u8A3A\u65B7\u5B8C\u6210\u3002HTTPS \u6210\u529F\u4F46 WSS \u5931\u6557\uFF0C\u8868\u793A\u540C\u4E00\u57F7\u884C\u74B0\u5883\u7684 WebSocket \u63E1\u624B\u9700\u8981\u9032\u4E00\u6B65\u6AA2\u67E5\uFF1B\u4E0D\u4EE3\u8868\u5DF2\u78BA\u8A8D CA \u8A2D\u5B9A\u932F\u8AA4\u3002"
+  );
+  return lines.join("\n");
+}
+
 // src/app/receipt.js
 var LINE_HEIGHT = 34;
 var BAND_LINES = 7;
@@ -4079,6 +4163,28 @@ function initializePrinter() {
       void previewOrder("", true);
     } catch (error) {
       element("printer-status").textContent = error.message;
+    }
+  });
+  element("printer-diagnose").addEventListener("click", async () => {
+    if (active || !canPrint()) return;
+    const expectedGeneration = generation;
+    const controller = new AbortController();
+    const output = element("printer-diagnostic-result");
+    active = controller;
+    updateControls();
+    output.hidden = false;
+    try {
+      await diagnosePrinter(element("printer-url").value.trim(), {
+        signal: controller.signal,
+        report: (text) => {
+          if (generation === expectedGeneration) output.textContent = text;
+        }
+      });
+    } catch (error) {
+      if (generation === expectedGeneration) output.textContent = error.message;
+    } finally {
+      if (active === controller) active = null;
+      updateControls();
     }
   });
 }

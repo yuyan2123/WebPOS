@@ -3830,7 +3830,7 @@ button.loading::after {
   width: 100%;
   height: auto;
 }
-.receipt-text {
+.receipt-text, #printer-diagnostic-result {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 14px;

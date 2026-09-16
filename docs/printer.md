@@ -40,6 +40,17 @@ Firebase 只提供已儲存的訂單資料；列印 bytes 由瀏覽器直接送�
 
 ## 驗證
 
+「連線診斷（不列印）」不需金鑰、不儲存設定，逐一測試目前位址的 HTTPS 與 WSS 握手。
+若目前使用私人 IPv4，也對照本專案預設的 `xiao-printer.local`。結果包含模式、版本、來源及耗時，
+不包含金鑰或訂單。HTTPS 使用無憑證的 no-cors 請求；收到 opaque 回應表示 TLS/HTTP 連線成功，
+不表示已讀取或驗證 HTTP 狀態內容。WSS 只開啟並關閉，絕不送 auth/begin/binary。
+
+2026-09-17 iPadOS 18.7.8 實機調查：使用者確認 Safari WebPOS 成功而主畫面 PWA 失敗。
+PWA 重現時 ESP32 收到 TLS fatal alert 46 (`certificate_unknown`)，發生在 WebSocket Upgrade 之前。
+因此當次失敗不涉及 token、列印分塊或下游 TCP。此警報只定位到客戶端憑證檢查，
+不能單憑它認定使用者未信任 CA，也尚未證實 iPadOS 缺陷。伺服器憑證 IP/DNS SAN、
+serverAuth、TLS 1.2 ECDHE-RSA-AES256-GCM 與嚴格鏈驗證已核對。暫時 TLS debug 韌體已移除。
+
 `npm run check`、`npm test`。瀏覽器測試用模擬 WSS，包含點陣與預覽逐像素對照、分塊、忙碌、斷線、
 金鑰儲存、店鋪切換、viewer、最新訂單明細及單筆傳送限制。
 
