@@ -43,6 +43,12 @@ export async function printerRequest({ url, token, data, signal, timeoutMs = 150
     throw new Error('列印資料必須為 1 byte 至 8 MiB');
   }
   const ws = new WebSocket(url);
+  let phase = '建立 WSS 連線';
+  const startedAt = Date.now();
+  const mode =
+    navigator.standalone || window.matchMedia('(display-mode: standalone)').matches ? 'PWA' : '瀏覽器';
+  const describeFailure = (message) =>
+    `${message}（${phase}；${mode}；${new URL(url).host}；${Math.round((Date.now() - startedAt) / 1000)} 秒）`;
   let outputAttempted = false;
   function wait(send) {
     return new Promise((resolve, reject) => {
@@ -57,9 +63,9 @@ export async function printerRequest({ url, token, data, signal, timeoutMs = 150
         error ? reject(error) : resolve(result);
       };
       const abort = () => finish(new Error('操作已取消'));
-      ws.onerror = () => finish(new Error('WSS 連線失敗，請確認位址、CA 信任及區域網路權限'));
-      ws.onclose = () => finish(new Error('印表機連線已中斷'));
-      timer = setTimeout(() => finish(new Error('印表機回應逾時')), timeoutMs);
+      ws.onerror = () => finish(new Error(describeFailure('WSS 連線失敗；瀏覽器未提供底層原因')));
+      ws.onclose = (event) => finish(new Error(describeFailure(`印表機連線已中斷，代碼 ${event.code}`)));
+      timer = setTimeout(() => finish(new Error(describeFailure('印表機回應逾時'))), timeoutMs);
       signal?.addEventListener('abort', abort, { once: true });
       if (signal?.aborted) {
         abort();
@@ -93,8 +99,10 @@ export async function printerRequest({ url, token, data, signal, timeoutMs = 150
   }
   try {
     await wait();
+    phase = '驗證裝置金鑰';
     const ready = await exchange({ type: 'auth', token }, 'ready');
     if (data === undefined) {
+      phase = '查詢印表機狀態';
       const result = await exchange({ type: 'status' }, 'status');
       if (
         !Number.isInteger(result.raw) ||
@@ -112,7 +120,9 @@ export async function printerRequest({ url, token, data, signal, timeoutMs = 150
     if (!Number.isInteger(deviceLimit) || deviceLimit < 1) throw new Error('印表機工作大小設定不正確');
     if (length > deviceLimit) throw new Error('此橋接韌體不支援這張長單，請更新至 8 MiB 版本');
     const chunkSize = Math.min(4096, ready.maxChunk);
+    phase = '開始列印工作';
     await exchange({ type: 'begin' }, 'started');
+    phase = '傳送列印資料';
     let total = 0;
     // Generate only the next raster band after the previous band is acknowledged.
     const source = data instanceof Uint8Array ? [data] : data.chunks();
@@ -128,6 +138,7 @@ export async function printerRequest({ url, token, data, signal, timeoutMs = 150
       }
     }
     if (total !== length) throw new Error('列印資料長度不符');
+    phase = '確認傳送完成';
     const result = await exchange({ type: 'end' }, 'sent');
     if (result.bytes !== length) throw new Error('列印完成長度不符');
     return result;

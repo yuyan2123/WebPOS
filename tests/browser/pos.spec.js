@@ -79,7 +79,10 @@ async function mockPrinter(page) {
       constructor() {
         window.__printerConnections++;
         this.total = 0;
-        setTimeout(() => this.onopen?.({}), 0);
+        setTimeout(
+          () => (window.__printerMode === 'handshake-error' ? this.onerror?.({}) : this.onopen?.({})),
+          0,
+        );
       }
       send(payload) {
         if (this.closed) throw new Error('closed');
@@ -123,6 +126,34 @@ async function mockPrinter(page) {
     };
   });
 }
+
+test('iPad desktop user agent is identified and PWA handshake failures show diagnostic context', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15',
+    });
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel' });
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });
+    Object.defineProperty(navigator, 'standalone', { value: true });
+  });
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await openManagementPanel(page, 'device');
+  await expect(page.locator('#deviceOs')).toHaveValue('iPadOS');
+  await expect(page.locator('#layoutMode')).toHaveValue('行動裝置模式');
+  await configurePrinter(page);
+  await page.evaluate(() => {
+    window.__printerMode = 'handshake-error';
+    window.__printerFrames = [];
+  });
+  await page.locator('#printer-check').click();
+  await expect(page.locator('#printer-status')).toContainText('建立 WSS 連線；PWA；xiao-printer.local');
+  await expect(page.locator('#printer-status')).not.toContainText('test-secret');
+  expect(await page.evaluate(() => window.__printerFrames.length)).toBe(0);
+});
 
 async function configurePrinter(page) {
   await openManagementPanel(page, 'printer');

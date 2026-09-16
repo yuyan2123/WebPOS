@@ -927,7 +927,8 @@ function applyVisibleViewport(entry) {
 }
 function detectDevice() {
   const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-  const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent);
+  const isIPad = /iPad/i.test(userAgent) || /Macintosh|MacIntel/i.test(userAgent + " " + navigator.platform) && navigator.maxTouchPoints > 1;
+  const isMobile = isIPad || /android|iPhone|iPod/i.test(userAgent);
   const body = document.body;
   if (isMobile) {
     body.classList.add("mobile-device");
@@ -939,11 +940,12 @@ function detectDevice() {
   const fullUserAgentEl = document.getElementById("fullUserAgent");
   if (deviceOsEl) {
     let os = "\u672A\u77E5";
-    if (userAgent.indexOf("Win") !== -1) os = "Windows";
+    if (isIPad) os = "iPadOS";
+    else if (/iPhone|iPod/i.test(userAgent)) os = "iOS";
+    else if (userAgent.indexOf("Win") !== -1) os = "Windows";
     else if (userAgent.indexOf("Mac") !== -1) os = "macOS";
-    else if (userAgent.indexOf("Linux") !== -1) os = "Linux";
     else if (userAgent.indexOf("Android") !== -1) os = "Android";
-    else if (userAgent.indexOf("iPhone") !== -1 || userAgent.indexOf("iPad") !== -1) os = "iOS";
+    else if (userAgent.indexOf("Linux") !== -1) os = "Linux";
     deviceOsEl.value = os;
   }
   if (layoutModeEl) {
@@ -3582,6 +3584,10 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
     throw new Error("\u5217\u5370\u8CC7\u6599\u5FC5\u9808\u70BA 1 byte \u81F3 8 MiB");
   }
   const ws = new WebSocket(url);
+  let phase = "\u5EFA\u7ACB WSS \u9023\u7DDA";
+  const startedAt = Date.now();
+  const mode = navigator.standalone || window.matchMedia("(display-mode: standalone)").matches ? "PWA" : "\u700F\u89BD\u5668";
+  const describeFailure = (message) => `${message}\uFF08${phase}\uFF1B${mode}\uFF1B${new URL(url).host}\uFF1B${Math.round((Date.now() - startedAt) / 1e3)} \u79D2\uFF09`;
   let outputAttempted = false;
   function wait(send) {
     return new Promise((resolve, reject) => {
@@ -3596,9 +3602,9 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
         error ? reject(error) : resolve(result);
       };
       const abort = () => finish(new Error("\u64CD\u4F5C\u5DF2\u53D6\u6D88"));
-      ws.onerror = () => finish(new Error("WSS \u9023\u7DDA\u5931\u6557\uFF0C\u8ACB\u78BA\u8A8D\u4F4D\u5740\u3001CA \u4FE1\u4EFB\u53CA\u5340\u57DF\u7DB2\u8DEF\u6B0A\u9650"));
-      ws.onclose = () => finish(new Error("\u5370\u8868\u6A5F\u9023\u7DDA\u5DF2\u4E2D\u65B7"));
-      timer = setTimeout(() => finish(new Error("\u5370\u8868\u6A5F\u56DE\u61C9\u903E\u6642")), timeoutMs);
+      ws.onerror = () => finish(new Error(describeFailure("WSS \u9023\u7DDA\u5931\u6557\uFF1B\u700F\u89BD\u5668\u672A\u63D0\u4F9B\u5E95\u5C64\u539F\u56E0")));
+      ws.onclose = (event2) => finish(new Error(describeFailure(`\u5370\u8868\u6A5F\u9023\u7DDA\u5DF2\u4E2D\u65B7\uFF0C\u4EE3\u78BC ${event2.code}`)));
+      timer = setTimeout(() => finish(new Error(describeFailure("\u5370\u8868\u6A5F\u56DE\u61C9\u903E\u6642"))), timeoutMs);
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) {
         abort();
@@ -3632,8 +3638,10 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
   }
   try {
     await wait();
+    phase = "\u9A57\u8B49\u88DD\u7F6E\u91D1\u9470";
     const ready2 = await exchange({ type: "auth", token }, "ready");
     if (data === void 0) {
+      phase = "\u67E5\u8A62\u5370\u8868\u6A5F\u72C0\u614B";
       const result2 = await exchange({ type: "status" }, "status");
       if (!Number.isInteger(result2.raw) || result2.raw < 0 || result2.raw > 255 || typeof result2.offline !== "boolean") {
         throw new Error("\u5370\u8868\u6A5F\u72C0\u614B\u683C\u5F0F\u4E0D\u6B63\u78BA");
@@ -3645,7 +3653,9 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
     if (!Number.isInteger(deviceLimit) || deviceLimit < 1) throw new Error("\u5370\u8868\u6A5F\u5DE5\u4F5C\u5927\u5C0F\u8A2D\u5B9A\u4E0D\u6B63\u78BA");
     if (length > deviceLimit) throw new Error("\u6B64\u6A4B\u63A5\u97CC\u9AD4\u4E0D\u652F\u63F4\u9019\u5F35\u9577\u55AE\uFF0C\u8ACB\u66F4\u65B0\u81F3 8 MiB \u7248\u672C");
     const chunkSize = Math.min(4096, ready2.maxChunk);
+    phase = "\u958B\u59CB\u5217\u5370\u5DE5\u4F5C";
     await exchange({ type: "begin" }, "started");
+    phase = "\u50B3\u9001\u5217\u5370\u8CC7\u6599";
     let total = 0;
     const source = data instanceof Uint8Array ? [data] : data.chunks();
     for (const part of source) {
@@ -3660,6 +3670,7 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
       }
     }
     if (total !== length) throw new Error("\u5217\u5370\u8CC7\u6599\u9577\u5EA6\u4E0D\u7B26");
+    phase = "\u78BA\u8A8D\u50B3\u9001\u5B8C\u6210";
     const result = await exchange({ type: "end" }, "sent");
     if (result.bytes !== length) throw new Error("\u5217\u5370\u5B8C\u6210\u9577\u5EA6\u4E0D\u7B26");
     return result;

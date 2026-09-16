@@ -102,7 +102,8 @@ export function applyVisibleViewport(entry) {
 // 檢測設備類型
 export function detectDevice() {
   const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-  const isMobile = /android|iPad|iPhone|iPod/i.test(userAgent);
+  const isIPad = /iPad/i.test(userAgent) || (/Macintosh|MacIntel/i.test(userAgent + ' ' + navigator.platform) && navigator.maxTouchPoints > 1);
+  const isMobile = isIPad || /android|iPhone|iPod/i.test(userAgent);
   const body = document.body;
   if (isMobile) {
     body.classList.add('mobile-device');
@@ -116,11 +117,12 @@ export function detectDevice() {
   if (deviceOsEl) {
     // 解析作業系統
     let os = '未知';
-    if (userAgent.indexOf('Win') !== -1) os = 'Windows';
+    if (isIPad) os = 'iPadOS';
+    else if (/iPhone|iPod/i.test(userAgent)) os = 'iOS';
+    else if (userAgent.indexOf('Win') !== -1) os = 'Windows';
     else if (userAgent.indexOf('Mac') !== -1) os = 'macOS';
-    else if (userAgent.indexOf('Linux') !== -1) os = 'Linux';
     else if (userAgent.indexOf('Android') !== -1) os = 'Android';
-    else if (userAgent.indexOf('iPhone') !== -1 || userAgent.indexOf('iPad') !== -1) os = 'iOS';
+    else if (userAgent.indexOf('Linux') !== -1) os = 'Linux';
     deviceOsEl.value = os;
   }
   if (layoutModeEl) {
