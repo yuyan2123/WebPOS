@@ -56,7 +56,7 @@ export async function diagnosePrinter(value, { signal, report, timeoutMs = 8000 
         mode: 'no-cors',
         credentials: 'omit',
         cache: 'no-store',
-        redirect: 'error',
+        redirect: 'follow',
         signal: probeSignal,
       });
       return '收到 HTTP 回應（TLS 已通過）';

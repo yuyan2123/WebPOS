@@ -3736,7 +3736,7 @@ async function diagnosePrinter(value, { signal, report, timeoutMs = 8e3 } = {}) 
         mode: "no-cors",
         credentials: "omit",
         cache: "no-store",
-        redirect: "error",
+        redirect: "follow",
         signal: probeSignal
       });
       return "\u6536\u5230 HTTP \u56DE\u61C9\uFF08TLS \u5DF2\u901A\u904E\uFF09";

@@ -168,6 +168,9 @@ test('printer diagnostics compare HTTPS and WSS without auth or changing saved s
   page,
 }) => {
   await mockPrinter(page);
+  await page.route(/^https:\/\/(192\.168\.50\.214|xiao-printer\.local)\/health$/, (route) =>
+    route.fulfill({ status: 200, contentType: 'text/plain', body: 'healthy' }),
+  );
   await page.addInitScript(() => {
     const fetchOriginal = window.fetch.bind(window);
     window.__diagnosticFetches = [];
@@ -175,7 +178,6 @@ test('printer diagnostics compare HTTPS and WSS without auth or changing saved s
       const url = String(input);
       if (url === 'https://192.168.50.214/health' || url === 'https://xiao-printer.local/health') {
         window.__diagnosticFetches.push({ url, mode: options.mode, credentials: options.credentials });
-        return Promise.resolve(new Response(''));
       }
       return fetchOriginal(input, options);
     };
