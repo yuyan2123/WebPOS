@@ -17,7 +17,8 @@ Firebase 只提供已儲存的訂單資料；列印 bytes 由瀏覽器直接送�
 選擇「記住此裝置金鑰」會放 localStorage，登出後仍保留；取消勾選並儲存即可移除持久金鑰。
 不可把金鑰加入原始碼、雲端訂單或日誌。本機儲存不提供加密保護。
 
-`public/certs/printer-root-ca.cer` 是目前橋接裝置的公開根憑證（DER），不含私鑰或裝置金鑰。
+`public/certs/printer-root-ca.cer` 是新版橋接韌體使用的公開根憑證（DER），名稱為 **Xprinter**，不含私鑰或裝置金鑰。
+由舊名稱升級時需同步更新 ESP32 韌體的憑證鏈，並在 iPad 安裝、信任新下載的 Xprinter 憑證；只更新 POS 不會更新實機憑證。
 Hosting 與本機預覽以 `application/x-x509-ca-cert` 提供；Service Worker 對 `/certs/` 放行，避免下載導覽被替換成 POS HTML。
 更換根 CA 時須同步更新此檔案；僅以相同 CA 重簽伺服器憑證則不需更新。其他橋接裝置不可直接套用此憑證。
 iPad 的手動安裝與完整信任仍須由使用者在系統設定完成。此流程簡化不代表已解決下述 Safari／PWA 的 TLS 差異。
