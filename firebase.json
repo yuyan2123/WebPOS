@@ -23,6 +23,14 @@
     ],
     "headers": [
       {
+        "source": "/certs/*.cer",
+        "headers": [
+          { "key": "Content-Type", "value": "application/x-x509-ca-cert" },
+          { "key": "Cache-Control", "value": "no-store" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
+        ]
+      },
+      {
         "source": "**/*.wasm",
         "headers": [
           { "key": "Content-Type", "value": "application/wasm" },

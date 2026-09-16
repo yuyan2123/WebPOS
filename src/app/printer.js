@@ -19,6 +19,15 @@ let scope = '';
 let role = '';
 let active = null;
 let generation = 0;
+let bridgeConfig = null;
+const bridgeFields = [
+  'printer-target-ip',
+  'printer-target-port',
+  'printer-device-save',
+  'printer-wifi-ssid',
+  'printer-wifi-password',
+  'printer-wifi-save',
+];
 const key = () => `ginJiaPos.printer.${scope}`;
 const canPrint = () =>
   Boolean(currentLocalScope()) && ['owner', 'editor'].includes(document.body.dataset.shopRole);
@@ -35,6 +44,7 @@ function readConfig() {
 }
 
 function loadSettings() {
+  clearBridgeConfig();
   const config = readConfig();
   for (const field of ['enabled', 'url', 'title', 'width', 'cut', 'token', 'remember']) {
     const input = element('printer-' + field);
@@ -52,8 +62,88 @@ function updateControls() {
     )
     .forEach((control) => {
       control.disabled =
-        !canPrint() || Boolean(active) || (control.id === 'printer-send' && control.dataset.ready !== 'true');
+        !canPrint() ||
+        Boolean(active) ||
+        (control.id === 'printer-send' && control.dataset.ready !== 'true') ||
+        (bridgeFields.includes(control.id) && (!bridgeConfig || bridgeConfig.wifiState === 'testing'));
     });
+}
+
+function clearBridgeConfig() {
+  bridgeConfig = null;
+  for (const id of ['printer-target-ip', 'printer-target-port', 'printer-wifi-ssid', 'printer-wifi-password'])
+    element(id).value = '';
+  element('printer-device-info').textContent = '';
+  element('printer-device-status').textContent = '尚未讀取 ESP32 設定';
+}
+
+async function configureBridge(type) {
+  if (!canPrint() || active) return;
+  const output = element('printer-device-status');
+  if (element('printer-preview')) {
+    output.textContent = '請先關閉列印預覽，再變更或讀取裝置設定';
+    return;
+  }
+  const expectedScope = scope;
+  const expectedGeneration = generation;
+  const controller = new AbortController();
+  try {
+    if (type !== 'get_config' && !bridgeConfig) throw new Error('請先讀取 ESP32 設定');
+    const command =
+      type === 'set_config'
+        ? {
+            type,
+            printerIp: element('printer-target-ip').value.trim(),
+            printerPort: Number(element('printer-target-port').value),
+            revision: bridgeConfig.revision,
+          }
+        : type === 'set_wifi'
+          ? {
+              type,
+              ssid: element('printer-wifi-ssid').value,
+              password: element('printer-wifi-password').value,
+              wifiRevision: bridgeConfig.wifiRevision,
+            }
+          : { type };
+    const url = validatePrinterUrl(element('printer-url').value.trim());
+    const token = element('printer-token').value.trim();
+    active = controller;
+    updateControls();
+    output.textContent = type === 'get_config' ? '正在讀取 ESP32…' : '正在傳送裝置設定…';
+    const result = await printerRequest({ url, token, command, signal: controller.signal });
+    assertContext(expectedScope, expectedGeneration);
+    if (type === 'set_wifi') {
+      clearBridgeConfig();
+      output.textContent =
+        'ESP32 開始試連新 Wi-Fi，尚未確認成功。請稍候約 30–60 秒，讓 iPad 連到可存取 ESP32 的網路後，重新讀取設定確認。失敗時會退回原 Wi-Fi；不會自動重送。';
+    } else {
+      bridgeConfig = result;
+      element('printer-target-ip').value = result.printerIp;
+      element('printer-target-port').value = result.printerPort;
+      element('printer-wifi-ssid').value = result.wifiSsid;
+      element('printer-device-info').textContent =
+        `ESP32：${result.bridgeHost}（目前 IP：${result.bridgeIp}）｜Wi-Fi：${result.wifiSsid}｜韌體：${result.firmware}`;
+      const wifiStates = {
+        testing: '正在試連 Wi-Fi，請稍後重新讀取。',
+        saved: '新 Wi-Fi 已連線並保存。',
+        rolled_back: '新 Wi-Fi 試連失敗，已退回原設定。',
+        save_failed: 'Wi-Fi 保存失敗，已退回原設定。',
+      };
+      output.textContent =
+        (type === 'set_config' ? '已儲存到 ESP32，請再檢查印表機連線。' : '已讀取裝置設定。') +
+        (wifiStates[result.wifiState] || '');
+    }
+  } catch (error) {
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
+      // A write acknowledgement may be lost. Require a fresh read before another attempt.
+      bridgeConfig = null;
+      output.textContent = error.message;
+    }
+  } finally {
+    element('printer-wifi-password').value = '';
+    if (active === controller) active = null;
+    updateControls();
+  }
 }
 
 function saveSettings() {
@@ -253,6 +343,7 @@ export function initializePrinter() {
     active?.abort();
     element('printer-preview')?.remove();
     element('printer-last-order').hidden = true;
+    clearBridgeConfig();
   }
   function syncContext() {
     const nextScope = currentLocalScope();
@@ -276,6 +367,20 @@ export function initializePrinter() {
     element('printer-token').value = '';
   });
   window.addEventListener('pagehide', () => active?.abort());
+  for (const id of ['printer-url', 'printer-token'])
+    element(id).addEventListener('input', () => {
+      clearBridgeConfig();
+      updateControls();
+    });
+  element('printer-use-name').addEventListener('click', () => {
+    element('printer-url').value = defaults.url;
+    clearBridgeConfig();
+    updateControls();
+    element('printer-status').textContent = '已填入固定名稱，請檢查連線並儲存';
+  });
+  element('printer-device-read').addEventListener('click', () => void configureBridge('get_config'));
+  element('printer-device-save').addEventListener('click', () => void configureBridge('set_config'));
+  element('printer-wifi-save').addEventListener('click', () => void configureBridge('set_wifi'));
   element('printer-settings').addEventListener('submit', (event) => {
     event.preventDefault();
     try {

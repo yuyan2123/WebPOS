@@ -75,8 +75,22 @@ async function mockPrinter(page) {
   await page.addInitScript(() => {
     window.__printerFrames = [];
     window.__printerConnections = 0;
+    window.__bridgeConfig = {
+      event: 'config',
+      firmware: '1.1.0',
+      bridgeHost: 'xiao-printer.local',
+      bridgeIp: '192.168.50.214',
+      printerIp: '192.168.50.153',
+      printerPort: 9100,
+      revision: 1,
+      wifiSsid: 'Shop Wi-Fi',
+      wifiState: 'idle',
+      wifiRevision: 1,
+    };
+    window.__printerUrls = [];
     window.WebSocket = class {
-      constructor() {
+      constructor(url) {
+        window.__printerUrls.push(url);
         window.__printerConnections++;
         this.total = 0;
         setTimeout(
@@ -98,7 +112,35 @@ async function mockPrinter(page) {
                     event: 'ready',
                     maxChunk: 4096,
                     ...(window.__printerMode === 'legacy' ? {} : { maxJob: 8 * 1024 * 1024 }),
+                    ...(window.__printerMode === 'legacy-config' ? {} : { configVersion: 1 }),
                   };
+          if (command.type === 'get_config') response = { ...window.__bridgeConfig };
+          if (command.type === 'set_config') {
+            response =
+              command.revision !== window.__bridgeConfig.revision
+                ? { event: 'error', code: 'config_conflict' }
+                : window.__printerMode === 'busy'
+                  ? { event: 'error', code: 'busy' }
+                  : (window.__bridgeConfig = {
+                      ...window.__bridgeConfig,
+                      printerIp: command.printerIp,
+                      printerPort: command.printerPort,
+                      revision: command.revision + 1,
+                    });
+          }
+          if (command.type === 'set_wifi') {
+            window.__bridgeConfig = {
+              ...window.__bridgeConfig,
+              wifiSsid: command.ssid,
+              wifiRevision: command.wifiRevision + 1,
+              wifiState: 'saved',
+            };
+            response = { event: 'wifi_pending', timeoutSeconds: 30 };
+          }
+          if (window.__printerMode === 'lost-config-ack' && command.type === 'set_config') {
+            setTimeout(() => this.close(), 0);
+            return;
+          }
           if (command.type === 'status') response = { event: 'status', raw: 22, offline: false };
           if (command.type === 'begin')
             response =
@@ -126,6 +168,135 @@ async function mockPrinter(page) {
     };
   });
 }
+
+test('bridge settings persist on the device, detect conflicts and never retry a lost write', async ({
+  page,
+}) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-token').fill('test-secret');
+  await expect(page.locator('#printer-device-save')).toBeDisabled();
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-target-ip')).toHaveValue('192.168.50.153');
+  await expect(page.locator('#printer-device-info')).toContainText('192.168.50.214');
+  // Device configuration does not require enabling printing or saving a local token.
+  await expect(page.locator('#printer-enabled')).not.toBeChecked();
+  await page.locator('#printer-target-ip').fill('192.168.50.200');
+  await page.locator('#printer-target-port').fill('9101');
+  await page.locator('#printer-device-save').click();
+  await expect(page.locator('#printer-device-status')).toContainText('已儲存到 ESP32');
+  expect(await page.evaluate(() => window.__bridgeConfig.printerIp)).toBe('192.168.50.200');
+  expect(await page.evaluate(() => window.__bridgeConfig.printerPort)).toBe(9101);
+  expect(
+    await page.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith('ginJiaPos.printer.'))),
+  ).toBe(false);
+  await page.evaluate(() => window.__bridgeConfig.revision++);
+  await page.locator('#printer-device-save').click();
+  await expect(page.locator('#printer-device-status')).toContainText('其他操作變更');
+  await expect(page.locator('#printer-device-save')).toBeDisabled();
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-save')).toBeEnabled();
+  await page.evaluate(() => {
+    window.__printerMode = 'lost-config-ack';
+    window.__printerFrames = [];
+  });
+  await page.locator('#printer-target-ip').fill('192.168.50.201');
+  await page.locator('#printer-device-save').click();
+  await expect(page.locator('#printer-device-status')).toContainText('不會自動重送');
+  await expect(page.locator('#printer-device-save')).toBeDisabled();
+  expect(
+    await page.evaluate(() => window.__printerFrames.filter((frame) => frame.type === 'set_config').length),
+  ).toBe(1);
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-target-ip')).toHaveValue('192.168.50.201');
+  expect(
+    await page.evaluate(() => window.__printerFrames.some((frame) => frame.type === 'begin' || frame.bytes)),
+  ).toBe(false);
+});
+
+test('bridge uses stable hostname, handles old firmware and validates target before opening a socket', async ({
+  page,
+}) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-token').fill('test-secret');
+  await page.locator('#printer-url').fill('wss://192.168.50.214/ws');
+  await page.locator('#printer-use-name').click();
+  await expect(page.locator('#printer-url')).toHaveValue('wss://xiao-printer.local/ws');
+  await page.evaluate(() => {
+    window.__printerMode = 'legacy-config';
+  });
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-status')).toContainText('請先更新橋接韌體');
+  await expect(page.locator('#printer-device-save')).toBeDisabled();
+  expect(await page.evaluate(() => window.__printerFrames.some((frame) => frame.type === 'get_config'))).toBe(
+    false,
+  );
+  await page.evaluate(() => {
+    window.__printerMode = '';
+    window.__bridgeConfig.bridgeIp = '192.168.50.220';
+  });
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-info')).toContainText('192.168.50.220');
+  expect(
+    await page.evaluate(() => window.__printerUrls.every((url) => url === 'wss://xiao-printer.local/ws')),
+  ).toBe(true);
+  const count = await page.evaluate(() => window.__printerConnections);
+  await page.locator('#printer-target-ip').fill('999.1.2.3');
+  await page.locator('#printer-device-save').click();
+  await expect(page.locator('#printer-device-status')).toContainText('有效的印表機 IPv4');
+  expect(await page.evaluate(() => window.__printerConnections)).toBe(count);
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-save')).toBeEnabled();
+  await page.locator('#printer-url').fill('wss://other-bridge.local/ws');
+  await expect(page.locator('#printer-device-save')).toBeDisabled();
+  await expect(page.locator('#printer-device-info')).toBeEmpty();
+});
+
+test('Wi-Fi changes require reread, clear passwords and report rollback; viewers cannot configure', async ({
+  page,
+}) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-token').fill('test-secret');
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-save')).toBeEnabled();
+  await page.locator('.printer-bridge summary').click();
+  await page.locator('#printer-wifi-ssid').fill('New Shop Wi-Fi');
+  await page.locator('#printer-wifi-password').fill('test-wifi-password');
+  await page.locator('#printer-wifi-save').click();
+  await expect(page.locator('#printer-device-status')).toContainText('尚未確認成功');
+  await expect(page.locator('#printer-wifi-password')).toHaveValue('');
+  await expect(page.locator('#printer-wifi-save')).toBeDisabled();
+  expect(
+    await page.evaluate(() =>
+      JSON.stringify({ ...localStorage, ...sessionStorage }).includes('test-wifi-password'),
+    ),
+  ).toBe(false);
+  expect(
+    await page.evaluate(() => window.__printerFrames.filter((frame) => frame.type === 'set_wifi').length),
+  ).toBe(1);
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-status')).toContainText('新 Wi-Fi 已連線並保存');
+  await expect(page.locator('#printer-wifi-ssid')).toHaveValue('New Shop Wi-Fi');
+  await page.evaluate(() => {
+    window.__bridgeConfig.wifiState = 'rolled_back';
+    window.__bridgeConfig.wifiSsid = 'Shop Wi-Fi';
+  });
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-status')).toContainText('已退回原設定');
+  await page.locator('#printer-wifi-password').fill('unsaved-secret');
+  await page.evaluate(() => {
+    document.body.dataset.shopRole = 'viewer';
+  });
+  await expect(page.locator('#printer-device-read')).toBeDisabled();
+  await expect(page.locator('#printer-wifi-save')).toBeDisabled();
+  await expect(page.locator('#printer-wifi-password')).toHaveValue('');
+  await expect(page.locator('#printer-target-ip')).toHaveValue('');
+});
 
 test('iPad desktop user agent is identified and PWA handshake failures show diagnostic context', async ({
   page,

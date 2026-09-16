@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gin-jia-pos-0ae8b80fb04f";
+const CACHE_VERSION = "gin-jia-pos-0b605fc16c02";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -42,6 +42,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Certificate downloads must reach the server, including top-level navigation.
+  if (url.pathname.startsWith('/certs/')) return;
   // Authentication, Functions and business records are intentionally never
   // cached by this worker. Only immutable same-origin application assets are.
   if (url.pathname.startsWith("/__/auth/") || url.pathname.startsWith("/api/")) return;

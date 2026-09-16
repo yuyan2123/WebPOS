@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f5f">
-    <meta name="app-version" content="0.14.0+8c90a782b166">
-    <meta name="app-updated-at" content="2026-09-16T19:27:18.005Z">
+    <meta name="app-version" content="0.14.1+a3cff5bc6911">
+    <meta name="app-updated-at" content="2026-09-16T20:40:36.464Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -455,15 +455,51 @@
             <div id="settingsPrinter" class="settings-section" style="display: none;">
                 <div class="settings-panel">
                     <h2 class="settings-panel-title">印表機</h2>
-                    <p>設定只保存在這台裝置，依帳號與店鋪分開。iPad 首次使用請先在橋接裝置頁面下載 CA 憑證，於系統設定安裝並啟用完整信任。</p>
+                    <p>設定只保存在這台裝置，依帳號與店鋪分開。下載憑證、設定與測試都可從這裡開始，不必先開啟 ESP32 網頁。</p>
+                    <details class="printer-setup" open>
+                        <summary>首次設定 iPad</summary>
+                        <ol>
+                            <li><strong>下載憑證</strong><p>iPad 請先連到印表機與橋接裝置所在的 Wi-Fi，再下載本店橋接裝置的憑證。已安裝並信任此憑證可跳過前兩步。</p><a class="btn" href="/certs/printer-root-ca.cer" target="_blank" rel="noopener">下載印表機憑證</a><p>如果從主畫面 App 無法下載，請在 Safari 開啟本 POS 的「管理 → 印表機」再下載。</p></li>
+                            <li><strong>在 iPad 設定中安裝並信任</strong><p>① 設定 → 一般 → VPN 與裝置管理 → 安裝剛下載的描述檔。</p><p>② 設定 → 一般 → 關於本機 → 憑證信任設定 → 啟用「XIAO Printer Local Root CA」的完整信任。</p><p>這兩項操作需要你在系統設定中完成，網頁無法自動安裝或啟用信任。</p></li>
+                            <li><strong>回到本頁完成連線</strong><p>在下方勾選「啟用訂單列印」、確認 WSS 位址並輸入裝置存取金鑰，按「儲存並檢查連線」。連線成功後可開啟「中文測試列印」預覽，再按「列印一份」。</p></li>
+                        </ol>
+                        <p>此憑證僅適用於本店目前的 XIAO 橋接裝置；其他裝置請使用其管理者提供的憑證。若 Safari 可連線但主畫面 App 失敗，請先在 Safari 操作，並用下方「連線診斷」檢查。</p>
+                    </details>
                     <form id="printer-settings" class="printer-settings">
                         <label class="printer-checkbox" for="printer-enabled"><input id="printer-enabled" type="checkbox">啟用訂單列印</label>
-                        <label for="printer-url">WSS 位址</label>
+                        <label for="printer-url">ESP32 連線位址（WSS）</label>
                         <input id="printer-url" type="url" required placeholder="wss://xiao-printer.local/ws" autocomplete="off" spellcheck="false">
+                        <p>建議使用 xiao-printer.local：同一區網支援 mDNS 時，ESP32 換 IP 仍可透過這個名稱連線。此處是 ESP32 的位址，下方「Xprinter IPv4 位址」才是印表機的位址。</p>
+                        <div class="printer-actions"><button class="btn" type="button" id="printer-use-name">使用 xiao-printer.local</button></div>
                         <label for="printer-token">裝置存取金鑰</label>
                         <input id="printer-token" type="password" maxlength="256" autocomplete="off">
                         <label class="printer-checkbox" for="printer-remember"><input id="printer-remember" type="checkbox">記住此裝置金鑰（僅限自己管理的裝置）</label>
                         <p>未勾選時金鑰僅保留於目前工作階段；切換帳號、店鋪或登出後須重新輸入。</p>
+                        <fieldset class="printer-bridge">
+                            <legend>ESP32 裝置設定</legend>
+                            <p>先讀取裝置，再修改設定。以下設定會儲存在 ESP32，影響使用它的所有裝置；需要支援網頁設定的新韌體。</p>
+                            <div class="printer-actions"><button class="btn" type="button" id="printer-device-read">讀取 ESP32 設定</button></div>
+                            <p id="printer-device-info"></p>
+                            <label for="printer-target-ip">Xprinter IPv4 位址</label>
+                            <input id="printer-target-ip" type="text" inputmode="text" maxlength="15" autocomplete="off" spellcheck="false" placeholder="例如 192.168.50.153" disabled>
+                            <label for="printer-target-port">Xprinter TCP 連接埠</label>
+                            <input id="printer-target-port" type="number" min="1" max="65535" step="1" placeholder="9100" disabled>
+                            <div class="printer-actions"><button class="btn" type="button" id="printer-device-save" disabled>儲存到 ESP32</button></div>
+                            <p>此操作修改 ESP32 的轉送目標，不會變更 Xprinter 本身的網路設定。保存後請再檢查連線。</p>
+                            <details>
+                                <summary>更換 ESP32 的 Wi-Fi</summary>
+                                <div class="printer-wifi-fields">
+                                    <p>使用可讓 ESP32 與印表機互通的 2.4 GHz WPA/WPA2 網路。切換時會暫時斷線；30 秒內未取得新網路 IP 就退回原設定。成功後請將 iPad 連到可存取 ESP32 的網路，再重新讀取確認。</p>
+                                    <label for="printer-wifi-ssid">新 Wi-Fi 名稱</label>
+                                    <input id="printer-wifi-ssid" type="text" autocomplete="off" spellcheck="false" disabled>
+                                    <label for="printer-wifi-password">新 Wi-Fi 密碼</label>
+                                    <input id="printer-wifi-password" type="password" autocomplete="new-password" disabled>
+                                    <div class="printer-actions"><button class="btn" type="button" id="printer-wifi-save" disabled>試連並儲存 Wi-Fi</button></div>
+                                    <p>密碼只送到 ESP32，不儲存在 POS。新網路連線成功不代表印表機也能連通，仍須檢查 Xprinter 位址。</p>
+                                </div>
+                            </details>
+                            <p id="printer-device-status" role="status" aria-live="polite"></p>
+                        </fieldset>
                         <label for="printer-title">單據店名</label>
                         <input id="printer-title" maxlength="80" placeholder="請輸入店名">
                         <label for="printer-width">列印寬度</label>
@@ -520,7 +556,7 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version 0.14.0</p>
+            <p>Website content edited by yuyan2123. Version 0.14.1</p>
         </footer>
 
     </main>

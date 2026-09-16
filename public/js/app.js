@@ -3562,8 +3562,18 @@ var messages = {
   printer_unreachable: "\u6A4B\u63A5\u88DD\u7F6E\u7121\u6CD5\u9023\u63A5\u5370\u8868\u6A5F",
   status_timeout: "\u5370\u8868\u6A5F\u72C0\u614B\u67E5\u8A62\u903E\u6642",
   job_too_large: "\u55AE\u64DA\u8D85\u904E\u6A4B\u63A5\u88DD\u7F6E\u5141\u8A31\u7684\u5927\u5C0F",
-  partial_send: "\u8CC7\u6599\u50B3\u9001\u4E2D\u65B7"
+  partial_send: "\u8CC7\u6599\u50B3\u9001\u4E2D\u65B7",
+  invalid_config: "\u8ACB\u6AA2\u67E5\u5370\u8868\u6A5F IPv4 \u4F4D\u5740\u8207\u9023\u63A5\u57E0",
+  config_conflict: "\u88DD\u7F6E\u8A2D\u5B9A\u5DF2\u88AB\u5176\u4ED6\u64CD\u4F5C\u8B8A\u66F4\uFF0C\u8ACB\u91CD\u65B0\u8B80\u53D6\u5F8C\u518D\u4FEE\u6539",
+  config_save_failed: "ESP32 \u7121\u6CD5\u4FDD\u5B58\u8A2D\u5B9A\uFF0C\u8ACB\u91CD\u65B0\u8B80\u53D6\u78BA\u8A8D",
+  invalid_wifi: "Wi-Fi \u540D\u7A31\u6216\u5BC6\u78BC\u683C\u5F0F\u4E0D\u6B63\u78BA",
+  wifi_busy: "ESP32 \u6B63\u5728\u5207\u63DB Wi-Fi\uFF0C\u8ACB\u7A0D\u5F8C\u91CD\u65B0\u8B80\u53D6"
 };
+function validatePrinterTarget(ip, port) {
+  const parts = ip.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^(0|[1-9]\d{0,2})$/.test(part) || Number(part) > 255) || Number(parts[0]) < 1 || Number(parts[0]) >= 224 || Number(parts[0]) === 127 || !Number.isInteger(port) || port < 1 || port > 65535)
+    throw new Error("\u8ACB\u8F38\u5165\u6709\u6548\u7684\u5370\u8868\u6A5F IPv4 \u4F4D\u5740\u8207 1\u201365535 \u7684\u9023\u63A5\u57E0");
+}
 function validatePrinterUrl(value) {
   let url;
   try {
@@ -3576,9 +3586,19 @@ function validatePrinterUrl(value) {
   }
   return url.href;
 }
-async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
+async function printerRequest({ url, token, data, command, signal, timeoutMs = 15e3 }) {
   url = validatePrinterUrl(url);
   if (!token) throw new Error("\u8ACB\u5148\u8A2D\u5B9A\u88DD\u7F6E\u5B58\u53D6\u91D1\u9470");
+  if (command) {
+    if (data !== void 0 || !["get_config", "set_config", "set_wifi"].includes(command.type))
+      throw new Error("\u4E0D\u652F\u63F4\u7684\u88DD\u7F6E\u8A2D\u5B9A\u64CD\u4F5C");
+    if (command.type === "set_config") validatePrinterTarget(command.printerIp, command.printerPort);
+    if (command.type === "set_wifi") {
+      const size = (value) => new TextEncoder().encode(value).length;
+      if (typeof command.ssid !== "string" || !size(command.ssid) || size(command.ssid) > 32 || typeof command.password !== "string" || size(command.password) < 8 || size(command.password) > 63)
+        throw new Error("Wi-Fi \u540D\u7A31\u9808\u70BA 1\u201332 bytes\uFF0CWPA/WPA2 \u5BC6\u78BC\u9808\u70BA 8\u201363 bytes");
+    }
+  }
   const length = data?.byteLength;
   if (data !== void 0 && (!(data instanceof Uint8Array) && typeof data?.chunks !== "function" || !Number.isInteger(length) || length < 1 || length > MAX_PRINT_BYTES)) {
     throw new Error("\u5217\u5370\u8CC7\u6599\u5FC5\u9808\u70BA 1 byte \u81F3 8 MiB");
@@ -3589,6 +3609,7 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
   const mode = navigator.standalone || window.matchMedia("(display-mode: standalone)").matches ? "PWA" : "\u700F\u89BD\u5668";
   const describeFailure = (message) => `${message}\uFF08${phase}\uFF1B${mode}\uFF1B${new URL(url).host}\uFF1B${Math.round((Date.now() - startedAt) / 1e3)} \u79D2\uFF09`;
   let outputAttempted = false;
+  let settingAttempted = false;
   function wait(send) {
     return new Promise((resolve, reject) => {
       let timer;
@@ -3640,6 +3661,18 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
     await wait();
     phase = "\u9A57\u8B49\u88DD\u7F6E\u91D1\u9470";
     const ready2 = await exchange({ type: "auth", token }, "ready");
+    if (command) {
+      if (ready2.configVersion !== 1) throw new Error("\u6B64 ESP32 \u97CC\u9AD4\u5C1A\u672A\u652F\u63F4\u7DB2\u9801\u8A2D\u5B9A\uFF0C\u8ACB\u5148\u66F4\u65B0\u6A4B\u63A5\u97CC\u9AD4");
+      phase = "\u8B80\u5BEB ESP32 \u8A2D\u5B9A";
+      settingAttempted = command.type !== "get_config";
+      const result2 = await exchange(command, command.type === "set_wifi" ? "wifi_pending" : "config");
+      if (command.type !== "set_wifi") {
+        validatePrinterTarget(result2.printerIp, result2.printerPort);
+        if (!Number.isInteger(result2.revision) || result2.revision < 1 || typeof result2.bridgeHost !== "string" || typeof result2.bridgeIp !== "string" || typeof result2.firmware !== "string" || typeof result2.wifiSsid !== "string" || typeof result2.wifiState !== "string" || !Number.isInteger(result2.wifiRevision) || result2.wifiRevision < 1)
+          throw new Error("ESP32 \u8A2D\u5B9A\u56DE\u61C9\u683C\u5F0F\u4E0D\u6B63\u78BA");
+      }
+      return result2;
+    }
     if (data === void 0) {
       phase = "\u67E5\u8A62\u5370\u8868\u6A5F\u72C0\u614B";
       const result2 = await exchange({ type: "status" }, "status");
@@ -3675,6 +3708,7 @@ async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
     if (result.bytes !== length) throw new Error("\u5217\u5370\u5B8C\u6210\u9577\u5EA6\u4E0D\u7B26");
     return result;
   } catch (error) {
+    if (settingAttempted) throw new Error(`${error.message}\u3002\u8ACB\u91CD\u65B0\u8B80\u53D6\u88DD\u7F6E\u8A2D\u5B9A\u78BA\u8A8D\u7D50\u679C\uFF1B\u4E0D\u6703\u81EA\u52D5\u91CD\u9001\u3002`);
     if (outputAttempted) throw new Error(`${error.message}\u3002\u53EF\u80FD\u5DF2\u90E8\u5206\u5217\u5370\uFF0C\u8ACB\u78BA\u8A8D\u7D19\u5F35\uFF1B\u4E0D\u6703\u81EA\u52D5\u91CD\u9001\u3002`);
     throw error;
   } finally {
@@ -3910,6 +3944,15 @@ var scope = "";
 var role = "";
 var active = null;
 var generation = 0;
+var bridgeConfig = null;
+var bridgeFields = [
+  "printer-target-ip",
+  "printer-target-port",
+  "printer-device-save",
+  "printer-wifi-ssid",
+  "printer-wifi-password",
+  "printer-wifi-save"
+];
 var key = () => `ginJiaPos.printer.${scope}`;
 var canPrint = () => Boolean(currentLocalScope()) && ["owner", "editor"].includes(document.body.dataset.shopRole);
 var element = (id) => document.getElementById(id);
@@ -3923,6 +3966,7 @@ function readConfig() {
   }
 }
 function loadSettings() {
+  clearBridgeConfig();
   const config = readConfig();
   for (const field of ["enabled", "url", "title", "width", "cut", "token", "remember"]) {
     const input = element("printer-" + field);
@@ -3936,8 +3980,73 @@ function updateControls() {
   document.querySelectorAll(
     "#printer-settings input, #printer-settings select, #printer-settings button, [data-printer-order], #printer-send"
   ).forEach((control) => {
-    control.disabled = !canPrint() || Boolean(active) || control.id === "printer-send" && control.dataset.ready !== "true";
+    control.disabled = !canPrint() || Boolean(active) || control.id === "printer-send" && control.dataset.ready !== "true" || bridgeFields.includes(control.id) && (!bridgeConfig || bridgeConfig.wifiState === "testing");
   });
+}
+function clearBridgeConfig() {
+  bridgeConfig = null;
+  for (const id of ["printer-target-ip", "printer-target-port", "printer-wifi-ssid", "printer-wifi-password"])
+    element(id).value = "";
+  element("printer-device-info").textContent = "";
+  element("printer-device-status").textContent = "\u5C1A\u672A\u8B80\u53D6 ESP32 \u8A2D\u5B9A";
+}
+async function configureBridge(type) {
+  if (!canPrint() || active) return;
+  const output = element("printer-device-status");
+  if (element("printer-preview")) {
+    output.textContent = "\u8ACB\u5148\u95DC\u9589\u5217\u5370\u9810\u89BD\uFF0C\u518D\u8B8A\u66F4\u6216\u8B80\u53D6\u88DD\u7F6E\u8A2D\u5B9A";
+    return;
+  }
+  const expectedScope = scope;
+  const expectedGeneration = generation;
+  const controller = new AbortController();
+  try {
+    if (type !== "get_config" && !bridgeConfig) throw new Error("\u8ACB\u5148\u8B80\u53D6 ESP32 \u8A2D\u5B9A");
+    const command = type === "set_config" ? {
+      type,
+      printerIp: element("printer-target-ip").value.trim(),
+      printerPort: Number(element("printer-target-port").value),
+      revision: bridgeConfig.revision
+    } : type === "set_wifi" ? {
+      type,
+      ssid: element("printer-wifi-ssid").value,
+      password: element("printer-wifi-password").value,
+      wifiRevision: bridgeConfig.wifiRevision
+    } : { type };
+    const url = validatePrinterUrl(element("printer-url").value.trim());
+    const token = element("printer-token").value.trim();
+    active = controller;
+    updateControls();
+    output.textContent = type === "get_config" ? "\u6B63\u5728\u8B80\u53D6 ESP32\u2026" : "\u6B63\u5728\u50B3\u9001\u88DD\u7F6E\u8A2D\u5B9A\u2026";
+    const result = await printerRequest({ url, token, command, signal: controller.signal });
+    assertContext(expectedScope, expectedGeneration);
+    if (type === "set_wifi") {
+      clearBridgeConfig();
+      output.textContent = "ESP32 \u958B\u59CB\u8A66\u9023\u65B0 Wi-Fi\uFF0C\u5C1A\u672A\u78BA\u8A8D\u6210\u529F\u3002\u8ACB\u7A0D\u5019\u7D04 30\u201360 \u79D2\uFF0C\u8B93 iPad \u9023\u5230\u53EF\u5B58\u53D6 ESP32 \u7684\u7DB2\u8DEF\u5F8C\uFF0C\u91CD\u65B0\u8B80\u53D6\u8A2D\u5B9A\u78BA\u8A8D\u3002\u5931\u6557\u6642\u6703\u9000\u56DE\u539F Wi-Fi\uFF1B\u4E0D\u6703\u81EA\u52D5\u91CD\u9001\u3002";
+    } else {
+      bridgeConfig = result;
+      element("printer-target-ip").value = result.printerIp;
+      element("printer-target-port").value = result.printerPort;
+      element("printer-wifi-ssid").value = result.wifiSsid;
+      element("printer-device-info").textContent = `ESP32\uFF1A${result.bridgeHost}\uFF08\u76EE\u524D IP\uFF1A${result.bridgeIp}\uFF09\uFF5CWi-Fi\uFF1A${result.wifiSsid}\uFF5C\u97CC\u9AD4\uFF1A${result.firmware}`;
+      const wifiStates = {
+        testing: "\u6B63\u5728\u8A66\u9023 Wi-Fi\uFF0C\u8ACB\u7A0D\u5F8C\u91CD\u65B0\u8B80\u53D6\u3002",
+        saved: "\u65B0 Wi-Fi \u5DF2\u9023\u7DDA\u4E26\u4FDD\u5B58\u3002",
+        rolled_back: "\u65B0 Wi-Fi \u8A66\u9023\u5931\u6557\uFF0C\u5DF2\u9000\u56DE\u539F\u8A2D\u5B9A\u3002",
+        save_failed: "Wi-Fi \u4FDD\u5B58\u5931\u6557\uFF0C\u5DF2\u9000\u56DE\u539F\u8A2D\u5B9A\u3002"
+      };
+      output.textContent = (type === "set_config" ? "\u5DF2\u5132\u5B58\u5230 ESP32\uFF0C\u8ACB\u518D\u6AA2\u67E5\u5370\u8868\u6A5F\u9023\u7DDA\u3002" : "\u5DF2\u8B80\u53D6\u88DD\u7F6E\u8A2D\u5B9A\u3002") + (wifiStates[result.wifiState] || "");
+    }
+  } catch (error) {
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
+      bridgeConfig = null;
+      output.textContent = error.message;
+    }
+  } finally {
+    element("printer-wifi-password").value = "";
+    if (active === controller) active = null;
+    updateControls();
+  }
 }
 function saveSettings() {
   if (!canPrint() || active) throw new Error("\u76EE\u524D\u7121\u6CD5\u8B8A\u66F4\u5370\u8868\u6A5F\u8A2D\u5B9A");
@@ -4117,6 +4226,7 @@ function initializePrinter() {
     active?.abort();
     element("printer-preview")?.remove();
     element("printer-last-order").hidden = true;
+    clearBridgeConfig();
   }
   function syncContext() {
     const nextScope = currentLocalScope();
@@ -4140,6 +4250,20 @@ function initializePrinter() {
     element("printer-token").value = "";
   });
   window.addEventListener("pagehide", () => active?.abort());
+  for (const id of ["printer-url", "printer-token"])
+    element(id).addEventListener("input", () => {
+      clearBridgeConfig();
+      updateControls();
+    });
+  element("printer-use-name").addEventListener("click", () => {
+    element("printer-url").value = defaults.url;
+    clearBridgeConfig();
+    updateControls();
+    element("printer-status").textContent = "\u5DF2\u586B\u5165\u56FA\u5B9A\u540D\u7A31\uFF0C\u8ACB\u6AA2\u67E5\u9023\u7DDA\u4E26\u5132\u5B58";
+  });
+  element("printer-device-read").addEventListener("click", () => void configureBridge("get_config"));
+  element("printer-device-save").addEventListener("click", () => void configureBridge("set_config"));
+  element("printer-wifi-save").addEventListener("click", () => void configureBridge("set_wifi"));
   element("printer-settings").addEventListener("submit", (event2) => {
     event2.preventDefault();
     try {
