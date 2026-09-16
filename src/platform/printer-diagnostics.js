@@ -7,7 +7,7 @@ export async function diagnosePrinter(value, { signal, report, timeoutMs = 8000 
   const urls = [current.href];
   if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(current.hostname)) {
     const named = new URL(current);
-    named.hostname = 'xiao-printer.local';
+    named.hostname = 'xprinter.local';
     urls.push(named.href);
   }
   const lines = [
@@ -81,8 +81,6 @@ export async function diagnosePrinter(value, { signal, report, timeoutMs = 8000 
         }),
     );
   }
-  output(
-    '診斷完成。HTTPS 成功但 WSS 失敗，表示同一執行環境的 WebSocket 握手需要進一步檢查；不代表已確認 CA 設定錯誤。',
-  );
+  output('診斷完成。');
   return lines.join('\n');
 }

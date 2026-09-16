@@ -8,6 +8,9 @@ Firestore. Database paths, RPC names, shop roles, order idempotency and local dr
 remain compatible. See [the architecture and capability ledger](docs/architecture.md)
 for the audit, migration boundaries and known limitations.
 
+See the [database calls and storage inventory](docs/data-storage-cases.md) for all
+application persistence workflows, RPC reads/writes, browser storage and migration utilities.
+
 Users can create or join multiple shops, manage custom product categories and gift boxes,
 record pickup or delivery orders, track deposits and payments, search orders, and review
 daily reports and capacity. Customer entry accepts a name or contact information, with

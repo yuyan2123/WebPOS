@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gin-jia-pos-bc6ba80a9f7d";
+const CACHE_VERSION = "gin-jia-pos-7e4e371b1d00";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "/css/tailwind.generated.css",
   "/css/app.css",
   "/js/runtime-config.js",
+  "/js/certificate-download.js",
   "/js/rpc-bridge.js",
   "/js/app.js",
   "/js/pwa.js",

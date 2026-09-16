@@ -3722,7 +3722,7 @@ async function diagnosePrinter(value, { signal, report, timeoutMs = 8e3 } = {}) 
   const urls = [current.href];
   if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(current.hostname)) {
     const named = new URL(current);
-    named.hostname = "xiao-printer.local";
+    named.hostname = "xprinter.local";
     urls.push(named.href);
   }
   const lines = [
@@ -3794,15 +3794,11 @@ async function diagnosePrinter(value, { signal, report, timeoutMs = 8e3 } = {}) 
       })
     );
   }
-  output(
-    "\u8A3A\u65B7\u5B8C\u6210\u3002HTTPS \u6210\u529F\u4F46 WSS \u5931\u6557\uFF0C\u8868\u793A\u540C\u4E00\u57F7\u884C\u74B0\u5883\u7684 WebSocket \u63E1\u624B\u9700\u8981\u9032\u4E00\u6B65\u6AA2\u67E5\uFF1B\u4E0D\u4EE3\u8868\u5DF2\u78BA\u8A8D CA \u8A2D\u5B9A\u932F\u8AA4\u3002"
-  );
+  output("\u8A3A\u65B7\u5B8C\u6210\u3002");
   return lines.join("\n");
 }
 
 // src/app/receipt.js
-var LINE_HEIGHT = 34;
-var BAND_LINES = 7;
 var PAGE_BANDS = 4;
 var clean = (value) => Array.from(
   String(value ?? ""),
@@ -3835,12 +3831,18 @@ async function renderReceipt(order, config, products = []) {
   if (!Array.isArray(order.items)) throw new Error("\u8A02\u55AE\u660E\u7D30\u4E0D\u5B8C\u6574\uFF0C\u8ACB\u91CD\u65B0\u8F09\u5165");
   const width = Number(config.width);
   if (![384, 512, 576].includes(width)) throw new Error("\u5217\u5370\u5BEC\u5EA6\u4E0D\u6B63\u78BA");
+  const fontSize = Number(config.fontSize ?? 32);
+  if (![24, 28, 32, 40].includes(fontSize)) throw new Error("\u5217\u5370\u5B57\u9AD4\u5927\u5C0F\u4E0D\u6B63\u78BA");
+  const lineHeight = Math.ceil(fontSize * 1.4);
+  const topTrim = 4;
+  const extraBottomFeed = Math.ceil(lineHeight / 2);
+  const bandLines = Math.max(1, Math.floor(238 / lineHeight));
   await document.fonts.ready;
   const measure = document.createElement("canvas").getContext("2d");
-  measure.font = "24px system-ui, sans-serif";
+  measure.font = `${fontSize}px system-ui, sans-serif`;
   const lines = [];
-  const ending = config.cut ? new Uint8Array([29, 86, 66, 16]) : new Uint8Array([27, 100, 4]);
-  const byteLengthFor = (count) => 5 + count * LINE_HEIGHT * (width / 8) + Math.ceil(count / BAND_LINES) * 8 + ending.length;
+  const ending = config.cut ? new Uint8Array([29, 86, 66, 16 + extraBottomFeed]) : new Uint8Array([27, 74, extraBottomFeed, 27, 100, 4]);
+  const byteLengthFor = (count) => 5 + (count * lineHeight - topTrim) * (width / 8) + Math.ceil(count / bandLines) * 8 + ending.length;
   function pushLine(line) {
     if (byteLengthFor(lines.length + 1) > MAX_PRINT_BYTES) throw new Error("\u55AE\u64DA\u8D85\u904E 8 MiB\uFF0C\u8ACB\u7E2E\u77ED\u5167\u5BB9");
     lines.push(line);
@@ -3872,7 +3874,7 @@ async function renderReceipt(order, config, products = []) {
     if (order.customerAddress) add(`\u5730\u5740\uFF1A${order.customerAddress}`);
   }
   add(`\u72C0\u614B\uFF1A${order.status || "-"}`);
-  add("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  pushLine(null);
   order.items.forEach((item) => {
     add(item.productName || "\u672A\u547D\u540D\u5546\u54C1");
     add(`${item.quantity} \xD7 ${money(item.unitPrice)} = ${money(item.subtotal)}`);
@@ -3885,7 +3887,7 @@ async function renderReceipt(order, config, products = []) {
     }
     if (item.notes) add(`\u5099\u8A3B\uFF1A${item.notes}`);
   });
-  add("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  pushLine(null);
   add(`\u904B\u8CBB\uFF1A${money(order.shippingFee)}`);
   if (order.shippingNotes) add(order.shippingNotes);
   add(`\u7E3D\u91D1\u984D\uFF1A${money(order.totalAmount)}`);
@@ -3894,10 +3896,11 @@ async function renderReceipt(order, config, products = []) {
   if (order.notes) add(`\u5099\u8A3B\uFF1A${order.notes}`);
   add("\u6B64\u55AE\u70BA\u8A02\u55AE\u660E\u7D30\uFF0C\u975E\u7D71\u4E00\u767C\u7968");
   function drawBand(start) {
-    const group = lines.slice(start, start + BAND_LINES);
+    const group = lines.slice(start, start + bandLines);
+    const trim = start === 0 ? topTrim : 0;
     const canvas = document.createElement("canvas");
     canvas.width = width;
-    canvas.height = group.length * LINE_HEIGHT;
+    canvas.height = group.length * lineHeight - trim;
     canvas.setAttribute("aria-hidden", "true");
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#fff";
@@ -3905,24 +3908,28 @@ async function renderReceipt(order, config, products = []) {
     ctx.fillStyle = "#000";
     ctx.font = measure.font;
     ctx.textBaseline = "top";
-    group.forEach((line, index) => ctx.fillText(line, 16, index * LINE_HEIGHT + 4));
+    group.forEach((line, index) => {
+      if (line === null)
+        ctx.fillRect(16, index * lineHeight + Math.floor(lineHeight / 2) - trim, width - 32, 2);
+      else ctx.fillText(line, 16, index * lineHeight + 4 - trim);
+    });
     return { canvas, bytes: rasterBand(canvas) };
   }
   return {
     byteLength: byteLengthFor(lines.length),
-    text: lines.join("\n"),
-    pageCount: Math.ceil(lines.length / (BAND_LINES * PAGE_BANDS)),
+    text: lines.map((line) => line ?? "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500").join("\n"),
+    pageCount: Math.ceil(lines.length / (bandLines * PAGE_BANDS)),
     previewPage(page) {
-      const start = page * BAND_LINES * PAGE_BANDS;
+      const start = page * bandLines * PAGE_BANDS;
       const bands = [];
-      for (let offset = start; offset < Math.min(lines.length, start + BAND_LINES * PAGE_BANDS); offset += BAND_LINES) {
+      for (let offset = start; offset < Math.min(lines.length, start + bandLines * PAGE_BANDS); offset += bandLines) {
         bands.push(drawBand(offset).canvas);
       }
       return bands;
     },
     *chunks() {
       yield new Uint8Array([27, 64, 27, 97, 0]);
-      for (let start = 0; start < lines.length; start += BAND_LINES) {
+      for (let start = 0; start < lines.length; start += bandLines) {
         yield drawBand(start).bytes;
       }
       yield ending;
@@ -3933,9 +3940,10 @@ async function renderReceipt(order, config, products = []) {
 // src/app/printer.js
 var defaults = {
   enabled: false,
-  url: "wss://xiao-printer.local/ws",
+  url: "wss://xprinter.local/ws",
   title: "",
-  width: 512,
+  width: 576,
+  fontSize: 32,
   cut: false,
   token: "",
   remember: false
@@ -3945,6 +3953,7 @@ var role = "";
 var active = null;
 var generation = 0;
 var bridgeConfig = null;
+var automaticOrders = /* @__PURE__ */ new Set();
 var bridgeFields = [
   "printer-target-ip",
   "printer-target-port",
@@ -3956,9 +3965,16 @@ var bridgeFields = [
 var key = () => `ginJiaPos.printer.${scope}`;
 var canPrint = () => Boolean(currentLocalScope()) && ["owner", "editor"].includes(document.body.dataset.shopRole);
 var element = (id) => document.getElementById(id);
+function selectPrinterPage(name) {
+  for (const page of ["print", "device"]) {
+    element("printer-page-" + page).hidden = page !== name;
+    element("printer-tab-" + page).setAttribute("aria-pressed", String(page === name));
+  }
+}
 function readConfig() {
   try {
     const config = { ...defaults, ...JSON.parse(localStorage.getItem(key()) || "{}") };
+    if (config.url === "wss://xiao-printer.local/ws") config.url = defaults.url;
     config.token = config.remember ? config.token : sessionStorage.getItem(key()) || "";
     return config;
   } catch {
@@ -3968,7 +3984,7 @@ function readConfig() {
 function loadSettings() {
   clearBridgeConfig();
   const config = readConfig();
-  for (const field of ["enabled", "url", "title", "width", "cut", "token", "remember"]) {
+  for (const field of ["enabled", "url", "title", "width", "fontSize", "cut", "token", "remember"]) {
     const input = element("printer-" + field);
     if (input.type === "checkbox") input.checked = Boolean(config[field]);
     else input.value = config[field];
@@ -3988,7 +4004,7 @@ function clearBridgeConfig() {
   for (const id of ["printer-target-ip", "printer-target-port", "printer-wifi-ssid", "printer-wifi-password"])
     element(id).value = "";
   element("printer-device-info").textContent = "";
-  element("printer-device-status").textContent = "\u5C1A\u672A\u8B80\u53D6 ESP32 \u8A2D\u5B9A";
+  element("printer-device-status").textContent = "\u5C1A\u672A\u8B80\u53D6\u88DD\u7F6E\u8A2D\u5B9A";
 }
 async function configureBridge(type) {
   if (!canPrint() || active) return;
@@ -4017,25 +4033,25 @@ async function configureBridge(type) {
     const token = element("printer-token").value.trim();
     active = controller;
     updateControls();
-    output.textContent = type === "get_config" ? "\u6B63\u5728\u8B80\u53D6 ESP32\u2026" : "\u6B63\u5728\u50B3\u9001\u88DD\u7F6E\u8A2D\u5B9A\u2026";
+    output.textContent = type === "get_config" ? "\u6B63\u5728\u8B80\u53D6\u88DD\u7F6E\u2026" : "\u6B63\u5728\u50B3\u9001\u88DD\u7F6E\u8A2D\u5B9A\u2026";
     const result = await printerRequest({ url, token, command, signal: controller.signal });
     assertContext(expectedScope, expectedGeneration);
     if (type === "set_wifi") {
       clearBridgeConfig();
-      output.textContent = "ESP32 \u958B\u59CB\u8A66\u9023\u65B0 Wi-Fi\uFF0C\u5C1A\u672A\u78BA\u8A8D\u6210\u529F\u3002\u8ACB\u7A0D\u5019\u7D04 30\u201360 \u79D2\uFF0C\u8B93 iPad \u9023\u5230\u53EF\u5B58\u53D6 ESP32 \u7684\u7DB2\u8DEF\u5F8C\uFF0C\u91CD\u65B0\u8B80\u53D6\u8A2D\u5B9A\u78BA\u8A8D\u3002\u5931\u6557\u6642\u6703\u9000\u56DE\u539F Wi-Fi\uFF1B\u4E0D\u6703\u81EA\u52D5\u91CD\u9001\u3002";
+      output.textContent = "\u6B63\u5728\u5207\u63DB Wi-Fi\uFF0C\u5C1A\u672A\u78BA\u8A8D\u6210\u529F\u3002\u8ACB\u7B49\u5019 30\u201360 \u79D2\uFF0C\u9023\u5230\u65B0\u7DB2\u8DEF\u5F8C\u91CD\u65B0\u8B80\u53D6\u8A2D\u5B9A\u3002\u5931\u6557\u6703\u9000\u56DE\u539F\u7DB2\u8DEF\u3002";
     } else {
       bridgeConfig = result;
       element("printer-target-ip").value = result.printerIp;
       element("printer-target-port").value = result.printerPort;
       element("printer-wifi-ssid").value = result.wifiSsid;
-      element("printer-device-info").textContent = `ESP32\uFF1A${result.bridgeHost}\uFF08\u76EE\u524D IP\uFF1A${result.bridgeIp}\uFF09\uFF5CWi-Fi\uFF1A${result.wifiSsid}\uFF5C\u97CC\u9AD4\uFF1A${result.firmware}`;
+      element("printer-device-info").textContent = `${result.bridgeHost} \xB7 ${result.bridgeIp} \xB7 ${result.wifiSsid}`;
       const wifiStates = {
         testing: "\u6B63\u5728\u8A66\u9023 Wi-Fi\uFF0C\u8ACB\u7A0D\u5F8C\u91CD\u65B0\u8B80\u53D6\u3002",
         saved: "\u65B0 Wi-Fi \u5DF2\u9023\u7DDA\u4E26\u4FDD\u5B58\u3002",
         rolled_back: "\u65B0 Wi-Fi \u8A66\u9023\u5931\u6557\uFF0C\u5DF2\u9000\u56DE\u539F\u8A2D\u5B9A\u3002",
         save_failed: "Wi-Fi \u4FDD\u5B58\u5931\u6557\uFF0C\u5DF2\u9000\u56DE\u539F\u8A2D\u5B9A\u3002"
       };
-      output.textContent = (type === "set_config" ? "\u5DF2\u5132\u5B58\u5230 ESP32\uFF0C\u8ACB\u518D\u6AA2\u67E5\u5370\u8868\u6A5F\u9023\u7DDA\u3002" : "\u5DF2\u8B80\u53D6\u88DD\u7F6E\u8A2D\u5B9A\u3002") + (wifiStates[result.wifiState] || "");
+      output.textContent = (type === "set_config" ? "\u5DF2\u5132\u5B58\u7DB2\u8DEF\u8A2D\u5B9A\uFF0C\u8ACB\u518D\u6AA2\u67E5\u9023\u7DDA\u3002" : "\u5DF2\u8B80\u53D6\u88DD\u7F6E\u8A2D\u5B9A\u3002") + (wifiStates[result.wifiState] || "");
     }
   } catch (error) {
     if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
@@ -4051,13 +4067,18 @@ async function configureBridge(type) {
 function saveSettings() {
   if (!canPrint() || active) throw new Error("\u76EE\u524D\u7121\u6CD5\u8B8A\u66F4\u5370\u8868\u6A5F\u8A2D\u5B9A");
   const config = {};
-  for (const field of ["enabled", "url", "title", "width", "cut", "token", "remember"]) {
+  for (const field of ["enabled", "url", "title", "width", "fontSize", "cut", "token", "remember"]) {
     const input = element("printer-" + field);
     config[field] = input.type === "checkbox" ? input.checked : input.value.trim();
   }
   config.url = validatePrinterUrl(config.url);
   config.width = Number(config.width);
-  if (config.enabled && !config.token) throw new Error("\u8ACB\u8F38\u5165\u88DD\u7F6E\u5B58\u53D6\u91D1\u9470");
+  config.fontSize = Number(config.fontSize);
+  if (config.enabled && !config.token) {
+    selectPrinterPage("device");
+    element("printer-token").focus();
+    throw new Error("\u8ACB\u5148\u8F38\u5165\u88DD\u7F6E\u91D1\u9470\uFF0C\u518D\u5132\u5B58\u8A2D\u5B9A");
+  }
   localStorage.removeItem(key());
   sessionStorage.removeItem(key());
   localStorage.setItem(key(), JSON.stringify({ ...config, token: config.remember ? config.token : "" }));
@@ -4076,7 +4097,7 @@ async function runOperation(config, data, output, expectedScope = scope, expecte
   const controller = new AbortController();
   try {
     assertContext(expectedScope, expectedGeneration);
-    if (!config.enabled) throw new Error("\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u5370\u8868\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A");
+    if (!config.enabled) throw new Error("\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u51FA\u55AE\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A");
     active = controller;
     updateControls();
     output.textContent = data ? "\u6B63\u5728\u50B3\u9001\uFF0C\u8ACB\u52FF\u95DC\u9589\u9801\u9762\u2026" : "\u6B63\u5728\u67E5\u8A62\u5370\u8868\u6A5F\u2026";
@@ -4161,7 +4182,7 @@ async function previewOrder(orderId, test = false) {
     };
     showPage2();
     modal.querySelector(".receipt-text").textContent = receipt.text;
-    output.textContent = config.enabled ? `\u5BEC\u5EA6 ${config.width} \u9EDE\uFF0C${config.cut ? "\u9032\u7D19\u534A\u5207" : "\u50C5\u9032\u7D19\uFF0C\u4E0D\u5207\u7D19"}\u3002\u8ACB\u78BA\u8A8D\u5167\u5BB9\u3002` : "\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u5370\u8868\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A";
+    output.textContent = config.enabled ? `\u5B57\u9AD4 ${config.fontSize} \u9EDE\uFF0C\u5BEC\u5EA6 ${config.width} \u9EDE\uFF0C${config.cut ? "\u9032\u7D19\u534A\u5207" : "\u50C5\u9032\u7D19\uFF0C\u4E0D\u5207\u7D19"}\u3002\u8ACB\u78BA\u8A8D\u5167\u5BB9\u3002` : "\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u51FA\u55AE\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A";
     const send = modal.querySelector("#printer-send");
     send.dataset.ready = String(Boolean(config.enabled));
     send.disabled = !config.enabled || Boolean(active);
@@ -4213,6 +4234,46 @@ function offerOrderPrint(orderId) {
   };
   banner.append(close2);
   banner.hidden = false;
+  if (readConfig().enabled) void autoPrintOrder(orderId, banner);
+}
+async function autoPrintOrder(orderId, banner) {
+  const identity = `${generation}:${orderId}`;
+  if (automaticOrders.has(identity)) return;
+  automaticOrders.add(identity);
+  const output = document.createElement("span");
+  output.setAttribute("role", "status");
+  banner.append(output);
+  if (active || element("printer-preview")) {
+    output.textContent = "\u76EE\u524D\u6709\u5217\u5370\u64CD\u4F5C\uFF0C\u8ACB\u7A0D\u5F8C\u624B\u52D5\u5217\u5370\u6B64\u8A02\u55AE\u3002";
+    return;
+  }
+  const expectedScope = scope;
+  const expectedGeneration = generation;
+  const config = readConfig();
+  const controller = new AbortController();
+  active = controller;
+  updateControls();
+  output.textContent = "\u6B63\u5728\u6E96\u5099\u51FA\u55AE\u2026";
+  try {
+    const order = await call("getOrderDetails", orderId);
+    assertContext(expectedScope, expectedGeneration);
+    if (controller.signal.aborted) return;
+    const receipt = await renderReceipt(order, config, state.allProducts);
+    assertContext(expectedScope, expectedGeneration);
+    if (controller.signal.aborted) return;
+    active = null;
+    await runOperation(config, receipt, output, expectedScope, expectedGeneration);
+  } catch (error) {
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration)
+      output.textContent = `\u8A02\u55AE\u5DF2\u6210\u7ACB\uFF0C\u5217\u5370\u672A\u5B8C\u6210\uFF1A${error.message}`;
+  } finally {
+    if (active === controller) active = null;
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
+      element("printer-status").textContent = output.textContent;
+      if (!banner.isConnected || banner.hidden) showAlert(output.textContent, "info", 8e3);
+    }
+    updateControls();
+  }
 }
 function initializePrinter() {
   function clearSession() {
@@ -4223,6 +4284,7 @@ function initializePrinter() {
       }
     }
     generation++;
+    automaticOrders.clear();
     active?.abort();
     element("printer-preview")?.remove();
     element("printer-last-order").hidden = true;
@@ -4240,6 +4302,8 @@ function initializePrinter() {
   scope = currentLocalScope();
   role = document.body.dataset.shopRole || "";
   loadSettings();
+  for (const name of ["print", "device"])
+    element("printer-tab-" + name).addEventListener("click", () => selectPrinterPage(name));
   new MutationObserver(syncContext).observe(document.body, {
     attributes: true,
     attributeFilter: ["data-user-id", "data-shop-id", "data-shop-role"]
@@ -4268,7 +4332,7 @@ function initializePrinter() {
     event2.preventDefault();
     try {
       saveSettings();
-      element("printer-status").textContent = "\u5DF2\u5132\u5B58\u6B64\u5E33\u865F\u3001\u5E97\u92EA\u5728\u672C\u6A5F\u7684\u5370\u8868\u6A5F\u8A2D\u5B9A";
+      element("printer-status").textContent = "\u5DF2\u5132\u5B58\u6B64\u88DD\u7F6E\u7684\u51FA\u55AE\u8A2D\u5B9A";
     } catch (error) {
       element("printer-status").textContent = error.message;
     }
@@ -4276,7 +4340,7 @@ function initializePrinter() {
   element("printer-check").addEventListener("click", () => {
     try {
       const config = saveSettings();
-      void runOperation(config, void 0, element("printer-status"));
+      void runOperation({ ...config, enabled: true }, void 0, element("printer-status"));
     } catch (error) {
       element("printer-status").textContent = error.message;
     }
@@ -5166,7 +5230,7 @@ var panels = {
   demand: "\u9700\u6C42\u7D71\u8A08",
   reports: "\u71DF\u696D\u5831\u8868",
   device: "\u88DD\u7F6E\u8CC7\u8A0A",
-  printer: "\u5370\u8868\u6A5F"
+  printer: "\u51FA\u55AE\u6A5F"
 };
 var panelSubtitles = {
   products: "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1",
@@ -5174,7 +5238,7 @@ var panelSubtitles = {
   demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5F59\u6574\u5546\u54C1\u9700\u6C42",
   reports: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5340\u9593\u67E5\u770B\u71DF\u6536\u8207\u5546\u54C1\u92B7\u552E",
   device: "\u67E5\u770B\u76EE\u524D\u4F7F\u7528\u7684\u88DD\u7F6E\u8207\u700F\u89BD\u5668",
-  printer: "\u8A2D\u5B9A\u6B64\u88DD\u7F6E\u7684\u5370\u8868\u6A5F\u3001\u6AA2\u67E5\u9023\u7DDA\u8207\u6E2C\u8A66\u5217\u5370"
+  printer: "\u7BA1\u7406\u5217\u5370\u65B9\u5F0F\u8207\u51FA\u55AE\u6A5F\u9023\u7DDA"
 };
 var restoring = false;
 function navigateFromUrl() {

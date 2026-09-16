@@ -8,9 +8,10 @@ import { showAlert } from './feedback.js';
 
 const defaults = {
   enabled: false,
-  url: 'wss://xiao-printer.local/ws',
+  url: 'wss://xprinter.local/ws',
   title: '',
-  width: 512,
+  width: 576,
+  fontSize: 32,
   cut: false,
   token: '',
   remember: false,
@@ -20,6 +21,7 @@ let role = '';
 let active = null;
 let generation = 0;
 let bridgeConfig = null;
+const automaticOrders = new Set();
 const bridgeFields = [
   'printer-target-ip',
   'printer-target-port',
@@ -33,9 +35,17 @@ const canPrint = () =>
   Boolean(currentLocalScope()) && ['owner', 'editor'].includes(document.body.dataset.shopRole);
 const element = (id) => document.getElementById(id);
 
+function selectPrinterPage(name) {
+  for (const page of ['print', 'device']) {
+    element('printer-page-' + page).hidden = page !== name;
+    element('printer-tab-' + page).setAttribute('aria-pressed', String(page === name));
+  }
+}
+
 function readConfig() {
   try {
     const config = { ...defaults, ...JSON.parse(localStorage.getItem(key()) || '{}') };
+    if (config.url === 'wss://xiao-printer.local/ws') config.url = defaults.url;
     config.token = config.remember ? config.token : sessionStorage.getItem(key()) || '';
     return config;
   } catch {
@@ -46,7 +56,7 @@ function readConfig() {
 function loadSettings() {
   clearBridgeConfig();
   const config = readConfig();
-  for (const field of ['enabled', 'url', 'title', 'width', 'cut', 'token', 'remember']) {
+  for (const field of ['enabled', 'url', 'title', 'width', 'fontSize', 'cut', 'token', 'remember']) {
     const input = element('printer-' + field);
     if (input.type === 'checkbox') input.checked = Boolean(config[field]);
     else input.value = config[field];
@@ -74,7 +84,7 @@ function clearBridgeConfig() {
   for (const id of ['printer-target-ip', 'printer-target-port', 'printer-wifi-ssid', 'printer-wifi-password'])
     element(id).value = '';
   element('printer-device-info').textContent = '';
-  element('printer-device-status').textContent = '尚未讀取 ESP32 設定';
+  element('printer-device-status').textContent = '尚未讀取裝置設定';
 }
 
 async function configureBridge(type) {
@@ -109,20 +119,20 @@ async function configureBridge(type) {
     const token = element('printer-token').value.trim();
     active = controller;
     updateControls();
-    output.textContent = type === 'get_config' ? '正在讀取 ESP32…' : '正在傳送裝置設定…';
+    output.textContent = type === 'get_config' ? '正在讀取裝置…' : '正在傳送裝置設定…';
     const result = await printerRequest({ url, token, command, signal: controller.signal });
     assertContext(expectedScope, expectedGeneration);
     if (type === 'set_wifi') {
       clearBridgeConfig();
       output.textContent =
-        'ESP32 開始試連新 Wi-Fi，尚未確認成功。請稍候約 30–60 秒，讓 iPad 連到可存取 ESP32 的網路後，重新讀取設定確認。失敗時會退回原 Wi-Fi；不會自動重送。';
+        '正在切換 Wi-Fi，尚未確認成功。請等候 30–60 秒，連到新網路後重新讀取設定。失敗會退回原網路。';
     } else {
       bridgeConfig = result;
       element('printer-target-ip').value = result.printerIp;
       element('printer-target-port').value = result.printerPort;
       element('printer-wifi-ssid').value = result.wifiSsid;
       element('printer-device-info').textContent =
-        `ESP32：${result.bridgeHost}（目前 IP：${result.bridgeIp}）｜Wi-Fi：${result.wifiSsid}｜韌體：${result.firmware}`;
+        `${result.bridgeHost} · ${result.bridgeIp} · ${result.wifiSsid}`;
       const wifiStates = {
         testing: '正在試連 Wi-Fi，請稍後重新讀取。',
         saved: '新 Wi-Fi 已連線並保存。',
@@ -130,7 +140,7 @@ async function configureBridge(type) {
         save_failed: 'Wi-Fi 保存失敗，已退回原設定。',
       };
       output.textContent =
-        (type === 'set_config' ? '已儲存到 ESP32，請再檢查印表機連線。' : '已讀取裝置設定。') +
+        (type === 'set_config' ? '已儲存網路設定，請再檢查連線。' : '已讀取裝置設定。') +
         (wifiStates[result.wifiState] || '');
     }
   } catch (error) {
@@ -149,13 +159,18 @@ async function configureBridge(type) {
 function saveSettings() {
   if (!canPrint() || active) throw new Error('目前無法變更印表機設定');
   const config = {};
-  for (const field of ['enabled', 'url', 'title', 'width', 'cut', 'token', 'remember']) {
+  for (const field of ['enabled', 'url', 'title', 'width', 'fontSize', 'cut', 'token', 'remember']) {
     const input = element('printer-' + field);
     config[field] = input.type === 'checkbox' ? input.checked : input.value.trim();
   }
   config.url = validatePrinterUrl(config.url);
   config.width = Number(config.width);
-  if (config.enabled && !config.token) throw new Error('請輸入裝置存取金鑰');
+  config.fontSize = Number(config.fontSize);
+  if (config.enabled && !config.token) {
+    selectPrinterPage('device');
+    element('printer-token').focus();
+    throw new Error('請先輸入裝置金鑰，再儲存設定');
+  }
   // Remove any previously remembered secret before writing the chosen persistence mode.
   localStorage.removeItem(key());
   sessionStorage.removeItem(key());
@@ -177,7 +192,7 @@ async function runOperation(config, data, output, expectedScope = scope, expecte
   const controller = new AbortController();
   try {
     assertContext(expectedScope, expectedGeneration);
-    if (!config.enabled) throw new Error('請先到「管理 → 印表機」啟用並儲存設定');
+    if (!config.enabled) throw new Error('請先到「管理 → 出單機」啟用並儲存設定');
     active = controller;
     updateControls();
     output.textContent = data ? '正在傳送，請勿關閉頁面…' : '正在查詢印表機…';
@@ -271,8 +286,8 @@ export async function previewOrder(orderId, test = false) {
     showPage();
     modal.querySelector('.receipt-text').textContent = receipt.text;
     output.textContent = config.enabled
-      ? `寬度 ${config.width} 點，${config.cut ? '進紙半切' : '僅進紙，不切紙'}。請確認內容。`
-      : '請先到「管理 → 印表機」啟用並儲存設定';
+      ? `字體 ${config.fontSize} 點，寬度 ${config.width} 點，${config.cut ? '進紙半切' : '僅進紙，不切紙'}。請確認內容。`
+      : '請先到「管理 → 出單機」啟用並儲存設定';
     const send = modal.querySelector('#printer-send');
     send.dataset.ready = String(Boolean(config.enabled));
     send.disabled = !config.enabled || Boolean(active);
@@ -328,6 +343,47 @@ export function offerOrderPrint(orderId) {
   };
   banner.append(close);
   banner.hidden = false;
+  if (readConfig().enabled) void autoPrintOrder(orderId, banner);
+}
+
+async function autoPrintOrder(orderId, banner) {
+  const identity = `${generation}:${orderId}`;
+  if (automaticOrders.has(identity)) return;
+  automaticOrders.add(identity);
+  const output = document.createElement('span');
+  output.setAttribute('role', 'status');
+  banner.append(output);
+  if (active || element('printer-preview')) {
+    output.textContent = '目前有列印操作，請稍後手動列印此訂單。';
+    return;
+  }
+  const expectedScope = scope;
+  const expectedGeneration = generation;
+  const config = readConfig();
+  const controller = new AbortController();
+  active = controller;
+  updateControls();
+  output.textContent = '正在準備出單…';
+  try {
+    const order = await call('getOrderDetails', orderId);
+    assertContext(expectedScope, expectedGeneration);
+    if (controller.signal.aborted) return;
+    const receipt = await renderReceipt(order, config, state.allProducts);
+    assertContext(expectedScope, expectedGeneration);
+    if (controller.signal.aborted) return;
+    active = null;
+    await runOperation(config, receipt, output, expectedScope, expectedGeneration);
+  } catch (error) {
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration)
+      output.textContent = `訂單已成立，列印未完成：${error.message}`;
+  } finally {
+    if (active === controller) active = null;
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
+      element('printer-status').textContent = output.textContent;
+      if (!banner.isConnected || banner.hidden) showAlert(output.textContent, 'info', 8000);
+    }
+    updateControls();
+  }
 }
 
 export function initializePrinter() {
@@ -340,6 +396,7 @@ export function initializePrinter() {
       }
     }
     generation++;
+    automaticOrders.clear();
     active?.abort();
     element('printer-preview')?.remove();
     element('printer-last-order').hidden = true;
@@ -357,6 +414,8 @@ export function initializePrinter() {
   scope = currentLocalScope();
   role = document.body.dataset.shopRole || '';
   loadSettings();
+  for (const name of ['print', 'device'])
+    element('printer-tab-' + name).addEventListener('click', () => selectPrinterPage(name));
   new MutationObserver(syncContext).observe(document.body, {
     attributes: true,
     attributeFilter: ['data-user-id', 'data-shop-id', 'data-shop-role'],
@@ -385,7 +444,7 @@ export function initializePrinter() {
     event.preventDefault();
     try {
       saveSettings();
-      element('printer-status').textContent = '已儲存此帳號、店鋪在本機的印表機設定';
+      element('printer-status').textContent = '已儲存此裝置的出單設定';
     } catch (error) {
       element('printer-status').textContent = error.message;
     }
@@ -393,7 +452,7 @@ export function initializePrinter() {
   element('printer-check').addEventListener('click', () => {
     try {
       const config = saveSettings();
-      void runOperation(config, undefined, element('printer-status'));
+      void runOperation({ ...config, enabled: true }, undefined, element('printer-status'));
     } catch (error) {
       element('printer-status').textContent = error.message;
     }

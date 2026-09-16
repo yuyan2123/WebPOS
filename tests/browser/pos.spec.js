@@ -69,6 +69,7 @@ async function openManagementPanel(page, panel) {
   const toggle = page.locator('#managementToggle');
   if (await toggle.isVisible()) await toggle.click();
   await page.locator('#nav-' + panel).click();
+  if (panel === 'printer') await page.locator('#printer-tab-device').click();
 }
 
 async function mockPrinter(page) {
@@ -78,7 +79,7 @@ async function mockPrinter(page) {
     window.__bridgeConfig = {
       event: 'config',
       firmware: '1.1.0',
-      bridgeHost: 'xiao-printer.local',
+      bridgeHost: 'xprinter.local',
       bridgeIp: '192.168.50.214',
       printerIp: '192.168.50.153',
       printerPort: 9100,
@@ -185,7 +186,7 @@ test('bridge settings persist on the device, detect conflicts and never retry a 
   await page.locator('#printer-target-ip').fill('192.168.50.200');
   await page.locator('#printer-target-port').fill('9101');
   await page.locator('#printer-device-save').click();
-  await expect(page.locator('#printer-device-status')).toContainText('已儲存到 ESP32');
+  await expect(page.locator('#printer-device-status')).toContainText('已儲存網路設定');
   expect(await page.evaluate(() => window.__bridgeConfig.printerIp)).toBe('192.168.50.200');
   expect(await page.evaluate(() => window.__bridgeConfig.printerPort)).toBe(9101);
   expect(
@@ -215,6 +216,28 @@ test('bridge settings persist on the device, detect conflicts and never retry a 
   ).toBe(false);
 });
 
+test('saved legacy printer hostname loads as xprinter and preserves credentials', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'ginJiaPos.printer.test-user:test-shop',
+      JSON.stringify({
+        url: 'wss://xiao-printer.local/ws',
+        enabled: true,
+        remember: true,
+        token: 'test-secret',
+      }),
+    );
+  });
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await openManagementPanel(page, 'printer');
+  await expect(page.locator('#printer-url')).toHaveValue('wss://xprinter.local/ws');
+  await expect(page.locator('#printer-token')).toHaveValue('test-secret');
+  await page.locator('#printer-device-read').click();
+  await expect(page.locator('#printer-device-status')).toContainText('已讀取裝置設定');
+  expect(await page.evaluate(() => window.__printerUrls)).toEqual(['wss://xprinter.local/ws']);
+});
+
 test('bridge uses stable hostname, handles old firmware and validates target before opening a socket', async ({
   page,
 }) => {
@@ -224,7 +247,7 @@ test('bridge uses stable hostname, handles old firmware and validates target bef
   await page.locator('#printer-token').fill('test-secret');
   await page.locator('#printer-url').fill('wss://192.168.50.214/ws');
   await page.locator('#printer-use-name').click();
-  await expect(page.locator('#printer-url')).toHaveValue('wss://xiao-printer.local/ws');
+  await expect(page.locator('#printer-url')).toHaveValue('wss://xprinter.local/ws');
   await page.evaluate(() => {
     window.__printerMode = 'legacy-config';
   });
@@ -241,7 +264,7 @@ test('bridge uses stable hostname, handles old firmware and validates target bef
   await page.locator('#printer-device-read').click();
   await expect(page.locator('#printer-device-info')).toContainText('192.168.50.220');
   expect(
-    await page.evaluate(() => window.__printerUrls.every((url) => url === 'wss://xiao-printer.local/ws')),
+    await page.evaluate(() => window.__printerUrls.every((url) => url === 'wss://xprinter.local/ws')),
   ).toBe(true);
   const count = await page.evaluate(() => window.__printerConnections);
   await page.locator('#printer-target-ip').fill('999.1.2.3');
@@ -320,26 +343,31 @@ test('iPad desktop user agent is identified and PWA handshake failures show diag
     window.__printerMode = 'handshake-error';
     window.__printerFrames = [];
   });
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-check').click();
-  await expect(page.locator('#printer-status')).toContainText('建立 WSS 連線；PWA；xiao-printer.local');
+  await expect(page.locator('#printer-status')).toContainText('建立 WSS 連線；PWA；xprinter.local');
   await expect(page.locator('#printer-status')).not.toContainText('test-secret');
   expect(await page.evaluate(() => window.__printerFrames.length)).toBe(0);
 });
 
 async function configurePrinter(page) {
   await openManagementPanel(page, 'printer');
-  await page.locator('#printer-enabled').check();
   await page.locator('#printer-token').fill('test-secret');
+  await page.locator('#printer-tab-print').click();
+  await page.locator('#printer-enabled').check();
   await page.locator('#printer-title').fill('金佳餅店');
+  await page.locator('#printer-tab-device').click();
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-check').click();
   await expect(page.locator('#printer-status')).toContainText('已連線');
+  await page.locator('#printer-tab-print').click();
 }
 
 test('printer diagnostics compare HTTPS and WSS without auth or changing saved settings', async ({
   page,
 }) => {
   await mockPrinter(page);
-  await page.route(/^https:\/\/(192\.168\.50\.214|xiao-printer\.local)\/health$/, (route) =>
+  await page.route(/^https:\/\/(192\.168\.50\.214|xprinter\.local)\/health$/, (route) =>
     route.fulfill({ status: 200, contentType: 'text/plain', body: 'healthy' }),
   );
   await page.addInitScript(() => {
@@ -347,7 +375,7 @@ test('printer diagnostics compare HTTPS and WSS without auth or changing saved s
     window.__diagnosticFetches = [];
     window.fetch = (input, options) => {
       const url = String(input);
-      if (url === 'https://192.168.50.214/health' || url === 'https://xiao-printer.local/health') {
+      if (url === 'https://192.168.50.214/health' || url === 'https://xprinter.local/health') {
         window.__diagnosticFetches.push({ url, mode: options.mode, credentials: options.credentials });
       }
       return fetchOriginal(input, options);
@@ -357,12 +385,15 @@ test('printer diagnostics compare HTTPS and WSS without auth or changing saved s
   await openManagementPanel(page, 'printer');
   await page.locator('#printer-url').fill('wss://192.168.50.214/ws');
   await page.locator('#printer-token').fill('do-not-transmit');
+  await page.locator('.printer-help').evaluate((el) => {
+    el.open = true;
+  });
   await page.locator('#printer-diagnose').click();
   const result = page.locator('#printer-diagnostic-result');
   await expect(result).toContainText('診斷完成');
   await expect(result).toContainText('HTTPS 192.168.50.214：收到 HTTP 回應');
   await expect(result).toContainText('WSS 192.168.50.214：握手成功');
-  await expect(result).toContainText('WSS xiao-printer.local：握手成功');
+  await expect(result).toContainText('WSS xprinter.local：握手成功');
   await expect(result).not.toContainText('do-not-transmit');
   expect(await page.evaluate(() => window.__printerFrames)).toEqual([]);
   expect(await page.evaluate(() => localStorage.getItem('ginJiaPos.printer.test-user:test-shop'))).toBeNull();
@@ -376,10 +407,13 @@ test('printer diagnostics compare HTTPS and WSS without auth or changing saved s
   await page.evaluate(() => {
     window.__printerMode = 'handshake-error';
   });
+  await page.locator('.printer-help').evaluate((el) => {
+    el.open = true;
+  });
   await page.locator('#printer-diagnose').click();
   await expect(result).toContainText('診斷完成');
   await expect(result).toContainText('WSS 192.168.50.214：失敗');
-  await expect(result).toContainText('WSS xiao-printer.local：失敗');
+  await expect(result).toContainText('WSS xprinter.local：失敗');
   await expect(page.locator('#printer-diagnose')).toBeEnabled();
 });
 
@@ -389,6 +423,8 @@ test('printer settings, exact raster preview, chunk acknowledgements and no dupl
   await mockPrinter(page);
   const errors = await openWorkspace(page);
   await configurePrinter(page);
+  await page.locator('#printer-width').selectOption('512');
+  await page.locator('#printer-fontSize').selectOption('24');
   await page.screenshot({
     path: testInfo.outputPath('printer-settings.png'),
     fullPage: true,
@@ -450,7 +486,7 @@ test('printer settings, exact raster preview, chunk acknowledgements and no dupl
   expect(result.same).toBe(true);
   expect(result.ink).toBeGreaterThan(100);
   expect(result.start).toEqual([27, 64, 27, 97, 0]);
-  expect(result.tail).toEqual([29, 86, 66, 16]);
+  expect(result.tail).toEqual([29, 86, 66, 33]);
   expect(result.max).toBeLessThanOrEqual(4096);
   expect(result.begins).toBe(1);
   await page.keyboard.press('Escape');
@@ -466,15 +502,19 @@ test('printer rejects bad auth, times out without retry, and remembers token onl
   await mockPrinter(page);
   await openWorkspace(page);
   await configurePrinter(page);
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-remember').check();
-  await page.getByRole('button', { name: '儲存設定', exact: true }).click();
+  await page.locator('#printer-tab-print').click();
+  await page.getByRole('button', { name: '儲存列印設定', exact: true }).click();
   expect(
     await page.evaluate(
       () => JSON.parse(localStorage.getItem('ginJiaPos.printer.test-user:test-shop')).token,
     ),
   ).toBe('test-secret');
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-remember').uncheck();
-  await page.getByRole('button', { name: '儲存設定', exact: true }).click();
+  await page.locator('#printer-tab-print').click();
+  await page.getByRole('button', { name: '儲存列印設定', exact: true }).click();
   expect(
     await page.evaluate(
       () => JSON.parse(localStorage.getItem('ginJiaPos.printer.test-user:test-shop')).token,
@@ -483,6 +523,7 @@ test('printer rejects bad auth, times out without retry, and remembers token onl
   await page.evaluate(() => {
     window.__printerMode = 'unauthorized';
   });
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-check').click();
   await expect(page.locator('#printer-status')).toContainText('金鑰不正確');
   await page.clock.install();
@@ -490,6 +531,7 @@ test('printer rejects bad auth, times out without retry, and remembers token onl
     window.__printerMode = 'hold';
     window.__printerFrames = [];
   });
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-check').click();
   await expect(page.locator('#printer-status')).toContainText('正在查詢');
   await expect
@@ -511,7 +553,8 @@ test('printer wraps long gift receipts and refuses oversize jobs before connecti
   await openWorkspace(page);
   await configurePrinter(page);
   await page.locator('#printer-width').selectOption('384');
-  await page.getByRole('button', { name: '儲存設定', exact: true }).click();
+  await page.locator('#printer-tab-print').click();
+  await page.getByRole('button', { name: '儲存列印設定', exact: true }).click();
   await page.locator('#nav-search').click();
   await page.evaluate(() => {
     const item = {
@@ -614,6 +657,7 @@ test('printer failure never replays bytes and context switch aborts old work', a
     window.__printerMode = 'hold';
     window.__printerFrames = [];
   });
+  await page.locator('#printer-tab-device').click();
   await page.locator('#printer-check').click();
   await expect(page.locator('#printer-check')).toBeDisabled();
   await page.evaluate(() => {
@@ -1593,4 +1637,151 @@ test('numeric fields restrict text and preserve phone zeros and decimal amounts'
     rejectsText: true,
     rejectsExponent: true,
   });
+});
+
+test('printer page defaults to print settings with accessible switching and compact device setup', async ({
+  page,
+}, testInfo) => {
+  await openWorkspace(page);
+  const toggle = page.locator('#managementToggle');
+  if (await toggle.isVisible()) await toggle.click();
+  await page.locator('#nav-printer').click();
+  await expect(page.locator('#workspaceTitle')).toHaveText('出單機');
+  await expect(page.locator('#printer-page-print')).toBeVisible();
+  await expect(page.locator('#printer-width')).toHaveValue('576');
+  await expect(page.locator('#printer-fontSize')).toHaveValue('32');
+  await expect(page.locator('#printer-page-device')).toBeHidden();
+  await expect(page.locator('#printer-tab-print')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#printer-title').fill('金佳餅店');
+  await page.screenshot({ path: testInfo.outputPath('print-settings-layout.png'), fullPage: true });
+  await page.locator('#printer-tab-device').click();
+  await expect(page.locator('#printer-page-print')).toBeHidden();
+  await expect(page.locator('#printer-tab-device')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.printer-setup')).not.toHaveAttribute('open');
+  await page.screenshot({ path: testInfo.outputPath('device-settings-layout.png'), fullPage: true });
+  await page.locator('#printer-tab-print').click();
+  await expect(page.locator('#printer-title')).toHaveValue('金佳餅店');
+  const results = await new AxeBuilder({ page }).include('#settingsPrinter').analyze();
+  expect(results.violations).toEqual([]);
+});
+
+for (const mode of ['enabled', 'disabled', 'disconnect']) {
+  test(`new order automatic printing: ${mode}`, async ({ page }) => {
+    await page.addInitScript((mode) => {
+      localStorage.setItem(
+        'ginJiaPos.printer.test-user:test-shop',
+        JSON.stringify({
+          enabled: mode !== 'disabled',
+          token: 'test-secret',
+          remember: true,
+        }),
+      );
+    }, mode);
+    await mockPrinter(page);
+    await openWorkspace(page);
+    await page.evaluate((mode) => {
+      window.__printerMode = mode === 'disconnect' ? mode : '';
+      window.__orderDetails = {
+        orderId: 'O-test',
+        customerName: '測試客戶',
+        items: [{ productName: '原味餅', quantity: 1, unitPrice: 50, subtotal: 50 }],
+        totalAmount: 50,
+        depositAmount: 0,
+        remainingAmount: 50,
+      };
+    }, mode);
+    await prepareOrder(page);
+    await page.locator('#workspaceCart').click();
+    await page.locator('#checkoutBtn').click();
+    await expect(page.locator('#printer-last-order')).toContainText('訂單 O-test 已建立');
+    if (mode !== 'disabled') {
+      await expect(page.locator('#printer-last-order')).toContainText(
+        mode === 'disconnect' ? '可能已部分列印' : '已傳送',
+      );
+      expect(await page.evaluate(() => window.__printerFrames.filter((f) => f.type === 'begin').length)).toBe(
+        1,
+      );
+    } else {
+      expect(await page.evaluate(() => window.__printerFrames)).toEqual([]);
+    }
+    await expect(page.locator('#printer-preview')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__calls.filter((c) => c.method === 'submitOrder').length)).toBe(
+      1,
+    );
+  });
+}
+
+for (const width of [384, 512, 576]) {
+  test(`receipt separators remain single graphical lines at ${width} dots with wide fallback glyphs`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const original = CanvasRenderingContext2D.prototype.measureText;
+      CanvasRenderingContext2D.prototype.measureText = function (text) {
+        if (String(text).includes('─')) return { width: String(text).length * 40 };
+        return original.call(this, text);
+      };
+    });
+    await mockPrinter(page);
+    await openWorkspace(page);
+    await configurePrinter(page);
+    await page.locator('#printer-width').selectOption(String(width));
+    await page.locator('#printer-fontSize').selectOption('24');
+    await page.locator('#printer-test').click();
+    await expect(page.locator('#printer-send')).toBeEnabled();
+    const rules = await page.locator('.receipt-preview canvas').evaluateAll((canvases) => {
+      const result = [];
+      for (const [index, canvas] of canvases.entries()) {
+        const ctx = canvas.getContext('2d');
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let row = index === 0 ? -4 : 0; row < canvas.height; row += 34) {
+          const counts = [];
+          for (let y = Math.max(0, row); y < Math.min(canvas.height, row + 34); y++) {
+            let count = 0;
+            for (let x = 0; x < canvas.width; x++) if (pixels[(y * canvas.width + x) * 4] === 0) count++;
+            counts.push(count);
+          }
+          if (counts.some((n) => n === canvas.width - 32)) result.push(counts);
+        }
+      }
+      return result;
+    });
+    expect(rules).toHaveLength(2);
+    for (const counts of rules) {
+      expect(counts.filter((n) => n > 0)).toEqual([width - 32, width - 32]);
+    }
+    await expect(page.locator('.receipt-text')).toContainText('原味餅');
+  });
+}
+
+test('receipt font size persists and adjusts raster bands and wrapping', async ({ page }, testInfo) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await configurePrinter(page);
+  let previousLines = 0;
+  for (const size of [24, 28, 32, 40]) {
+    await page.locator('#printer-fontSize').selectOption(String(size));
+    await page.locator('#printer-test').click();
+    await expect(page.locator('#printer-send')).toBeEnabled();
+    await expect(page.locator('#printer-result')).toContainText(`字體 ${size} 點`);
+    const stats = await page
+      .locator('.receipt-preview canvas')
+      .evaluateAll((canvases) => canvases.map((c) => ({ height: c.height, font: c.getContext('2d').font })));
+    const lineHeight = Math.ceil(size * 1.4);
+    for (const [index, band] of stats.entries()) {
+      expect(band.height).toBeLessThanOrEqual(238);
+      expect((band.height + (index === 0 ? 4 : 0)) % lineHeight).toBe(0);
+      expect(band.font).toContain(`${size}px`);
+    }
+    const lines = (await page.locator('.receipt-text').textContent()).split('\n').length;
+    expect(lines).toBeGreaterThanOrEqual(previousLines);
+    previousLines = lines;
+    if (size === 32)
+      await page.screenshot({ path: testInfo.outputPath('receipt-font-32.png'), animations: 'disabled' });
+    await page.locator('#printer-preview .printer-close').click();
+  }
+  await page.reload();
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-tab-print').click();
+  await expect(page.locator('#printer-fontSize')).toHaveValue('40');
 });

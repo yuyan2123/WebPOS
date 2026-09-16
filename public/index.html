@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f5f">
-    <meta name="app-version" content="0.14.1+716554a92a23">
-    <meta name="app-updated-at" content="2026-09-16T20:47:52.153Z">
+    <meta name="app-version" content="0.14.1+cf5a24566e38">
+    <meta name="app-updated-at" content="2026-09-16T22:55:00.171Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -56,7 +56,7 @@
             <button type="button" id="nav-capacity" class="nav-item" data-panel="capacity"><i class="fas fa-calendar-check" aria-hidden="true"></i><span>供應量設定</span></button>
             <button type="button" id="nav-demand" class="nav-item" data-panel="demand"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span>需求統計</span></button>
             <button type="button" id="nav-reports" class="nav-item" data-panel="reports"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>營業報表</span></button>
-            <button type="button" id="nav-printer" class="nav-item" data-panel="printer"><i class="fas fa-print" aria-hidden="true"></i><span>印表機</span></button>
+            <button type="button" id="nav-printer" class="nav-item" data-panel="printer"><i class="fas fa-print" aria-hidden="true"></i><span>出單機</span></button>
             <button type="button" id="nav-device" class="nav-item" data-panel="device"><i class="fas fa-laptop" aria-hidden="true"></i><span>裝置資訊</span></button>
           </div>
         </div>
@@ -453,64 +453,55 @@
 
 
             <div id="settingsPrinter" class="settings-section" style="display: none;">
-                <div class="settings-panel">
-                    <h2 class="settings-panel-title">印表機</h2>
-                    <p>設定只保存在這台裝置，依帳號與店鋪分開。下載憑證、設定與測試都可從這裡開始，不必先開啟 ESP32 網頁。</p>
-                    <details class="printer-setup" open>
-                        <summary>首次設定 iPad</summary>
-                        <ol>
-                            <li><strong>下載憑證</strong><p>iPad 請先連到印表機與橋接裝置所在的 Wi-Fi，再下載本店橋接裝置的憑證。已安裝並信任此憑證可跳過前兩步。</p><a class="btn" href="/certs/printer-root-ca.cer" target="_blank" rel="noopener">下載印表機憑證</a><p>如果從主畫面 App 無法下載，請在 Safari 開啟本 POS 的「管理 → 印表機」再下載。</p></li>
-                            <li><strong>在 iPad 設定中安裝並信任</strong><p>① 設定 → 一般 → VPN 與裝置管理 → 安裝剛下載的描述檔。</p><p>② 設定 → 一般 → 關於本機 → 憑證信任設定 → 啟用「Xprinter」的完整信任。</p><p>這兩項操作需要你在系統設定中完成，網頁無法自動安裝或啟用信任。</p></li>
-                            <li><strong>回到本頁完成連線</strong><p>在下方勾選「啟用訂單列印」、確認 WSS 位址並輸入裝置存取金鑰，按「儲存並檢查連線」。連線成功後可開啟「中文測試列印」預覽，再按「列印一份」。</p></li>
-                        </ol>
-                        <p>此憑證僅適用於本店目前的 XIAO 橋接裝置；其他裝置請使用其管理者提供的憑證。若 Safari 可連線但主畫面 App 失敗，請先在 Safari 操作，並用下方「連線診斷」檢查。</p>
-                    </details>
-                    <form id="printer-settings" class="printer-settings">
-                        <label class="printer-checkbox" for="printer-enabled"><input id="printer-enabled" type="checkbox">啟用訂單列印</label>
-                        <label for="printer-url">ESP32 連線位址（WSS）</label>
-                        <input id="printer-url" type="url" required placeholder="wss://xiao-printer.local/ws" autocomplete="off" spellcheck="false">
-                        <p>建議使用 xiao-printer.local：同一區網支援 mDNS 時，ESP32 換 IP 仍可透過這個名稱連線。此處是 ESP32 的位址，下方「Xprinter IPv4 位址」才是印表機的位址。</p>
-                        <div class="printer-actions"><button class="btn" type="button" id="printer-use-name">使用 xiao-printer.local</button></div>
-                        <label for="printer-token">裝置存取金鑰</label>
-                        <input id="printer-token" type="password" maxlength="256" autocomplete="off">
-                        <label class="printer-checkbox" for="printer-remember"><input id="printer-remember" type="checkbox">記住此裝置金鑰（僅限自己管理的裝置）</label>
-                        <p>未勾選時金鑰僅保留於目前工作階段；切換帳號、店鋪或登出後須重新輸入。</p>
-                        <fieldset class="printer-bridge">
-                            <legend>ESP32 裝置設定</legend>
-                            <p>先讀取裝置，再修改設定。以下設定會儲存在 ESP32，影響使用它的所有裝置；需要支援網頁設定的新韌體。</p>
-                            <div class="printer-actions"><button class="btn" type="button" id="printer-device-read">讀取 ESP32 設定</button></div>
-                            <p id="printer-device-info"></p>
-                            <label for="printer-target-ip">Xprinter IPv4 位址</label>
-                            <input id="printer-target-ip" type="text" inputmode="text" maxlength="15" autocomplete="off" spellcheck="false" placeholder="例如 192.168.50.153" disabled>
-                            <label for="printer-target-port">Xprinter TCP 連接埠</label>
-                            <input id="printer-target-port" type="number" min="1" max="65535" step="1" placeholder="9100" disabled>
-                            <div class="printer-actions"><button class="btn" type="button" id="printer-device-save" disabled>儲存到 ESP32</button></div>
-                            <p>此操作修改 ESP32 的轉送目標，不會變更 Xprinter 本身的網路設定。保存後請再檢查連線。</p>
-                            <details>
-                                <summary>更換 ESP32 的 Wi-Fi</summary>
-                                <div class="printer-wifi-fields">
-                                    <p>使用可讓 ESP32 與印表機互通的 2.4 GHz WPA/WPA2 網路。切換時會暫時斷線；30 秒內未取得新網路 IP 就退回原設定。成功後請將 iPad 連到可存取 ESP32 的網路，再重新讀取確認。</p>
-                                    <label for="printer-wifi-ssid">新 Wi-Fi 名稱</label>
-                                    <input id="printer-wifi-ssid" type="text" autocomplete="off" spellcheck="false" disabled>
-                                    <label for="printer-wifi-password">新 Wi-Fi 密碼</label>
-                                    <input id="printer-wifi-password" type="password" autocomplete="new-password" disabled>
-                                    <div class="printer-actions"><button class="btn" type="button" id="printer-wifi-save" disabled>試連並儲存 Wi-Fi</button></div>
-                                    <p>密碼只送到 ESP32，不儲存在 POS。新網路連線成功不代表印表機也能連通，仍須檢查 Xprinter 位址。</p>
-                                </div>
+                <div class="settings-panel printer-panel">
+                    <div class="printer-heading"><div><h2 class="settings-panel-title">出單機</h2><p>設定出單方式，管理裝置連線。</p></div><span class="printer-local-note">僅套用此帳號與店鋪的本機設定</span></div>
+                    <div class="printer-tabs" role="group" aria-label="出單機設定分類">
+                        <button type="button" id="printer-tab-print" aria-pressed="true" aria-controls="printer-page-print">列印設定</button>
+                        <button type="button" id="printer-tab-device" aria-pressed="false" aria-controls="printer-page-device">出單機設定</button>
+                    </div>
+                    <form id="printer-settings" class="printer-settings" novalidate>
+                        <div id="printer-page-print" class="printer-page">
+                            <section class="printer-card">
+                                <h3>出單方式</h3>
+                                <label class="printer-toggle-row" for="printer-enabled"><span><strong>啟用列印</strong><small>訂單成立後，自動列印一份。</small></span><input id="printer-enabled" type="checkbox" role="switch"></label>
+                                <p>列印失敗不會重送，訂單仍會保留。</p>
+                            </section>
+                            <section class="printer-card">
+                                <h3>單據選項</h3>
+                                <div class="printer-field"><label for="printer-title">單據店名</label><input id="printer-title" maxlength="80" placeholder="請輸入店名"></div>
+                                <div class="printer-field"><label for="printer-width">列印寬度</label><select id="printer-width"><option value="576">576 點（預設）</option><option value="512">512 點</option><option value="384">384 點</option></select></div>
+                                <div class="printer-field"><label for="printer-fontSize">字體大小</label><select id="printer-fontSize"><option value="24">24 點（小）</option><option value="28">28 點</option><option value="32">32 點（預設）</option><option value="40">40 點（大）</option></select></div>
+                                <label class="printer-toggle-row" for="printer-cut"><span><strong>列印後切紙</strong><small>進紙後半切，需出單機支援。</small></span><input id="printer-cut" type="checkbox" role="switch"></label>
+                            </section>
+                            <div class="printer-actions printer-page-actions"><button class="btn printer-primary" type="submit">儲存列印設定</button><button class="btn" type="button" id="printer-test">測試列印</button></div>
+                        </div>
+                        <div id="printer-page-device" class="printer-page" hidden>
+                            <section class="printer-card printer-connection">
+                                <h3>連接出單機</h3><p>先連上店內 Wi-Fi，再輸入裝置金鑰。</p>
+                                <div class="printer-field"><label for="printer-url">連線位址</label><div class="printer-inline"><input id="printer-url" type="url" required placeholder="wss://xprinter.local/ws" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="printer-use-name">使用預設</button></div></div>
+                                <div class="printer-field"><label for="printer-token">裝置金鑰</label><input id="printer-token" type="password" maxlength="256" autocomplete="off"></div>
+                                <label class="printer-checkbox" for="printer-remember"><input id="printer-remember" type="checkbox">在這台裝置記住金鑰</label>
+                                <p>未勾選時，登出或切換店鋪後需重新輸入。</p>
+                                <div class="printer-actions"><button class="btn printer-primary" type="button" id="printer-check">儲存並檢查連線</button></div>
+                            </section>
+                            <details class="printer-setup">
+                                <summary>首次使用 iPad？安裝連線憑證</summary>
+                                <ol><li><a class="btn" href="/certs/printer-root-ca.cer" data-printer-certificate target="_blank" rel="noopener">下載 Xprinter 憑證</a><p>無法下載時，請用 Safari 開啟本頁。</p></li><li>設定 → 一般 → VPN 與裝置管理，安裝憑證。</li><li>設定 → 一般 → 關於本機 → 憑證信任設定，啟用「Xprinter」完整信任。</li></ol>
+                                <p>已安裝並信任者可跳過。此憑證僅適用於本店出單機。</p>
                             </details>
-                            <p id="printer-device-status" role="status" aria-live="polite"></p>
-                        </fieldset>
-                        <label for="printer-title">單據店名</label>
-                        <input id="printer-title" maxlength="80" placeholder="請輸入店名">
-                        <label for="printer-width">列印寬度</label>
-                        <select id="printer-width"><option value="512">512 點（預設）</option><option value="576">576 點</option><option value="384">384 點</option></select>
-                        <label class="printer-checkbox" for="printer-cut"><input id="printer-cut" type="checkbox">列印後進紙並半切紙</label>
-                        <p>請先用中文測試單確認可列印寬度與切紙。每次列印一份，不會自動重送。</p>
-                        <div class="printer-actions"><button class="btn" type="submit">儲存設定</button><button class="btn" type="button" id="printer-check">儲存並檢查連線</button><button class="btn" type="button" id="printer-test">中文測試列印</button></div>
-                        <div class="printer-actions"><button class="btn" type="button" id="printer-diagnose">連線診斷（不列印）</button></div>
+                            <section class="printer-card printer-bridge">
+                                <div class="printer-card-heading"><div><h3>裝置網路</h3><p>更換出單機或 Wi-Fi 時使用。</p></div><button class="btn" type="button" id="printer-device-read">讀取裝置設定</button></div>
+                                <p id="printer-device-info"></p>
+                                <div class="printer-network-fields"><div class="printer-field"><label for="printer-target-ip">出單機 IP 位址</label><input id="printer-target-ip" type="text" maxlength="15" autocomplete="off" spellcheck="false" placeholder="192.168.50.153" disabled></div><div class="printer-field"><label for="printer-target-port">連接埠</label><input id="printer-target-port" type="number" min="1" max="65535" step="1" placeholder="9100" disabled></div></div>
+                                <p>先讀取再修改。此設定會影響所有連到這台出單機的裝置。</p>
+                                <div class="printer-actions"><button class="btn" type="button" id="printer-device-save" disabled>儲存網路設定</button></div>
+                                <details><summary>更換 Wi-Fi</summary><div class="printer-wifi-fields"><p>使用店內 2.4 GHz Wi-Fi。切換失敗會回到原網路。</p><label for="printer-wifi-ssid">Wi-Fi 名稱</label><input id="printer-wifi-ssid" type="text" autocomplete="off" spellcheck="false" disabled><label for="printer-wifi-password">Wi-Fi 密碼</label><input id="printer-wifi-password" type="password" autocomplete="new-password" disabled><div class="printer-actions"><button class="btn" type="button" id="printer-wifi-save" disabled>連線並儲存 Wi-Fi</button></div></div></details>
+                                <p id="printer-device-status" role="status" aria-live="polite"></p>
+                            </section>
+                            <details class="printer-help"><summary>連不上？檢查連線</summary><p>iPad 與出單機需在可互通的網路；若主畫面 App 失敗，可用 Safari 再試。</p><div class="printer-actions"><button class="btn" type="button" id="printer-diagnose">執行連線診斷</button></div><pre id="printer-diagnostic-result" role="status" aria-live="polite" hidden></pre></details>
+                        </div>
                     </form>
-                    <p id="printer-status" role="status" aria-live="polite"></p>
-                    <pre id="printer-diagnostic-result" role="status" aria-live="polite" hidden></pre>
+                    <p id="printer-status" class="printer-status" role="status" aria-live="polite"></p>
                 </div>
             </div>
             <!-- 裝置資訊 -->
@@ -861,6 +852,7 @@
         </div>
     </div>
 
+    <script src="/js/certificate-download.js" defer></script>
     <script src="/js/runtime-config.js" defer></script>
     <script src="/js/rpc-bridge.js" defer></script>
     <script type="module" src="/js/app.js"></script>

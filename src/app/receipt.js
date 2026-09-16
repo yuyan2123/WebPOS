@@ -1,6 +1,4 @@
 import { MAX_PRINT_BYTES } from '../platform/printer-client.js';
-const LINE_HEIGHT = 34;
-const BAND_LINES = 7;
 const PAGE_BANDS = 4;
 const clean = (value) =>
   Array.from(String(value ?? ''), (char) =>
@@ -39,13 +37,22 @@ export async function renderReceipt(order, config, products = []) {
   if (!Array.isArray(order.items)) throw new Error('訂單明細不完整，請重新載入');
   const width = Number(config.width);
   if (![384, 512, 576].includes(width)) throw new Error('列印寬度不正確');
+  const fontSize = Number(config.fontSize ?? 32);
+  if (![24, 28, 32, 40].includes(fontSize)) throw new Error('列印字體大小不正確');
+  const lineHeight = Math.ceil(fontSize * 1.4);
+  const topTrim = 4;
+  const extraBottomFeed = Math.ceil(lineHeight / 2);
+  const bandLines = Math.max(1, Math.floor(238 / lineHeight));
   await document.fonts.ready;
   const measure = document.createElement('canvas').getContext('2d');
-  measure.font = '24px system-ui, sans-serif';
+  measure.font = `${fontSize}px system-ui, sans-serif`;
   const lines = [];
-  const ending = config.cut ? new Uint8Array([0x1d, 0x56, 66, 16]) : new Uint8Array([0x1b, 0x64, 4]);
+  // Manual §52: the default vertical motion unit is one print dot.
+  const ending = config.cut
+    ? new Uint8Array([0x1d, 0x56, 66, 16 + extraBottomFeed])
+    : new Uint8Array([0x1b, 0x4a, extraBottomFeed, 0x1b, 0x64, 4]);
   const byteLengthFor = (count) =>
-    5 + count * LINE_HEIGHT * (width / 8) + Math.ceil(count / BAND_LINES) * 8 + ending.length;
+    5 + (count * lineHeight - topTrim) * (width / 8) + Math.ceil(count / bandLines) * 8 + ending.length;
   function pushLine(line) {
     if (byteLengthFor(lines.length + 1) > MAX_PRINT_BYTES) throw new Error('單據超過 8 MiB，請縮短內容');
     lines.push(line);
@@ -77,7 +84,7 @@ export async function renderReceipt(order, config, products = []) {
     if (order.customerAddress) add(`地址：${order.customerAddress}`);
   }
   add(`狀態：${order.status || '-'}`);
-  add('────────────────────────────');
+  pushLine(null); // A graphical rule occupies one row regardless of platform font.
   order.items.forEach((item) => {
     add(item.productName || '未命名商品');
     add(`${item.quantity} × ${money(item.unitPrice)} = ${money(item.subtotal)}`);
@@ -90,7 +97,7 @@ export async function renderReceipt(order, config, products = []) {
     }
     if (item.notes) add(`備註：${item.notes}`);
   });
-  add('────────────────────────────');
+  pushLine(null); // A graphical rule occupies one row regardless of platform font.
   add(`運費：${money(order.shippingFee)}`);
   if (order.shippingNotes) add(order.shippingNotes);
   add(`總金額：${money(order.totalAmount)}`);
@@ -99,10 +106,11 @@ export async function renderReceipt(order, config, products = []) {
   if (order.notes) add(`備註：${order.notes}`);
   add('此單為訂單明細，非統一發票');
   function drawBand(start) {
-    const group = lines.slice(start, start + BAND_LINES);
+    const group = lines.slice(start, start + bandLines);
+    const trim = start === 0 ? topTrim : 0;
     const canvas = document.createElement('canvas');
     canvas.width = width;
-    canvas.height = group.length * LINE_HEIGHT;
+    canvas.height = group.length * lineHeight - trim;
     canvas.setAttribute('aria-hidden', 'true');
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff';
@@ -110,20 +118,24 @@ export async function renderReceipt(order, config, products = []) {
     ctx.fillStyle = '#000';
     ctx.font = measure.font;
     ctx.textBaseline = 'top';
-    group.forEach((line, index) => ctx.fillText(line, 16, index * LINE_HEIGHT + 4));
+    group.forEach((line, index) => {
+      if (line === null)
+        ctx.fillRect(16, index * lineHeight + Math.floor(lineHeight / 2) - trim, width - 32, 2);
+      else ctx.fillText(line, 16, index * lineHeight + 4 - trim);
+    });
     return { canvas, bytes: rasterBand(canvas) };
   }
   return {
     byteLength: byteLengthFor(lines.length),
-    text: lines.join('\n'),
-    pageCount: Math.ceil(lines.length / (BAND_LINES * PAGE_BANDS)),
+    text: lines.map((line) => line ?? '────────').join('\n'),
+    pageCount: Math.ceil(lines.length / (bandLines * PAGE_BANDS)),
     previewPage(page) {
-      const start = page * BAND_LINES * PAGE_BANDS;
+      const start = page * bandLines * PAGE_BANDS;
       const bands = [];
       for (
         let offset = start;
-        offset < Math.min(lines.length, start + BAND_LINES * PAGE_BANDS);
-        offset += BAND_LINES
+        offset < Math.min(lines.length, start + bandLines * PAGE_BANDS);
+        offset += bandLines
       ) {
         bands.push(drawBand(offset).canvas);
       }
@@ -131,7 +143,7 @@ export async function renderReceipt(order, config, products = []) {
     },
     *chunks() {
       yield new Uint8Array([0x1b, 0x40, 0x1b, 0x61, 0]);
-      for (let start = 0; start < lines.length; start += BAND_LINES) {
+      for (let start = 0; start < lines.length; start += bandLines) {
         yield drawBand(start).bytes;
       }
       // Manual §53: feed to cutter plus n units, then partial cut.

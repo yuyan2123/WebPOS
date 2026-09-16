@@ -19,7 +19,7 @@ const panels = {
   demand: '需求統計',
   reports: '營業報表',
   device: '裝置資訊',
-  printer: '印表機',
+  printer: '出單機',
 };
 const panelSubtitles = {
   products: '新增、編輯與管理商品',
@@ -27,7 +27,7 @@ const panelSubtitles = {
   demand: '依交貨日期彙整商品需求',
   reports: '依交貨日期區間查看營收與商品銷售',
   device: '查看目前使用的裝置與瀏覽器',
-  printer: '設定此裝置的印表機、檢查連線與測試列印',
+  printer: '管理列印方式與出單機連線',
 };
 let restoring = false;
 
@@ -43,7 +43,11 @@ function navigateFromUrl() {
 export function refreshWorkspace() {
   const customer = document.getElementById('workspaceCustomer');
   if (!customer) return;
-  customer.textContent = state.currentCustomer.name || state.currentCustomer.contactValue || state.currentCustomer.phone || '尚未填寫客戶';
+  customer.textContent =
+    state.currentCustomer.name ||
+    state.currentCustomer.contactValue ||
+    state.currentCustomer.phone ||
+    '尚未填寫客戶';
   document.getElementById('workspaceDate').textContent = state.currentDeliveryDate || '尚未選擇日期';
   const items = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
   const quantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
