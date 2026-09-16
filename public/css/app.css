@@ -3773,6 +3773,108 @@ button.loading::after {
   font-size: 1.1rem;
 }
 
+.printer-settings {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  margin-top: 20px;
+}
+.printer-settings input:not([type="checkbox"]),
+.printer-settings select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  font: inherit;
+}
+.printer-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.printer-checkbox input {
+  width: 20px;
+  height: 20px;
+}
+.printer-actions,
+#printer-last-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+#printer-last-order {
+  padding: 12px 20px;
+  background: #e8f3ee;
+  color: #173d32;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+#printer-last-order[hidden] {
+  display: none;
+}
+.printer-dialog {
+  max-width: 660px;
+}
+.receipt-preview {
+  width: min(100%, 576px);
+  margin: 16px auto;
+  background: white;
+  box-shadow: 0 2px 10px #0002;
+}
+.receipt-preview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.receipt-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.receipt-pages[hidden] {
+  display: none;
+}
+#printer-status,
+#printer-result {
+  overflow-wrap: anywhere;
+  min-height: 1.5em;
+}
+.printer-settings p {
+  color: #475569;
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.printer-settings button,
+.printer-dialog button,
+#printer-last-order button {
+  min-height: 44px;
+}
+.printer-actions .btn,
+#printer-last-order .btn,
+[data-printer-order] {
+  border: 1px solid #b5cfc5;
+  border-radius: 8px;
+  background: #e8f3ee;
+  color: #174e3e;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.printer-actions .btn:hover,
+#printer-last-order .btn:hover {
+  background: #d8eade;
+}
+.printer-actions .btn:disabled,
+[data-printer-order]:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* ==========================================================================
    金家 POS — 2026 responsive visual system
    Shared component surfaces. Layout and navigation live in workspace.css.

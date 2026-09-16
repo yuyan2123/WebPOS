@@ -585,6 +585,7 @@
                 }
             });
             document.getElementById('firebaseSignOut').addEventListener('click', async function() {
+                window.dispatchEvent(new Event('pos:session-ending'));
                 await authSdk.signOut(auth);
                 location.reload();
             });
@@ -617,6 +618,7 @@
                 }
             });
             document.getElementById('firebaseVerificationSignOut').addEventListener('click', async function() {
+                window.dispatchEvent(new Event('pos:session-ending'));
                 await authSdk.signOut(auth);
                 location.reload();
             });
@@ -626,6 +628,7 @@
                 authSdk.onAuthStateChanged(auth, (user) => {
                     if (user?.emailVerified) {
                         if (activeUid && activeUid !== user.uid) {
+                            window.dispatchEvent(new Event('pos:session-ending'));
                             location.reload();
                             return;
                         }

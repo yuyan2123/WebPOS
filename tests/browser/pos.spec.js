@@ -71,6 +71,352 @@ async function openManagementPanel(page, panel) {
   await page.locator('#nav-' + panel).click();
 }
 
+async function mockPrinter(page) {
+  await page.addInitScript(() => {
+    window.__printerFrames = [];
+    window.__printerConnections = 0;
+    window.WebSocket = class {
+      constructor() {
+        window.__printerConnections++;
+        this.total = 0;
+        setTimeout(() => this.onopen?.({}), 0);
+      }
+      send(payload) {
+        if (this.closed) throw new Error('closed');
+        let response;
+        if (typeof payload === 'string') {
+          const command = JSON.parse(payload);
+          window.__printerFrames.push({ type: command.type });
+          if (command.type === 'auth')
+            response =
+              window.__printerMode === 'unauthorized'
+                ? { event: 'error', code: 'unauthorized' }
+                : {
+                    event: 'ready',
+                    maxChunk: 4096,
+                    ...(window.__printerMode === 'legacy' ? {} : { maxJob: 8 * 1024 * 1024 }),
+                  };
+          if (command.type === 'status') response = { event: 'status', raw: 22, offline: false };
+          if (command.type === 'begin')
+            response =
+              window.__printerMode === 'busy' ? { event: 'error', code: 'busy' } : { event: 'started' };
+          if (command.type === 'end') response = { event: 'sent', bytes: this.total };
+        } else {
+          const bytes = Array.from(payload);
+          this.total += bytes.length;
+          window.__printerFrames.push({ bytes });
+          if (window.__printerMode === 'disconnect') {
+            setTimeout(() => this.close(), 0);
+            return;
+          }
+          response = { event: 'chunk', bytes: bytes.length, total: this.total };
+        }
+        if (window.__printerMode === 'hold') return;
+        setTimeout(() => {
+          if (!this.closed) this.onmessage?.({ data: JSON.stringify(response) });
+        }, 2);
+      }
+      close() {
+        this.closed = true;
+        this.onclose?.({ code: 1000 });
+      }
+    };
+  });
+}
+
+async function configurePrinter(page) {
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-enabled').check();
+  await page.locator('#printer-token').fill('test-secret');
+  await page.locator('#printer-title').fill('金佳餅店');
+  await page.locator('#printer-check').click();
+  await expect(page.locator('#printer-status')).toContainText('已連線');
+}
+
+test('printer settings, exact raster preview, chunk acknowledgements and no duplicate send', async ({
+  page,
+}, testInfo) => {
+  await mockPrinter(page);
+  const errors = await openWorkspace(page);
+  await configurePrinter(page);
+  await page.screenshot({
+    path: testInfo.outputPath('printer-settings.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  const storage = await page.evaluate(() => ({
+    local: localStorage.getItem('ginJiaPos.printer.test-user:test-shop'),
+    session: sessionStorage.getItem('ginJiaPos.printer.test-user:test-shop'),
+  }));
+  expect(storage.local).not.toContain('test-secret');
+  expect(storage.session).toBe('test-secret');
+  await page.locator('#printer-cut').check();
+  await page.locator('#printer-test').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  await page.screenshot({
+    path: testInfo.outputPath('printer-preview.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.locator('#printer-preview summary').click();
+  await expect(page.locator('.receipt-text')).toContainText('剩餘金額：NT$ 70');
+  await page.locator('#printer-send').evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect(page.locator('#printer-result')).toContainText('已傳送');
+  await expect(page.locator('#printer-send')).toBeDisabled();
+  const result = await page.evaluate(() => {
+    const frames = window.__printerFrames;
+    const chunks = frames.filter((frame) => frame.bytes).map((frame) => frame.bytes);
+    const bytes = chunks.flat();
+    let offset = 5;
+    let same = true;
+    let ink = 0;
+    for (const canvas of document.querySelectorAll('.receipt-preview canvas')) {
+      const header = bytes.slice(offset, offset + 8);
+      if (header.join() !== [29, 118, 48, 0, 64, 0, canvas.height & 255, canvas.height >> 8].join())
+        same = false;
+      offset += 8;
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let y = 0; y < canvas.height; y++)
+        for (let x = 0; x < canvas.width; x++) {
+          const printed = Boolean(bytes[offset + y * 64 + (x >> 3)] & (128 >> (x & 7)));
+          const black = pixels[(y * canvas.width + x) * 4] === 0;
+          if (printed !== black) same = false;
+          if (printed) ink++;
+        }
+      offset += canvas.height * 64;
+    }
+    return {
+      same,
+      ink,
+      start: bytes.slice(0, 5),
+      tail: bytes.slice(offset),
+      max: Math.max(...chunks.map((chunk) => chunk.length)),
+      begins: frames.filter((frame) => frame.type === 'begin').length,
+    };
+  });
+  expect(result.same).toBe(true);
+  expect(result.ink).toBeGreaterThan(100);
+  expect(result.start).toEqual([27, 64, 27, 97, 0]);
+  expect(result.tail).toEqual([29, 86, 66, 16]);
+  expect(result.max).toBeLessThanOrEqual(4096);
+  expect(result.begins).toBe(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#printer-preview')).toHaveCount(0);
+  await page.locator('#printer-test').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
+test('printer rejects bad auth, times out without retry, and remembers token only on request', async ({
+  page,
+}) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await configurePrinter(page);
+  await page.locator('#printer-remember').check();
+  await page.getByRole('button', { name: '儲存設定', exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('ginJiaPos.printer.test-user:test-shop')).token,
+    ),
+  ).toBe('test-secret');
+  await page.locator('#printer-remember').uncheck();
+  await page.getByRole('button', { name: '儲存設定', exact: true }).click();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('ginJiaPos.printer.test-user:test-shop')).token,
+    ),
+  ).toBe('');
+  await page.evaluate(() => {
+    window.__printerMode = 'unauthorized';
+  });
+  await page.locator('#printer-check').click();
+  await expect(page.locator('#printer-status')).toContainText('金鑰不正確');
+  await page.clock.install();
+  await page.evaluate(() => {
+    window.__printerMode = 'hold';
+    window.__printerFrames = [];
+  });
+  await page.locator('#printer-check').click();
+  await expect(page.locator('#printer-status')).toContainText('正在查詢');
+  await expect
+    .poll(() => page.evaluate(() => window.__printerFrames.some((frame) => frame.type === 'auth')))
+    .toBe(true);
+  await page.clock.fastForward(16000);
+  await expect(page.locator('#printer-status')).toContainText('逾時');
+  await expect(page.locator('#printer-check')).toBeEnabled();
+  expect(await page.evaluate(() => window.__printerFrames.filter((frame) => frame.bytes).length)).toBe(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('pos:session-ending')));
+  await expect(page.locator('#printer-token')).toHaveValue('');
+  expect(
+    await page.evaluate(() => sessionStorage.getItem('ginJiaPos.printer.test-user:test-shop')),
+  ).toBeNull();
+});
+
+test('printer wraps long gift receipts and refuses oversize jobs before connecting', async ({ page }) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await configurePrinter(page);
+  await page.locator('#printer-width').selectOption('384');
+  await page.getByRole('button', { name: '儲存設定', exact: true }).click();
+  await page.locator('#nav-search').click();
+  await page.evaluate(() => {
+    const item = {
+      productName: '非常長的中文禮盒商品名稱'.repeat(3),
+      quantity: 2,
+      unitPrice: 100,
+      subtotal: 200,
+      isGiftBox: true,
+      giftBoxDetails: { products: { P1: 3 }, notes: '不要花生' },
+    };
+    window.__orderDetails = {
+      orderId: 'O-long',
+      customerName: '客戶',
+      deliveryType: '外送',
+      customerAddress: '地址'.repeat(30),
+      status: '已付訂金',
+      totalAmount: 3000,
+      depositAmount: 1000,
+      remainingAmount: 2000,
+      items: Array(15).fill(item),
+    };
+    window.viewOrderDetails('O-long');
+  });
+  await page.locator('[data-printer-order="O-long"]').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  await page.locator('#printer-preview summary').click();
+  await expect(page.locator('.receipt-text')).toContainText('原味餅：每盒 3 個');
+  await expect(page.locator('.receipt-text')).toContainText('不要花生');
+  expect(await page.locator('.receipt-preview canvas').count()).toBe(4);
+  await page.locator('.receipt-next').click();
+  await expect(page.locator('.receipt-page-label')).toContainText('2 /');
+  expect(await page.locator('.receipt-preview canvas').count()).toBeLessThanOrEqual(4);
+  expect(
+    await page
+      .locator('.receipt-preview canvas')
+      .evaluateAll((canvases) => canvases.every((canvas) => canvas.width === 384 && canvas.height <= 238)),
+  ).toBe(true);
+  await page.locator('#printer-preview .printer-close').click();
+  await page.evaluate(() => {
+    window.__orderDetails.items = Array(150).fill(window.__orderDetails.items[0]);
+    window.__printerConnections = 0;
+  });
+  await page.locator('[data-printer-order="O-long"]').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  await page.evaluate(() => {
+    window.__printerMode = 'legacy';
+    window.__printerFrames = [];
+  });
+  await page.locator('#printer-send').click();
+  await expect(page.locator('#printer-result')).toContainText('更新至 8 MiB');
+  expect(await page.evaluate(() => window.__printerFrames.some((frame) => frame.type === 'begin'))).toBe(
+    false,
+  );
+  await page.locator('#printer-preview .printer-close').click();
+  await page.evaluate(() => {
+    window.__printerMode = '';
+    window.__printerFrames = [];
+  });
+  await page.locator('[data-printer-order="O-long"]').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  await page.locator('#printer-send').click();
+  await expect(page.locator('#printer-result')).toContainText('已傳送', { timeout: 20000 });
+  const sent = await page.evaluate(() =>
+    window.__printerFrames.filter((frame) => frame.bytes).reduce((sum, frame) => sum + frame.bytes.length, 0),
+  );
+  expect(sent).toBeGreaterThan(1024 * 1024);
+  expect(sent).toBeLessThan(8 * 1024 * 1024);
+  expect(await page.locator('.receipt-preview canvas').count()).toBeLessThanOrEqual(4);
+  await page.locator('#printer-preview .printer-close').click();
+  await page.evaluate(() => {
+    window.__orderDetails.items = Array(2000).fill(window.__orderDetails.items[0]);
+    window.__printerConnections = 0;
+  });
+  await page.locator('[data-printer-order="O-long"]').click();
+  await expect(page.locator('#printer-result')).toContainText('超過 8 MiB');
+  await expect(page.locator('#printer-send')).toBeDisabled();
+  expect(await page.evaluate(() => window.__printerConnections)).toBe(0);
+});
+
+test('printer failure never replays bytes and context switch aborts old work', async ({ page }) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await configurePrinter(page);
+  for (const mode of ['busy', 'disconnect']) {
+    await page.evaluate((mode) => {
+      window.__printerMode = mode;
+      window.__printerFrames = [];
+    }, mode);
+    await page.locator('#printer-test').click();
+    await expect(page.locator('#printer-send')).toBeEnabled();
+    await page.locator('#printer-send').click();
+    await expect(page.locator('#printer-result')).toContainText(mode === 'busy' ? '忙碌' : '可能已部分列印');
+    await expect(page.locator('#printer-send')).toBeDisabled();
+    expect(await page.evaluate(() => window.__printerFrames.filter((frame) => frame.bytes).length)).toBe(
+      mode === 'busy' ? 0 : 1,
+    );
+    await page.locator('#printer-preview .printer-close').click();
+  }
+  await page.evaluate(() => {
+    window.__printerMode = 'hold';
+    window.__printerFrames = [];
+  });
+  await page.locator('#printer-check').click();
+  await expect(page.locator('#printer-check')).toBeDisabled();
+  await page.evaluate(() => {
+    document.body.dataset.shopId = 'other-shop';
+  });
+  await expect(page.locator('#printer-token')).toHaveValue('');
+  await expect(page.locator('#printer-enabled')).not.toBeChecked();
+  await expect(page.locator('#printer-check')).toBeEnabled();
+  await expect(page.locator('#printer-status')).toHaveText('尚未檢查連線');
+  expect(
+    await page.evaluate(() => sessionStorage.getItem('ginJiaPos.printer.test-user:test-shop')),
+  ).toBeNull();
+  await page.evaluate(() => {
+    delete document.body.dataset.userId;
+  });
+  await expect(page.locator('#printer-check')).toBeDisabled();
+});
+
+test('printer preview fetches saved order and viewer cannot print', async ({ page }) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await configurePrinter(page);
+  await page.locator('#nav-search').click();
+  await page.evaluate(() => {
+    window.__orderDetails = {
+      orderId: 'O-print',
+      customerName: '已儲存客戶',
+      deliveryType: '自取',
+      status: '已付清',
+      totalAmount: 100,
+      depositAmount: 100,
+      remainingAmount: 0,
+      items: [{ productName: '中文商品', quantity: 2, unitPrice: 50, subtotal: 100 }],
+    };
+    window.viewOrderDetails('O-print');
+  });
+  await page.locator('[data-printer-order="O-print"]').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  expect(
+    await page.evaluate(() => window.__calls.filter((call) => call.method === 'getOrderDetails').length),
+  ).toBe(2);
+  await page.locator('#printer-preview summary').click();
+  await expect(page.locator('.receipt-text')).toContainText('剩餘金額：NT$ 0');
+  await page.evaluate(() => {
+    document.body.dataset.shopRole = 'viewer';
+  });
+  await expect(page.locator('#printer-preview')).toHaveCount(0);
+  await expect(page.locator('[data-printer-order="O-print"]')).toBeDisabled();
+  expect(
+    await page.evaluate(() => window.__printerFrames.filter((frame) => frame.type === 'begin').length),
+  ).toBe(0);
+});
+
 test('all sections remain reachable, route history works, no horizontal overflow', async ({ page }) => {
   const errors = await openWorkspace(page);
   for (const section of ['date', 'gift', 'giftbox', 'search', 'customer']) {
@@ -139,7 +485,9 @@ test('search failure is recoverable and enter submits filters', async ({ page })
   await openWorkspace(page);
   await page.locator('#nav-search').click();
   await expect(page.locator('#searchStatus')).toBeDisabled();
-  await expect(page.locator('.search-form-group').filter({ has: page.locator('#searchStatus') })).toBeHidden();
+  await expect(
+    page.locator('.search-form-group').filter({ has: page.locator('#searchStatus') }),
+  ).toBeHidden();
   await page.locator('#searchName').fill('測試');
   await page.evaluate(() => (window.__fail = 'searchOrders'));
   await page.locator('#searchName').press('Enter');
@@ -147,7 +495,9 @@ test('search failure is recoverable and enter submits filters', async ({ page })
   await page.evaluate(() => (window.__fail = null));
   await page.locator('#searchName').press('Enter');
   await expect(page.locator('#searchResults')).toContainText('未找到');
-  const criteria = await page.evaluate(() => window.__calls.filter((call) => call.method === 'searchOrders').at(-1).args[0]);
+  const criteria = await page.evaluate(
+    () => window.__calls.filter((call) => call.method === 'searchOrders').at(-1).args[0],
+  );
   expect(criteria).not.toHaveProperty('status');
 });
 
@@ -231,7 +581,11 @@ for (const field of ['customerName', 'customerPhone']) {
     await page.locator('#workspaceCart').click();
     await expect(page.locator('#checkoutBtn')).not.toHaveClass(/checkout-not-ready/);
     await page.locator('#checkoutBtn').click();
-    await expect.poll(() => page.evaluate(() => window.__calls.some((call) => call.method === 'submitOrder'))).toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => window.__calls.some((call) => call.method === 'submitOrder')))
+      .toBe(true);
+    await expect(page.locator('#printer-last-order')).toContainText('訂單 O-test 已建立');
+    await expect(page.locator('#printer-last-order [data-printer-order]')).toBeVisible();
     expect(errors).toEqual([]);
   });
 }
@@ -693,7 +1047,9 @@ test('customer autocomplete and product filtering preserve selection and recover
   await expect(page.locator('#giftProducts')).not.toContainText('原味餅');
   await page.locator('#catalogFilterTabs').getByRole('button', { name: '伴手禮 (1)', exact: true }).click();
   await expect(page.locator('#giftProducts')).toContainText('原味餅');
-  await expect(page.locator('#catalogFilterTabs').getByRole('button', { name: '伴手禮 (1)', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.locator('#catalogFilterTabs').getByRole('button', { name: '伴手禮 (1)', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#catalogFilterTabs').getByRole('button', { name: '全部類別 (2)', exact: true }).click();
   await expect(page.locator('#giftProducts')).toContainText('喜餅');
   expect(errors).toEqual([]);

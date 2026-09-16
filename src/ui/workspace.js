@@ -19,6 +19,7 @@ const panels = {
   demand: '需求統計',
   reports: '營業報表',
   device: '裝置資訊',
+  printer: '印表機',
 };
 const panelSubtitles = {
   products: '新增、編輯與管理商品',
@@ -26,6 +27,7 @@ const panelSubtitles = {
   demand: '依交貨日期彙整商品需求',
   reports: '依交貨日期區間查看營收與商品銷售',
   device: '查看目前使用的裝置與瀏覽器',
+  printer: '設定此裝置的印表機、檢查連線與測試列印',
 };
 let restoring = false;
 

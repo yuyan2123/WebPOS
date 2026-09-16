@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#1f6f5f">
-    <meta name="app-version" content="13.2+c45ca5eb8bd7">
-    <meta name="app-updated-at" content="2026-09-15T20:05:19.455Z">
+    <meta name="app-version" content="0.14.0+96a466cfdbd8">
+    <meta name="app-updated-at" content="2026-09-16T18:18:20.595Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -56,6 +56,7 @@
             <button type="button" id="nav-capacity" class="nav-item" data-panel="capacity"><i class="fas fa-calendar-check" aria-hidden="true"></i><span>供應量設定</span></button>
             <button type="button" id="nav-demand" class="nav-item" data-panel="demand"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span>需求統計</span></button>
             <button type="button" id="nav-reports" class="nav-item" data-panel="reports"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>營業報表</span></button>
+            <button type="button" id="nav-printer" class="nav-item" data-panel="printer"><i class="fas fa-print" aria-hidden="true"></i><span>印表機</span></button>
             <button type="button" id="nav-device" class="nav-item" data-panel="device"><i class="fas fa-laptop" aria-hidden="true"></i><span>裝置資訊</span></button>
           </div>
         </div>
@@ -65,6 +66,7 @@
 
     <!-- Main Content -->
     <main inert aria-busy="true" id="mainContent" tabindex="-1" class="workspace-main">
+      <aside id="printer-last-order" aria-label="最近建立的訂單" hidden></aside>
       <div class="workspace-heading"><div><p class="eyebrow">WebPOS · 訂單工作台</p><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">先填寫客戶與配送資料</p></div></div>
       <aside id="orderContext" class="order-context" aria-label="目前訂單摘要">
         <span class="context-mode" id="workspaceMode">新訂單</span>
@@ -450,6 +452,29 @@
             </div>
 
 
+            <div id="settingsPrinter" class="settings-section" style="display: none;">
+                <div class="settings-panel">
+                    <h2 class="settings-panel-title">印表機</h2>
+                    <p>設定只保存在這台裝置，依帳號與店鋪分開。iPad 首次使用請先在橋接裝置頁面下載 CA 憑證，於系統設定安裝並啟用完整信任。</p>
+                    <form id="printer-settings" class="printer-settings">
+                        <label class="printer-checkbox"><input id="printer-enabled" type="checkbox">啟用訂單列印</label>
+                        <label for="printer-url">WSS 位址</label>
+                        <input id="printer-url" type="url" required placeholder="wss://xiao-printer.local/ws" autocomplete="off" spellcheck="false">
+                        <label for="printer-token">裝置存取金鑰</label>
+                        <input id="printer-token" type="password" maxlength="256" autocomplete="off">
+                        <label class="printer-checkbox"><input id="printer-remember" type="checkbox">記住此裝置金鑰（僅限自己管理的裝置）</label>
+                        <p>未勾選時金鑰僅保留於目前工作階段；切換帳號、店鋪或登出後須重新輸入。</p>
+                        <label for="printer-title">單據店名</label>
+                        <input id="printer-title" maxlength="80" placeholder="請輸入店名">
+                        <label for="printer-width">列印寬度</label>
+                        <select id="printer-width"><option value="512">512 點（預設）</option><option value="576">576 點</option><option value="384">384 點</option></select>
+                        <label class="printer-checkbox"><input id="printer-cut" type="checkbox">列印後進紙並半切紙</label>
+                        <p>請先用中文測試單確認可列印寬度與切紙。每次列印一份，不會自動重送。</p>
+                        <div class="printer-actions"><button class="btn" type="submit">儲存設定</button><button class="btn" type="button" id="printer-check">儲存並檢查連線</button><button class="btn" type="button" id="printer-test">中文測試列印</button></div>
+                    </form>
+                    <p id="printer-status" role="status" aria-live="polite"></p>
+                </div>
+            </div>
             <!-- 裝置資訊 -->
             <div id="settingsSystem" class="settings-panel" hidden>
                 <div class="settings-panel-title"><i class="fas fa-sync-alt"></i> 系統資訊</div>
@@ -493,7 +518,7 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version v.13.2</p>
+            <p>Website content edited by yuyan2123. Version 0.14.0</p>
         </footer>
 
     </main>

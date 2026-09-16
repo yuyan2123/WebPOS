@@ -6,6 +6,7 @@ import { escapeHtml } from './customers.js';
 import { formatDisplayDate } from './search.js';
 import { getStatusPillClass } from './order-status.js';
 import { initializeModalCloseHandlers } from './platform.js';
+import { addOrderPrintButton } from './printer.js';
 
 export function viewOrderDetails(orderId) {
   const cachedDetails =
@@ -209,6 +210,7 @@ export function handleOrderDetails(details) {
                 </div>
             </div>`;
   document.body.appendChild(detailModal);
+  addOrderPrintButton(detailModal.querySelector('.modal-footer'), details.orderId || details.id);
   // 確保動態創建的modal有正確的關閉處理器
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }

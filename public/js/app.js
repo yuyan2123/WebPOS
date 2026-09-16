@@ -1691,20 +1691,20 @@ function deleteDateOverrideById(id) {
   }
 }
 function loadMonthCapacity(year, month, callback) {
-  const key = year + "-" + month;
-  if (state.monthCapacityCache[key]) {
-    if (callback) callback(state.monthCapacityCache[key]);
+  const key2 = year + "-" + month;
+  if (state.monthCapacityCache[key2]) {
+    if (callback) callback(state.monthCapacityCache[key2]);
     return;
   }
-  if (state.capacityInflight[key]) {
-    if (callback) state.capacityInflight[key].push(callback);
+  if (state.capacityInflight[key2]) {
+    if (callback) state.capacityInflight[key2].push(callback);
     return;
   }
-  state.capacityInflight[key] = callback ? [callback] : [];
+  state.capacityInflight[key2] = callback ? [callback] : [];
   function resolveCallbacks(data) {
-    state.monthCapacityCache[key] = data;
-    const cbs = state.capacityInflight[key] || [];
-    delete state.capacityInflight[key];
+    state.monthCapacityCache[key2] = data;
+    const cbs = state.capacityInflight[key2] || [];
+    delete state.capacityInflight[key2];
     cbs.forEach(function(cb) {
       cb(data);
     });
@@ -1865,15 +1865,15 @@ function loadProducts() {
   }
 }
 async function cacheProducts(products) {
-  const key = catalogStorageKey();
-  if (!key) return;
-  await localDbPut("catalogs", key, { products, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }).catch(function() {
+  const key2 = catalogStorageKey();
+  if (!key2) return;
+  await localDbPut("catalogs", key2, { products, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }).catch(function() {
   });
 }
 async function showProductLoadFailure(error) {
   console.warn("\u5546\u54C1\u8CC7\u6599\u8F09\u5165\u5931\u6557", error);
-  const key = catalogStorageKey();
-  const cached = key ? await localDbGet("catalogs", key).catch(function() {
+  const key2 = catalogStorageKey();
+  const cached = key2 ? await localDbGet("catalogs", key2).catch(function() {
     return null;
   }) : null;
   if (cached?.products?.length) {
@@ -2389,19 +2389,19 @@ async function localDbOperation(storeName, mode, operation) {
     };
   });
 }
-function localDbGet(store, key) {
+function localDbGet(store, key2) {
   return localDbOperation(store, "readonly", function(s) {
-    return s.get(key);
+    return s.get(key2);
   });
 }
-function localDbPut(store, key, value) {
+function localDbPut(store, key2, value) {
   return localDbOperation(store, "readwrite", function(s) {
-    return s.put(value, key);
+    return s.put(value, key2);
   });
 }
-function localDbDelete(store, key) {
+function localDbDelete(store, key2) {
   return localDbOperation(store, "readwrite", function(s) {
-    return s.delete(key);
+    return s.delete(key2);
   });
 }
 function currentLocalScope() {
@@ -2410,12 +2410,12 @@ function currentLocalScope() {
   return uid && shopId ? `${uid}:${shopId}` : "";
 }
 function draftStorageKey() {
-  const scope = currentLocalScope();
-  return scope ? `order:${scope}` : "";
+  const scope2 = currentLocalScope();
+  return scope2 ? `order:${scope2}` : "";
 }
 function catalogStorageKey() {
-  const scope = currentLocalScope();
-  return scope ? `products:${scope}` : "";
+  const scope2 = currentLocalScope();
+  return scope2 ? `products:${scope2}` : "";
 }
 function captureOrderDraft() {
   return {
@@ -2454,15 +2454,15 @@ function scheduleDraftSave() {
   if (state.suppressDraftSave) return;
   clearTimeout(state.draftSaveTimer);
   state.draftSaveTimer = setTimeout(async function() {
-    const key = draftStorageKey();
-    if (!key) return;
+    const key2 = draftStorageKey();
+    if (!key2) return;
     const draft = captureOrderDraft();
     try {
       if (hasMeaningfulDraft(draft)) {
-        await localDbPut("drafts", key, draft);
+        await localDbPut("drafts", key2, draft);
         document.body.dataset.draftDirty = "true";
       } else {
-        await localDbDelete("drafts", key);
+        await localDbDelete("drafts", key2);
         document.body.dataset.draftDirty = "false";
       }
     } catch (error) {
@@ -2472,24 +2472,24 @@ function scheduleDraftSave() {
 }
 async function clearOrderDraft() {
   clearTimeout(state.draftSaveTimer);
-  const key = draftStorageKey();
+  const key2 = draftStorageKey();
   document.body.dataset.draftDirty = "false";
-  if (key)
-    await localDbDelete("drafts", key).catch(function(error) {
+  if (key2)
+    await localDbDelete("drafts", key2).catch(function(error) {
       console.warn("\u8349\u7A3F\u6E05\u9664\u5931\u6557", error);
     });
 }
 function applyRoleCapabilities() {
   const viewer = document.body.dataset.shopRole === "viewer";
-  document.querySelectorAll(".requires-editor").forEach(function(element) {
-    element.hidden = viewer;
-    element.setAttribute("aria-hidden", String(viewer));
+  document.querySelectorAll(".requires-editor").forEach(function(element2) {
+    element2.hidden = viewer;
+    element2.setAttribute("aria-hidden", String(viewer));
   });
   if (viewer) document.body.dataset.permissionNotice = "readonly";
   else delete document.body.dataset.permissionNotice;
-  document.querySelectorAll("#settingsCapacity input, #settingsCapacity button").forEach(function(element) {
-    element.disabled = viewer;
-    element.setAttribute("aria-disabled", String(viewer));
+  document.querySelectorAll("#settingsCapacity input, #settingsCapacity button").forEach(function(element2) {
+    element2.disabled = viewer;
+    element2.setAttribute("aria-disabled", String(viewer));
   });
   if (state.allProducts.length) renderProductCards();
   if (state.currentSearchOrders.length)
@@ -2511,8 +2511,8 @@ function applyDraft(draft) {
     "recipientPhone",
     "shippingFee"
   ].forEach(function(id) {
-    const element = document.getElementById(id);
-    if (element) element.value = fields[id] || "";
+    const element2 = document.getElementById(id);
+    if (element2) element2.value = fields[id] || "";
   });
   if (state.currentContactMethod === "line") document.getElementById("customerPhone").value = "LINE";
   document.querySelectorAll("#nameTitleGroup .name-title-btn").forEach(function(button) {
@@ -2552,16 +2552,16 @@ function applyDraft(draft) {
   showAlert("\u5DF2\u6062\u5FA9\u4E0A\u6B21\u672A\u5B8C\u6210\u7684\u8A02\u55AE\u8349\u7A3F", "success");
 }
 async function restoreOrderDraftOnce() {
-  const key = draftStorageKey();
-  if (!key || state.restoredDraftKey === key) return;
-  state.restoredDraftKey = key;
-  const draft = await localDbGet("drafts", key).catch(function() {
+  const key2 = draftStorageKey();
+  if (!key2 || state.restoredDraftKey === key2) return;
+  state.restoredDraftKey = key2;
+  const draft = await localDbGet("drafts", key2).catch(function() {
     return null;
   });
   if (!hasMeaningfulDraft(draft)) return;
   const age = Date.now() - new Date(draft.updatedAt || 0).getTime();
   if (!Number.isFinite(age) || age > 30 * 24 * 60 * 60 * 1e3) {
-    await localDbDelete("drafts", key);
+    await localDbDelete("drafts", key2);
     return;
   }
   if (confirm("\u627E\u5230\u4E0A\u6B21\u672A\u5B8C\u6210\u7684\u8A02\u55AE\u8349\u7A3F\uFF0C\u662F\u5426\u7E7C\u7E8C\uFF1F")) applyDraft(draft);
@@ -2770,8 +2770,8 @@ function escapeAttr(str) {
   return String(str == null ? "" : str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 function getSelectedTitle() {
-  const active = document.querySelector("#nameTitleGroup .name-title-btn.active");
-  return active ? active.dataset.title : "";
+  const active2 = document.querySelector("#nameTitleGroup .name-title-btn.active");
+  return active2 ? active2.dataset.title : "";
 }
 function saveCustomer() {
   const saveBtn = window.event?.currentTarget || window.event?.target;
@@ -3488,8 +3488,8 @@ function showSection(sectionName, navElement, panel) {
     navElement = void 0;
   }
   if (sectionName === "settings" && !panel) {
-    const active = document.querySelector(".settings-section.active");
-    return showSettingsSection(active?.id.replace("settings", "").toLowerCase() || "products");
+    const active2 = document.querySelector(".settings-section.active");
+    return showSettingsSection(active2?.id.replace("settings", "").toLowerCase() || "products");
   }
   const section = document.getElementById(sectionName);
   if (!section?.classList.contains("content-section")) return;
@@ -3550,6 +3550,526 @@ function showSettingsSection(sectionName, navElement) {
     initOverrideDatepicker();
     loadCapacitySettings();
   }
+}
+
+// src/platform/printer-client.js
+var MAX_PRINT_BYTES = 8 * 1024 * 1024;
+var messages = {
+  unauthorized: "\u88DD\u7F6E\u91D1\u9470\u4E0D\u6B63\u78BA",
+  busy: "\u5370\u8868\u6A5F\u5FD9\u788C\uFF0C\u8ACB\u7A0D\u5F8C\u624B\u52D5\u91CD\u8A66",
+  printer_unreachable: "\u6A4B\u63A5\u88DD\u7F6E\u7121\u6CD5\u9023\u63A5\u5370\u8868\u6A5F",
+  status_timeout: "\u5370\u8868\u6A5F\u72C0\u614B\u67E5\u8A62\u903E\u6642",
+  job_too_large: "\u55AE\u64DA\u8D85\u904E\u6A4B\u63A5\u88DD\u7F6E\u5141\u8A31\u7684\u5927\u5C0F",
+  partial_send: "\u8CC7\u6599\u50B3\u9001\u4E2D\u65B7"
+};
+function validatePrinterUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("\u8ACB\u8F38\u5165\u6709\u6548\u7684 WSS \u4F4D\u5740");
+  }
+  if (url.protocol !== "wss:" || url.username || url.password || url.search || url.hash || url.pathname !== "/ws") {
+    throw new Error("\u8ACB\u4F7F\u7528 wss://\u88DD\u7F6E\u4F4D\u5740/ws\uFF0C\u52FF\u5305\u542B\u5E33\u5BC6\u6216\u67E5\u8A62\u53C3\u6578");
+  }
+  return url.href;
+}
+async function printerRequest({ url, token, data, signal, timeoutMs = 15e3 }) {
+  url = validatePrinterUrl(url);
+  if (!token) throw new Error("\u8ACB\u5148\u8A2D\u5B9A\u88DD\u7F6E\u5B58\u53D6\u91D1\u9470");
+  const length = data?.byteLength;
+  if (data !== void 0 && (!(data instanceof Uint8Array) && typeof data?.chunks !== "function" || !Number.isInteger(length) || length < 1 || length > MAX_PRINT_BYTES)) {
+    throw new Error("\u5217\u5370\u8CC7\u6599\u5FC5\u9808\u70BA 1 byte \u81F3 8 MiB");
+  }
+  const ws = new WebSocket(url);
+  let outputAttempted = false;
+  function wait(send) {
+    return new Promise((resolve, reject) => {
+      let timer;
+      const cleanup = () => {
+        clearTimeout(timer);
+        ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null;
+        signal?.removeEventListener("abort", abort);
+      };
+      const finish = (error, result) => {
+        cleanup();
+        error ? reject(error) : resolve(result);
+      };
+      const abort = () => finish(new Error("\u64CD\u4F5C\u5DF2\u53D6\u6D88"));
+      ws.onerror = () => finish(new Error("WSS \u9023\u7DDA\u5931\u6557\uFF0C\u8ACB\u78BA\u8A8D\u4F4D\u5740\u3001CA \u4FE1\u4EFB\u53CA\u5340\u57DF\u7DB2\u8DEF\u6B0A\u9650"));
+      ws.onclose = () => finish(new Error("\u5370\u8868\u6A5F\u9023\u7DDA\u5DF2\u4E2D\u65B7"));
+      timer = setTimeout(() => finish(new Error("\u5370\u8868\u6A5F\u56DE\u61C9\u903E\u6642")), timeoutMs);
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
+      if (!send) ws.onopen = () => finish(null);
+      else {
+        ws.onmessage = (event2) => {
+          try {
+            const result = JSON.parse(event2.data);
+            if (result.event === "error") throw new Error(messages[result.code] || "\u5370\u8868\u6A5F\u62D2\u7D55\u6B64\u64CD\u4F5C");
+            finish(null, result);
+          } catch (error) {
+            finish(error);
+          }
+        };
+        try {
+          send();
+        } catch (error) {
+          finish(error);
+        }
+      }
+    });
+  }
+  async function exchange(payload, expected) {
+    const result = await wait(
+      () => ws.send(payload instanceof Uint8Array ? payload : JSON.stringify(payload))
+    );
+    if (result?.event !== expected) throw new Error("\u5370\u8868\u6A5F\u56DE\u61C9\u683C\u5F0F\u4E0D\u6B63\u78BA");
+    return result;
+  }
+  try {
+    await wait();
+    const ready2 = await exchange({ type: "auth", token }, "ready");
+    if (data === void 0) {
+      const result2 = await exchange({ type: "status" }, "status");
+      if (!Number.isInteger(result2.raw) || result2.raw < 0 || result2.raw > 255 || typeof result2.offline !== "boolean") {
+        throw new Error("\u5370\u8868\u6A5F\u72C0\u614B\u683C\u5F0F\u4E0D\u6B63\u78BA");
+      }
+      return result2;
+    }
+    if (!Number.isInteger(ready2.maxChunk) || ready2.maxChunk < 1) throw new Error("\u5370\u8868\u6A5F\u5206\u584A\u8A2D\u5B9A\u4E0D\u6B63\u78BA");
+    const deviceLimit = ready2.maxJob ?? 1024 * 1024;
+    if (!Number.isInteger(deviceLimit) || deviceLimit < 1) throw new Error("\u5370\u8868\u6A5F\u5DE5\u4F5C\u5927\u5C0F\u8A2D\u5B9A\u4E0D\u6B63\u78BA");
+    if (length > deviceLimit) throw new Error("\u6B64\u6A4B\u63A5\u97CC\u9AD4\u4E0D\u652F\u63F4\u9019\u5F35\u9577\u55AE\uFF0C\u8ACB\u66F4\u65B0\u81F3 8 MiB \u7248\u672C");
+    const chunkSize = Math.min(4096, ready2.maxChunk);
+    await exchange({ type: "begin" }, "started");
+    let total = 0;
+    const source = data instanceof Uint8Array ? [data] : data.chunks();
+    for (const part of source) {
+      if (signal?.aborted) throw new Error("\u64CD\u4F5C\u5DF2\u53D6\u6D88");
+      if (!(part instanceof Uint8Array) || total + part.length > length) throw new Error("\u5217\u5370\u8CC7\u6599\u9577\u5EA6\u4E0D\u7B26");
+      for (let offset = 0; offset < part.length; offset += chunkSize) {
+        const chunk = part.subarray(offset, offset + chunkSize);
+        outputAttempted = true;
+        const ack = await exchange(chunk, "chunk");
+        total += chunk.length;
+        if (ack.bytes !== chunk.length || ack.total !== total) throw new Error("\u5217\u5370\u8CC7\u6599\u78BA\u8A8D\u9577\u5EA6\u4E0D\u7B26");
+      }
+    }
+    if (total !== length) throw new Error("\u5217\u5370\u8CC7\u6599\u9577\u5EA6\u4E0D\u7B26");
+    const result = await exchange({ type: "end" }, "sent");
+    if (result.bytes !== length) throw new Error("\u5217\u5370\u5B8C\u6210\u9577\u5EA6\u4E0D\u7B26");
+    return result;
+  } catch (error) {
+    if (outputAttempted) throw new Error(`${error.message}\u3002\u53EF\u80FD\u5DF2\u90E8\u5206\u5217\u5370\uFF0C\u8ACB\u78BA\u8A8D\u7D19\u5F35\uFF1B\u4E0D\u6703\u81EA\u52D5\u91CD\u9001\u3002`);
+    throw error;
+  } finally {
+    ws.close();
+  }
+}
+
+// src/app/receipt.js
+var LINE_HEIGHT = 34;
+var BAND_LINES = 7;
+var PAGE_BANDS = 4;
+var clean = (value) => Array.from(
+  String(value ?? ""),
+  (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127 ? " " : char
+).join("").trim();
+var money = (value) => {
+  const number = Number(value ?? 0);
+  if (!Number.isFinite(number)) throw new Error("\u8A02\u55AE\u91D1\u984D\u683C\u5F0F\u4E0D\u6B63\u78BA");
+  return `NT$ ${number.toLocaleString("zh-TW", { maximumFractionDigits: 2 })}`;
+};
+function rasterBand(canvas) {
+  const context = canvas.getContext("2d");
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+  const rowBytes = canvas.width / 8;
+  const data = new Uint8Array(8 + rowBytes * canvas.height);
+  data.set([29, 118, 48, 0, rowBytes & 255, rowBytes >> 8, canvas.height & 255, canvas.height >> 8]);
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const index = (y * canvas.width + x) * 4;
+      const black = pixels.data[index] * 0.299 + pixels.data[index + 1] * 0.587 + pixels.data[index + 2] * 0.114 < 160;
+      if (black) data[8 + y * rowBytes + (x >> 3)] |= 128 >> (x & 7);
+      pixels.data[index] = pixels.data[index + 1] = pixels.data[index + 2] = black ? 0 : 255;
+      pixels.data[index + 3] = 255;
+    }
+  }
+  context.putImageData(pixels, 0, 0);
+  return data;
+}
+async function renderReceipt(order, config, products = []) {
+  if (!Array.isArray(order.items)) throw new Error("\u8A02\u55AE\u660E\u7D30\u4E0D\u5B8C\u6574\uFF0C\u8ACB\u91CD\u65B0\u8F09\u5165");
+  const width = Number(config.width);
+  if (![384, 512, 576].includes(width)) throw new Error("\u5217\u5370\u5BEC\u5EA6\u4E0D\u6B63\u78BA");
+  await document.fonts.ready;
+  const measure = document.createElement("canvas").getContext("2d");
+  measure.font = "24px system-ui, sans-serif";
+  const lines = [];
+  const ending = config.cut ? new Uint8Array([29, 86, 66, 16]) : new Uint8Array([27, 100, 4]);
+  const byteLengthFor = (count) => 5 + count * LINE_HEIGHT * (width / 8) + Math.ceil(count / BAND_LINES) * 8 + ending.length;
+  function pushLine(line) {
+    if (byteLengthFor(lines.length + 1) > MAX_PRINT_BYTES) throw new Error("\u55AE\u64DA\u8D85\u904E 8 MiB\uFF0C\u8ACB\u7E2E\u77ED\u5167\u5BB9");
+    lines.push(line);
+  }
+  function add(value = "") {
+    const text = clean(value);
+    let line = "";
+    for (const char of text) {
+      if (measure.measureText(line + char).width > width - 32 && line) {
+        pushLine(line);
+        line = "";
+      }
+      line += char;
+    }
+    pushLine(line);
+  }
+  if (config.title) add(config.title);
+  add("\u8A02\u55AE\u660E\u7D30\u55AE");
+  add(`\u8A02\u55AE\uFF1A${order.orderId || order.id || "\u6E2C\u8A66\u55AE"}`);
+  add(`\u5217\u5370\uFF1A${(/* @__PURE__ */ new Date()).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}`);
+  add(`\u5BA2\u6236\uFF1A${order.customerName || "-"}`);
+  if (order.customerContactType === "line" || order.customerLineId) add("\u806F\u7D61\u65B9\u5F0F\uFF1ALINE");
+  else if (order.customerContactValue || order.customerPhone)
+    add(`\u96FB\u8A71\uFF1A${order.customerContactValue || order.customerPhone}`);
+  add(`\u4EA4\u8CA8\uFF1A${order.deliveryDate || "-"} / ${order.deliveryType || "-"}`);
+  if (order.deliveryType !== "\u81EA\u53D6") {
+    if (order.recipientName || order.recipientPhone)
+      add(`\u6536\u4EF6\u4EBA\uFF1A${order.recipientName || ""} ${order.recipientPhone || ""}`);
+    if (order.customerAddress) add(`\u5730\u5740\uFF1A${order.customerAddress}`);
+  }
+  add(`\u72C0\u614B\uFF1A${order.status || "-"}`);
+  add("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  order.items.forEach((item) => {
+    add(item.productName || "\u672A\u547D\u540D\u5546\u54C1");
+    add(`${item.quantity} \xD7 ${money(item.unitPrice)} = ${money(item.subtotal)}`);
+    if (item.isGiftBox && item.giftBoxDetails) {
+      for (const [id, quantity] of Object.entries(item.giftBoxDetails.products || {})) {
+        const name = products.find((product) => product.productId === id)?.productName || `\u5546\u54C1 ${id}`;
+        add(`  ${name}\uFF1A\u6BCF\u76D2 ${quantity} \u500B`);
+      }
+      if (item.giftBoxDetails.notes) add(`\u5099\u8A3B\uFF1A${item.giftBoxDetails.notes}`);
+    }
+    if (item.notes) add(`\u5099\u8A3B\uFF1A${item.notes}`);
+  });
+  add("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+  add(`\u904B\u8CBB\uFF1A${money(order.shippingFee)}`);
+  if (order.shippingNotes) add(order.shippingNotes);
+  add(`\u7E3D\u91D1\u984D\uFF1A${money(order.totalAmount)}`);
+  add(`\u5DF2\u4ED8\u8A02\u91D1\uFF1A${money(order.depositAmount)}`);
+  add(`\u5269\u9918\u91D1\u984D\uFF1A${money(order.remainingAmount ?? order.totalAmount)}`);
+  if (order.notes) add(`\u5099\u8A3B\uFF1A${order.notes}`);
+  add("\u6B64\u55AE\u70BA\u8A02\u55AE\u660E\u7D30\uFF0C\u975E\u7D71\u4E00\u767C\u7968");
+  function drawBand(start) {
+    const group = lines.slice(start, start + BAND_LINES);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = group.length * LINE_HEIGHT;
+    canvas.setAttribute("aria-hidden", "true");
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, width, canvas.height);
+    ctx.fillStyle = "#000";
+    ctx.font = measure.font;
+    ctx.textBaseline = "top";
+    group.forEach((line, index) => ctx.fillText(line, 16, index * LINE_HEIGHT + 4));
+    return { canvas, bytes: rasterBand(canvas) };
+  }
+  return {
+    byteLength: byteLengthFor(lines.length),
+    text: lines.join("\n"),
+    pageCount: Math.ceil(lines.length / (BAND_LINES * PAGE_BANDS)),
+    previewPage(page) {
+      const start = page * BAND_LINES * PAGE_BANDS;
+      const bands = [];
+      for (let offset = start; offset < Math.min(lines.length, start + BAND_LINES * PAGE_BANDS); offset += BAND_LINES) {
+        bands.push(drawBand(offset).canvas);
+      }
+      return bands;
+    },
+    *chunks() {
+      yield new Uint8Array([27, 64, 27, 97, 0]);
+      for (let start = 0; start < lines.length; start += BAND_LINES) {
+        yield drawBand(start).bytes;
+      }
+      yield ending;
+    }
+  };
+}
+
+// src/app/printer.js
+var defaults = {
+  enabled: false,
+  url: "wss://xiao-printer.local/ws",
+  title: "",
+  width: 512,
+  cut: false,
+  token: "",
+  remember: false
+};
+var scope = "";
+var role = "";
+var active = null;
+var generation = 0;
+var key = () => `ginJiaPos.printer.${scope}`;
+var canPrint = () => Boolean(currentLocalScope()) && ["owner", "editor"].includes(document.body.dataset.shopRole);
+var element = (id) => document.getElementById(id);
+function readConfig() {
+  try {
+    const config = { ...defaults, ...JSON.parse(localStorage.getItem(key()) || "{}") };
+    config.token = config.remember ? config.token : sessionStorage.getItem(key()) || "";
+    return config;
+  } catch {
+    return { ...defaults };
+  }
+}
+function loadSettings() {
+  const config = readConfig();
+  for (const field of ["enabled", "url", "title", "width", "cut", "token", "remember"]) {
+    const input = element("printer-" + field);
+    if (input.type === "checkbox") input.checked = Boolean(config[field]);
+    else input.value = config[field];
+  }
+  element("printer-status").textContent = canPrint() ? "\u5C1A\u672A\u6AA2\u67E5\u9023\u7DDA" : "\u50C5 owner\uFF0Feditor \u53EF\u8A2D\u5B9A\u53CA\u64CD\u4F5C\u5217\u5370";
+  updateControls();
+}
+function updateControls() {
+  document.querySelectorAll(
+    "#printer-settings input, #printer-settings select, #printer-settings button, [data-printer-order], #printer-send"
+  ).forEach((control) => {
+    control.disabled = !canPrint() || Boolean(active) || control.id === "printer-send" && control.dataset.ready !== "true";
+  });
+}
+function saveSettings() {
+  if (!canPrint() || active) throw new Error("\u76EE\u524D\u7121\u6CD5\u8B8A\u66F4\u5370\u8868\u6A5F\u8A2D\u5B9A");
+  const config = {};
+  for (const field of ["enabled", "url", "title", "width", "cut", "token", "remember"]) {
+    const input = element("printer-" + field);
+    config[field] = input.type === "checkbox" ? input.checked : input.value.trim();
+  }
+  config.url = validatePrinterUrl(config.url);
+  config.width = Number(config.width);
+  if (config.enabled && !config.token) throw new Error("\u8ACB\u8F38\u5165\u88DD\u7F6E\u5B58\u53D6\u91D1\u9470");
+  localStorage.removeItem(key());
+  sessionStorage.removeItem(key());
+  localStorage.setItem(key(), JSON.stringify({ ...config, token: config.remember ? config.token : "" }));
+  if (!config.remember && config.token) sessionStorage.setItem(key(), config.token);
+  return config;
+}
+function assertContext(expectedScope, expectedGeneration) {
+  if (!canPrint() || currentLocalScope() !== expectedScope || generation !== expectedGeneration)
+    throw new Error("\u5E33\u865F\u6216\u5E97\u92EA\u5DF2\u8B8A\u66F4\uFF0C\u8ACB\u91CD\u65B0\u64CD\u4F5C");
+}
+async function runOperation(config, data, output, expectedScope = scope, expectedGeneration = generation) {
+  if (active) {
+    output.textContent = "\u5DF2\u6709\u5370\u8868\u6A5F\u64CD\u4F5C\u9032\u884C\u4E2D\uFF0C\u8ACB\u7A0D\u5019";
+    return false;
+  }
+  const controller = new AbortController();
+  try {
+    assertContext(expectedScope, expectedGeneration);
+    if (!config.enabled) throw new Error("\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u5370\u8868\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A");
+    active = controller;
+    updateControls();
+    output.textContent = data ? "\u6B63\u5728\u50B3\u9001\uFF0C\u8ACB\u52FF\u95DC\u9589\u9801\u9762\u2026" : "\u6B63\u5728\u67E5\u8A62\u5370\u8868\u6A5F\u2026";
+    const result = await printerRequest({ ...config, data, signal: controller.signal });
+    assertContext(expectedScope, expectedGeneration);
+    output.textContent = data ? `\u5DF2\u50B3\u9001 ${result.bytes.toLocaleString()} bytes \u81F3\u5370\u8868\u6A5F\uFF0C\u8ACB\u78BA\u8A8D\u5BE6\u969B\u51FA\u7D19\u3002` : `\u5370\u8868\u6A5F${result.offline ? "\u96E2\u7DDA" : "\u5DF2\u9023\u7DDA"}\uFF08\u72C0\u614B 0x${result.raw.toString(16).padStart(2, "0")}\uFF09`;
+    return true;
+  } catch (error) {
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration)
+      output.textContent = error.message;
+    return false;
+  } finally {
+    if (active === controller) active = null;
+    updateControls();
+  }
+}
+function createPreview() {
+  document.querySelector("#printer-preview")?.remove();
+  const modal = document.createElement("div");
+  modal.id = "printer-preview";
+  modal.className = "modal active";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-label", "\u5217\u5370\u9810\u89BD");
+  modal.onclick = () => {
+  };
+  modal.innerHTML = `<div class="modal-content printer-dialog">
+    <div class="modal-header"><h3>\u5217\u5370\u9810\u89BD</h3><button type="button" class="close-btn" aria-label="\u95DC\u9589\u5217\u5370\u9810\u89BD">\xD7</button></div>
+    <div class="modal-body"><p>\u6BCF\u6B21\u5217\u5370\u4E00\u4EFD\u3002\u9001\u51FA\u5F8C\u7121\u6CD5\u64A4\u56DE\uFF1B\u88DC\u5370\u524D\u8ACB\u5148\u78BA\u8A8D\u7D19\u5F35\u3002</p>
+      <div class="receipt-preview" aria-label="\u55AE\u64DA\u9810\u89BD"></div>
+      <div class="printer-actions receipt-pages" hidden><button type="button" class="btn receipt-previous">\u4E0A\u4E00\u9801</button><span class="receipt-page-label" role="status"></span><button type="button" class="btn receipt-next">\u4E0B\u4E00\u9801</button></div>
+      <details><summary>\u55AE\u64DA\u6587\u5B57\u5167\u5BB9</summary><pre class="receipt-text"></pre></details>
+      <p id="printer-result" role="status" aria-live="polite">\u6B63\u5728\u8B80\u53D6\u8A02\u55AE\u2026</p></div>
+    <div class="modal-footer"><button type="button" class="btn" id="printer-send" disabled>\u5217\u5370\u4E00\u4EFD</button><button type="button" class="btn printer-close">\u95DC\u9589</button></div>
+  </div>`;
+  modal.querySelectorAll(".close-btn, .printer-close").forEach((button) => button.addEventListener("click", () => modal.remove()));
+  document.body.append(modal);
+  return modal;
+}
+async function previewOrder(orderId, test = false) {
+  if (!canPrint() || active || element("printer-preview")) return;
+  const expectedScope = scope;
+  const expectedGeneration = generation;
+  const config = readConfig();
+  const modal = createPreview();
+  const output = modal.querySelector("#printer-result");
+  try {
+    let showPage2 = function() {
+      modal.querySelector(".receipt-preview").replaceChildren(...receipt.previewPage(page));
+      modal.querySelector(".receipt-page-label").textContent = `${page + 1} / ${receipt.pageCount} \u9801\uFF08\u5217\u5370\u6703\u9023\u7E8C\u8F38\u51FA\u6574\u5F35\u55AE\uFF09`;
+      modal.querySelector(".receipt-previous").disabled = page === 0;
+      modal.querySelector(".receipt-next").disabled = page === receipt.pageCount - 1;
+    };
+    var showPage = showPage2;
+    const order = test ? {
+      orderId: "\u4E2D\u6587\u6E2C\u8A66",
+      customerName: "\u7E41\u9AD4\u4E2D\u6587\u6E2C\u8A66",
+      deliveryType: "\u81EA\u53D6",
+      deliveryDate: "\u6E2C\u8A66\u65E5\u671F",
+      items: [
+        { productName: "\u539F\u5473\u9905\u30FB\u79AE\u76D2\uFF08\u9577\u54C1\u540D\u63DB\u884C\u6E2C\u8A66\uFF09", quantity: 2, unitPrice: 50, subtotal: 100 }
+      ],
+      totalAmount: 100,
+      depositAmount: 30,
+      remainingAmount: 70,
+      status: "\u6E2C\u8A66\u55AE"
+    } : await call("getOrderDetails", orderId);
+    assertContext(expectedScope, expectedGeneration);
+    if (!modal.isConnected) return;
+    const receipt = await renderReceipt(order, config, state.allProducts);
+    assertContext(expectedScope, expectedGeneration);
+    if (!modal.isConnected) return;
+    let page = 0;
+    modal.querySelector(".receipt-pages").hidden = receipt.pageCount === 1;
+    modal.querySelector(".receipt-previous").onclick = () => {
+      page--;
+      showPage2();
+    };
+    modal.querySelector(".receipt-next").onclick = () => {
+      page++;
+      showPage2();
+    };
+    showPage2();
+    modal.querySelector(".receipt-text").textContent = receipt.text;
+    output.textContent = config.enabled ? `\u5BEC\u5EA6 ${config.width} \u9EDE\uFF0C${config.cut ? "\u9032\u7D19\u534A\u5207" : "\u50C5\u9032\u7D19\uFF0C\u4E0D\u5207\u7D19"}\u3002\u8ACB\u78BA\u8A8D\u5167\u5BB9\u3002` : "\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u5370\u8868\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A";
+    const send = modal.querySelector("#printer-send");
+    send.dataset.ready = String(Boolean(config.enabled));
+    send.disabled = !config.enabled || Boolean(active);
+    send.addEventListener(
+      "click",
+      async () => {
+        if (send.disabled || active) return;
+        send.disabled = true;
+        send.dataset.ready = "false";
+        const success = await runOperation(config, receipt, output, expectedScope, expectedGeneration);
+        send.disabled = true;
+        send.textContent = success ? "\u5DF2\u50B3\u9001" : "\u8ACB\u95DC\u9589\u4E26\u78BA\u8A8D\u7D19\u5F35\u5F8C\u91CD\u8A66";
+        if (currentLocalScope() === expectedScope && generation === expectedGeneration)
+          element("printer-status").textContent = output.textContent;
+        if (!modal.isConnected && currentLocalScope() === expectedScope && generation === expectedGeneration)
+          showAlert(output.textContent, success ? "success" : "warning", 8e3);
+      },
+      { once: true }
+    );
+  } catch (error) {
+    output.textContent = error.message;
+  }
+}
+function addOrderPrintButton(container, orderId) {
+  if (!canPrint()) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn";
+  button.textContent = "\u5217\u5370\u8A02\u55AE";
+  button.dataset.printerOrder = orderId;
+  button.disabled = Boolean(active);
+  button.addEventListener("click", () => previewOrder(orderId));
+  container.prepend(button);
+}
+function offerOrderPrint(orderId) {
+  const banner = element("printer-last-order");
+  if (!orderId || !canPrint()) return;
+  banner.replaceChildren();
+  const message = document.createElement("span");
+  message.textContent = `\u8A02\u55AE ${orderId} \u5DF2\u5EFA\u7ACB`;
+  banner.append(message);
+  addOrderPrintButton(banner, orderId);
+  const close2 = document.createElement("button");
+  close2.type = "button";
+  close2.className = "btn";
+  close2.textContent = "\u95DC\u9589";
+  close2.onclick = () => {
+    banner.hidden = true;
+  };
+  banner.append(close2);
+  banner.hidden = false;
+}
+function initializePrinter() {
+  function clearSession() {
+    if (scope) {
+      try {
+        sessionStorage.removeItem(key());
+      } catch {
+      }
+    }
+    generation++;
+    active?.abort();
+    element("printer-preview")?.remove();
+    element("printer-last-order").hidden = true;
+  }
+  function syncContext() {
+    const nextScope = currentLocalScope();
+    const nextRole = document.body.dataset.shopRole || "";
+    if (nextScope === scope && nextRole === role) return;
+    clearSession();
+    scope = nextScope;
+    role = nextRole;
+    loadSettings();
+  }
+  scope = currentLocalScope();
+  role = document.body.dataset.shopRole || "";
+  loadSettings();
+  new MutationObserver(syncContext).observe(document.body, {
+    attributes: true,
+    attributeFilter: ["data-user-id", "data-shop-id", "data-shop-role"]
+  });
+  window.addEventListener("pos:shop-changed", syncContext);
+  window.addEventListener("pos:session-ending", () => {
+    clearSession();
+    element("printer-token").value = "";
+  });
+  window.addEventListener("pagehide", () => active?.abort());
+  element("printer-settings").addEventListener("submit", (event2) => {
+    event2.preventDefault();
+    try {
+      saveSettings();
+      element("printer-status").textContent = "\u5DF2\u5132\u5B58\u6B64\u5E33\u865F\u3001\u5E97\u92EA\u5728\u672C\u6A5F\u7684\u5370\u8868\u6A5F\u8A2D\u5B9A";
+    } catch (error) {
+      element("printer-status").textContent = error.message;
+    }
+  });
+  element("printer-check").addEventListener("click", () => {
+    try {
+      const config = saveSettings();
+      void runOperation(config, void 0, element("printer-status"));
+    } catch (error) {
+      element("printer-status").textContent = error.message;
+    }
+  });
+  element("printer-test").addEventListener("click", () => {
+    try {
+      saveSettings();
+      void previewOrder("", true);
+    } catch (error) {
+      element("printer-status").textContent = error.message;
+    }
+  });
 }
 
 // src/app/checkout.js
@@ -3636,6 +4156,7 @@ function handleOrderSubmitted(result) {
   resetOrderForm();
   showSectionById("customer");
   showAlert(`\u8A02\u55AE ${orderId} \u5EFA\u7ACB\u6210\u529F!`, "success", 5e3);
+  offerOrderPrint(orderId);
 }
 function resetOrderForm() {
   try {
@@ -4316,6 +4837,7 @@ function handleOrderDetails(details) {
                 </div>
             </div>`;
   document.body.appendChild(detailModal);
+  addOrderPrintButton(detailModal.querySelector(".modal-footer"), details.orderId || details.id);
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }
 
@@ -4402,14 +4924,16 @@ var panels = {
   capacity: "\u4F9B\u61C9\u91CF\u8A2D\u5B9A",
   demand: "\u9700\u6C42\u7D71\u8A08",
   reports: "\u71DF\u696D\u5831\u8868",
-  device: "\u88DD\u7F6E\u8CC7\u8A0A"
+  device: "\u88DD\u7F6E\u8CC7\u8A0A",
+  printer: "\u5370\u8868\u6A5F"
 };
 var panelSubtitles = {
   products: "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1",
   capacity: "\u8A2D\u5B9A\u6BCF\u65E5\u4F9B\u61C9\u91CF\u8207\u6307\u5B9A\u65E5\u671F\u4E0A\u9650",
   demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5F59\u6574\u5546\u54C1\u9700\u6C42",
   reports: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5340\u9593\u67E5\u770B\u71DF\u6536\u8207\u5546\u54C1\u92B7\u552E",
-  device: "\u67E5\u770B\u76EE\u524D\u4F7F\u7528\u7684\u88DD\u7F6E\u8207\u700F\u89BD\u5668"
+  device: "\u67E5\u770B\u76EE\u524D\u4F7F\u7528\u7684\u88DD\u7F6E\u8207\u700F\u89BD\u5668",
+  printer: "\u8A2D\u5B9A\u6B64\u88DD\u7F6E\u7684\u5370\u8868\u6A5F\u3001\u6AA2\u67E5\u9023\u7DDA\u8207\u6E2C\u8A66\u5217\u5370"
 };
 var restoring = false;
 function navigateFromUrl() {
@@ -4541,9 +5065,9 @@ var close = {
   depositModal: closeDepositModal,
   confirmModal: closeConfirmModal
 };
-var visible = (element) => element.getClientRects().length > 0 && !element.closest("[inert]");
+var visible = (element2) => element2.getClientRects().length > 0 && !element2.closest("[inert]");
 function initializeAccessibility() {
-  let active = null;
+  let active2 = null;
   const returns = /* @__PURE__ */ new WeakMap();
   function enhance() {
     document.querySelectorAll("i.fas,i.far,i.fab").forEach((icon) => icon.setAttribute("aria-hidden", "true"));
@@ -4571,15 +5095,15 @@ function initializeAccessibility() {
       if (button.getAttribute("aria-pressed") !== value) button.setAttribute("aria-pressed", value);
     });
     const dialogs = [...document.querySelectorAll(selector)].filter(
-      (element) => element.classList.contains("active") && element.getClientRects().length
+      (element2) => element2.classList.contains("active") && element2.getClientRects().length
     );
     const top = dialogs.sort((a, b) => (Number(getComputedStyle(a).zIndex) || 0) - (Number(getComputedStyle(b).zIndex) || 0)).at(-1) || null;
     document.querySelectorAll(selector).forEach((dialog) => {
       dialog.inert = dialog !== top;
     });
-    if (top !== active) {
-      const previous = active;
-      active = top;
+    if (top !== active2) {
+      const previous = active2;
+      active2 = top;
       const blocked = Boolean(top) || document.querySelector("main").hasAttribute("aria-busy");
       document.querySelector("main").inert = blocked;
       document.querySelector("header").inert = blocked;
@@ -4621,26 +5145,27 @@ function initializeAccessibility() {
   document.addEventListener(
     "keydown",
     (event2) => {
-      if (!active) return;
+      if (!active2) return;
       if (event2.key === "Escape") {
         event2.preventDefault();
         event2.stopImmediatePropagation();
-        if (active.id === "productEditModal" && !document.getElementById("productCategoryOptions").hidden) {
+        if (active2.id === "productEditModal" && !document.getElementById("productCategoryOptions").hidden) {
           closeCategoryOptions();
           document.getElementById("productCategoryToggle").focus();
           return;
         }
-        if (close[active.id]) close[active.id]();
-        else if (!["firebaseAuthOverlay", "firebaseShopOverlay"].includes(active.id))
-          active.classList.remove("active");
+        if (active2.id === "printer-preview") active2.remove();
+        else if (close[active2.id]) close[active2.id]();
+        else if (!["firebaseAuthOverlay", "firebaseShopOverlay"].includes(active2.id))
+          active2.classList.remove("active");
       }
       if (event2.key === "Tab") {
-        const controls = [...active.querySelectorAll(focusable)].filter(visible);
-        const first = controls[0] || active, last = controls.at(-1) || active;
-        if (event2.shiftKey && (document.activeElement === first || !active.contains(document.activeElement))) {
+        const controls = [...active2.querySelectorAll(focusable)].filter(visible);
+        const first = controls[0] || active2, last = controls.at(-1) || active2;
+        if (event2.shiftKey && (document.activeElement === first || !active2.contains(document.activeElement))) {
           event2.preventDefault();
           last.focus();
-        } else if (!event2.shiftKey && (document.activeElement === last || !active.contains(document.activeElement))) {
+        } else if (!event2.shiftKey && (document.activeElement === last || !active2.contains(document.activeElement))) {
           event2.preventDefault();
           first.focus();
         }
@@ -4649,8 +5174,8 @@ function initializeAccessibility() {
     true
   );
   document.addEventListener("focusin", (event2) => {
-    if (active && !active.contains(event2.target))
-      ([...active.querySelectorAll(focusable)].find(visible) || active).focus();
+    if (active2 && !active2.contains(event2.target))
+      ([...active2.querySelectorAll(focusable)].find(visible) || active2).focus();
   });
   enhance();
 }
@@ -4707,9 +5232,9 @@ function failStartup(error) {
 // src/app/startup.js
 window.saveOrderDraftNow = async function() {
   clearTimeout(state.draftSaveTimer);
-  const key = draftStorageKey();
+  const key2 = draftStorageKey();
   const draft = captureOrderDraft();
-  if (key && hasMeaningfulDraft(draft)) await localDbPut("drafts", key, draft);
+  if (key2 && hasMeaningfulDraft(draft)) await localDbPut("drafts", key2, draft);
 };
 async function startApplication() {
   let updating = false;
@@ -4747,6 +5272,7 @@ async function startApplication() {
     await restoreOrderDraftOnce();
     state.suppressDraftSave = false;
     applyRoleCapabilities();
+    initializePrinter();
     await startupProgress(3, "\u6B63\u5728\u5B8C\u6210\u756B\u9762\u6E32\u67D3\u2026");
     initializeWorkspace();
     const requestedSection = !location.hash && new URLSearchParams(location.search).get("section");

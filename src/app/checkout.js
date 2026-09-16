@@ -8,6 +8,7 @@ import { renderCalendar } from './calendar.js';
 import { generateUniqueId } from './pricing.js';
 import { clearOrderDraft } from './drafts.js';
 import { invalidateCapacityCache } from './capacity.js';
+import { offerOrderPrint } from './printer.js';
 
 export function submitOrder() {
   const checkoutBtn = document.getElementById('checkoutBtn');
@@ -110,6 +111,7 @@ export function handleOrderSubmitted(result) {
   // 回到客戶資訊頁，可直接建立下一筆
   showSectionById('customer');
   showAlert(`訂單 ${orderId} 建立成功!`, 'success', 5000);
+  offerOrderPrint(orderId);
 }
 
 /**

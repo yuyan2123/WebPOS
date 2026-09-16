@@ -31,6 +31,7 @@ import { loadInitialShopData } from './catalog.js';
 import { initializeDomain } from '../platform/domain.js';
 import { initializeWorkspace } from '../ui/workspace.js';
 import { initializeAccessibility } from '../ui/accessibility.js';
+import { initializePrinter } from './printer.js';
 import { startupProgress, finishStartup, failStartup } from '../ui/startup-progress.js';
 
 window.saveOrderDraftNow = async function () {
@@ -83,6 +84,7 @@ export async function startApplication() {
     await restoreOrderDraftOnce();
     state.suppressDraftSave = false;
     applyRoleCapabilities();
+    initializePrinter();
     await startupProgress(3, '正在完成畫面渲染…');
     initializeWorkspace();
     const requestedSection = !location.hash && new URLSearchParams(location.search).get('section');

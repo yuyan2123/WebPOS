@@ -118,7 +118,8 @@ export function initializeAccessibility() {
           document.getElementById('productCategoryToggle').focus();
           return;
         }
-        if (close[active.id]) close[active.id]();
+        if (active.id === 'printer-preview') active.remove();
+        else if (close[active.id]) close[active.id]();
         else if (!['firebaseAuthOverlay', 'firebaseShopOverlay'].includes(active.id))
           active.classList.remove('active');
       }
