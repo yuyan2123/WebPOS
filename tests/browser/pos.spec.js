@@ -1115,7 +1115,9 @@ for (const result of ['current', 'available', 'failed']) {
     const errors = await openWorkspace(page);
     await openManagementPanel(page, 'device');
     await expect(page.locator('#settingsSystem')).toBeVisible();
-    await expect(page.locator('#systemVersion')).toHaveValue(/^v13\.2\+[a-f0-9]{12}$/);
+    const releaseVersion = await page.locator('meta[name="app-version"]').getAttribute('content');
+    expect(releaseVersion).toMatch(/^\d+\.\d+\.\d+\+[a-f0-9]{12}$/);
+    await expect(page.locator('#systemVersion')).toHaveValue(`v${releaseVersion}`);
     await expect(page.locator('#systemUpdatedAt')).not.toHaveValue('未知');
     const systemBox = await page.locator('#settingsSystem').boundingBox();
     const deviceBox = await page.locator('#settingsDevice').boundingBox();
