@@ -26,8 +26,12 @@
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "globals": "^17.12.0",
+    "jsqr": "^1.4.0",
     "prettier": "^3.9.6",
     "tailwindcss": "3.4.17",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

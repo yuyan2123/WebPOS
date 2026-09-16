@@ -1,4 +1,5 @@
 import { MAX_PRINT_BYTES } from '../platform/printer-client.js';
+import QRCode from 'qrcode';
 const PAGE_BANDS = 4;
 const clean = (value) =>
   Array.from(String(value ?? ''), (char) =>
@@ -37,7 +38,7 @@ export async function renderReceipt(order, config, products = []) {
   if (!Array.isArray(order.items)) throw new Error('訂單明細不完整，請重新載入');
   const width = Number(config.width);
   if (![384, 512, 576].includes(width)) throw new Error('列印寬度不正確');
-  const fontSize = Number(config.fontSize ?? 32);
+  const fontSize = Number(config.fontSize ?? 28);
   if (![24, 28, 32, 40].includes(fontSize)) throw new Error('列印字體大小不正確');
   const lineHeight = Math.ceil(fontSize * 1.4);
   const topTrim = 4;
@@ -47,6 +48,18 @@ export async function renderReceipt(order, config, products = []) {
   const measure = document.createElement('canvas').getContext('2d');
   measure.font = `${fontSize}px system-ui, sans-serif`;
   const lines = [];
+  const orderId = String(order.orderId || order.id || '測試單');
+  const modules = QRCode.create(orderId, { errorCorrectionLevel: 'M' }).modules;
+  const quietZone = 4;
+  const qrScale = Math.floor(Math.min(192, (width - 32) * 0.36) / (modules.size + quietZone * 2));
+  if (qrScale < 2) throw new Error('訂單編號過長，無法在目前列印寬度產生可掃描的 QR code');
+  const qrSize = (modules.size + quietZone * 2) * qrScale;
+  const qrLeft = width - 16 - qrSize;
+  let qrTop = Infinity;
+  function textWidth() {
+    const top = lines.length * lineHeight;
+    return top + lineHeight > qrTop && top < qrTop + qrSize ? qrLeft - 32 : width - 32;
+  }
   // Manual §52: the default vertical motion unit is one print dot.
   const ending = config.cut
     ? new Uint8Array([0x1d, 0x56, 66, 16 + extraBottomFeed])
@@ -61,7 +74,7 @@ export async function renderReceipt(order, config, products = []) {
     const text = clean(value);
     let line = '';
     for (const char of text) {
-      if (measure.measureText(line + char).width > width - 32 && line) {
+      if (measure.measureText(line + char).width > textWidth() && line) {
         pushLine(line);
         line = '';
       }
@@ -71,7 +84,8 @@ export async function renderReceipt(order, config, products = []) {
   }
   if (config.title) add(config.title);
   add('訂單明細單');
-  add(`訂單：${order.orderId || order.id || '測試單'}`);
+  qrTop = lines.length * lineHeight + 4;
+  add(`訂單：${orderId}`);
   add(`列印：${new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false })}`);
   add(`客戶：${order.customerName || '-'}`);
   if (order.customerContactType === 'line' || order.customerLineId) add('聯絡方式：LINE');
@@ -84,6 +98,7 @@ export async function renderReceipt(order, config, products = []) {
     if (order.customerAddress) add(`地址：${order.customerAddress}`);
   }
   add(`狀態：${order.status || '-'}`);
+  while (lines.length * lineHeight < qrTop + qrSize) add();
   pushLine(null); // A graphical rule occupies one row regardless of platform font.
   order.items.forEach((item) => {
     add(item.productName || '未命名商品');
@@ -123,6 +138,15 @@ export async function renderReceipt(order, config, products = []) {
         ctx.fillRect(16, index * lineHeight + Math.floor(lineHeight / 2) - trim, width - 32, 2);
       else ctx.fillText(line, 16, index * lineHeight + 4 - trim);
     });
+    // Draw in receipt coordinates so a QR code crossing raster bands stays intact.
+    const qrBandTop = qrTop - start * lineHeight - trim;
+    for (let row = 0; row < modules.size; row++) {
+      const y = qrBandTop + (row + quietZone) * qrScale;
+      if (y + qrScale <= 0 || y >= canvas.height) continue;
+      for (let col = 0; col < modules.size; col++) {
+        if (modules.get(row, col)) ctx.fillRect(qrLeft + (col + quietZone) * qrScale, y, qrScale, qrScale);
+      }
+    }
     return { canvas, bytes: rasterBand(canvas) };
   }
   return {

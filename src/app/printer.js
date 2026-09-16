@@ -11,7 +11,7 @@ const defaults = {
   url: 'wss://xprinter.local/ws',
   title: '',
   width: 576,
-  fontSize: 32,
+  fontSize: 28,
   cut: false,
   token: '',
   remember: false,

@@ -1,5 +1,29 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
+const jsQR = require('jsqr');
+
+function decodePrintedQr(bytes) {
+  const rows = [];
+  let offset = 5;
+  let width = 0;
+  while (bytes[offset] === 29 && bytes[offset + 1] === 118) {
+    const rowBytes = bytes[offset + 4] + bytes[offset + 5] * 256;
+    const height = bytes[offset + 6] + bytes[offset + 7] * 256;
+    width = rowBytes * 8;
+    offset += 8;
+    rows.push(...bytes.slice(offset, offset + rowBytes * height));
+    offset += rowBytes * height;
+  }
+  const pixels = new Uint8ClampedArray(rows.length * 8 * 4);
+  rows.forEach((byte, index) => {
+    for (let bit = 0; bit < 8; bit++) {
+      const pixel = (index * 8 + bit) * 4;
+      pixels.fill(byte & (128 >> bit) ? 0 : 255, pixel, pixel + 3);
+      pixels[pixel + 3] = 255;
+    }
+  });
+  return jsQR(pixels, width, (rows.length * 8) / width);
+}
 
 async function openWorkspace(page, role = 'owner') {
   const errors = [];
@@ -477,6 +501,7 @@ test('printer settings, exact raster preview, chunk acknowledgements and no dupl
     return {
       same,
       ink,
+      bytes,
       start: bytes.slice(0, 5),
       tail: bytes.slice(offset),
       max: Math.max(...chunks.map((chunk) => chunk.length)),
@@ -484,6 +509,7 @@ test('printer settings, exact raster preview, chunk acknowledgements and no dupl
     };
   });
   expect(result.same).toBe(true);
+  expect(decodePrintedQr(result.bytes)?.data).toBe('中文測試');
   expect(result.ink).toBeGreaterThan(100);
   expect(result.start).toEqual([27, 64, 27, 97, 0]);
   expect(result.tail).toEqual([29, 86, 66, 33]);
@@ -1649,7 +1675,7 @@ test('printer page defaults to print settings with accessible switching and comp
   await expect(page.locator('#workspaceTitle')).toHaveText('出單機');
   await expect(page.locator('#printer-page-print')).toBeVisible();
   await expect(page.locator('#printer-width')).toHaveValue('576');
-  await expect(page.locator('#printer-fontSize')).toHaveValue('32');
+  await expect(page.locator('#printer-fontSize')).toHaveValue('28');
   await expect(page.locator('#printer-page-device')).toBeHidden();
   await expect(page.locator('#printer-tab-print')).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#printer-title').fill('金佳餅店');
@@ -1758,7 +1784,6 @@ test('receipt font size persists and adjusts raster bands and wrapping', async (
   await mockPrinter(page);
   await openWorkspace(page);
   await configurePrinter(page);
-  let previousLines = 0;
   for (const size of [24, 28, 32, 40]) {
     await page.locator('#printer-fontSize').selectOption(String(size));
     await page.locator('#printer-test').click();
@@ -1773,9 +1798,7 @@ test('receipt font size persists and adjusts raster bands and wrapping', async (
       expect((band.height + (index === 0 ? 4 : 0)) % lineHeight).toBe(0);
       expect(band.font).toContain(`${size}px`);
     }
-    const lines = (await page.locator('.receipt-text').textContent()).split('\n').length;
-    expect(lines).toBeGreaterThanOrEqual(previousLines);
-    previousLines = lines;
+    await expect(page.locator('.receipt-text')).toContainText('此單為訂單明細，非統一發票');
     if (size === 32)
       await page.screenshot({ path: testInfo.outputPath('receipt-font-32.png'), animations: 'disabled' });
     await page.locator('#printer-preview .printer-close').click();
@@ -1785,3 +1808,44 @@ test('receipt font size persists and adjusts raster bands and wrapping', async (
   await page.locator('#printer-tab-print').click();
   await expect(page.locator('#printer-fontSize')).toHaveValue('40');
 });
+
+for (const width of [384, 512, 576]) {
+  test(`receipt QR scans the saved order number and aligns at ${width} dots`, async ({ page }, testInfo) => {
+    await mockPrinter(page);
+    await openWorkspace(page);
+    await configurePrinter(page);
+    await page.locator('#printer-width').selectOption(String(width));
+    await page.locator('#printer-title').fill(width === 384 ? '' : '金家餅店');
+    await page.getByRole('button', { name: '儲存列印設定', exact: true }).click();
+    await page.locator('#nav-search').click();
+    const orderId = 'O0123456789abcdef0123456789abcdef';
+    await page.evaluate((orderId) => {
+      window.__orderDetails = {
+        orderId,
+        customerName: '測試很長的客戶名稱避免覆蓋 QR code',
+        customerPhone: '0912345678',
+        deliveryDate: '2026-09-18',
+        deliveryType: '自取',
+        status: '已付清',
+        totalAmount: 100,
+        items: [{ productName: '原味餅', quantity: 2, unitPrice: 50, subtotal: 100 }],
+      };
+      window.viewOrderDetails(orderId);
+    }, orderId);
+    await page.locator(`[data-printer-order="${orderId}"]`).click();
+    await expect(page.locator('#printer-send')).toBeEnabled();
+    if (width === 576)
+      await page.screenshot({ path: testInfo.outputPath('receipt-qr-28.png'), animations: 'disabled' });
+    const orderLine = (await page.locator('.receipt-text').textContent())
+      .split('\n')
+      .findIndex((line) => line.startsWith('訂單：'));
+    await page.locator('#printer-send').click();
+    await expect(page.locator('#printer-result')).toContainText('已傳送');
+    const bytes = await page.evaluate(() => window.__printerFrames.flatMap((frame) => frame.bytes || []));
+    const qr = decodePrintedQr(bytes);
+    expect(qr?.data).toBe(orderId);
+    const moduleSize = (qr.location.topRightCorner.x - qr.location.topLeftCorner.x) / (17 + qr.version * 4);
+    expect(qr.location.topRightCorner.x + 4 * moduleSize).toBeCloseTo(width - 16, 0);
+    expect(qr.location.topLeftCorner.y - 4 * moduleSize).toBeCloseTo(orderLine * 40, 0);
+  });
+}
