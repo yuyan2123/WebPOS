@@ -16,7 +16,8 @@ const mime = {
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url, 'http://localhost');
-    const file = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
+    const pathname = url.pathname === '/certs' || url.pathname === '/certs/' ? '/certs/setup.html' : url.pathname;
+    const file = resolve(root, '.' + decodeURIComponent(pathname === '/' ? '/index.html' : pathname));
     if (!file.startsWith(root + sep)) {
       response.writeHead(403);
       response.end();

@@ -82,6 +82,14 @@
     ],
     "rewrites": [
       {
+        "source": "/certs",
+        "destination": "/certs/setup.html"
+      },
+      {
+        "source": "/certs/",
+        "destination": "/certs/setup.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

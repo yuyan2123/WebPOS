@@ -7,7 +7,9 @@
     // A different Hosting origin is outside the installed app's scope.
     const host = location.hostname === 'webpos-14776.firebaseapp.com'
       ? 'webpos-14776.web.app' : 'webpos-14776.firebaseapp.com';
-    link.href = standalone ? `https://${host}/certs/printer-root-ca.cer` : '/certs/printer-root-ca.cer';
+    // Open the download page from the PWA; its own button downloads the file.
+    link.href = standalone && link.hasAttribute('data-printer-certificate-page')
+      ? `https://${host}/certs` : '/certs/printer-root-ca.cer';
     link.target = '_blank';
     link.rel = 'noopener';
   });

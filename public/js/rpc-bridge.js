@@ -127,7 +127,6 @@
                     <button id="firebaseVerificationSignOut" class="firebase-auth-secondary firebase-auth-muted" type="button">改用其他帳號</button>
                 </div>
                 <div id="firebaseAuthError" role="alert"></div>
-                <p style="margin:16px 0 0;font-size:14px"><a href="/certs/printer-root-ca.cer" data-printer-certificate target="_blank" rel="noopener">下載出單機憑證（免登入）</a> · <a href="/certs/setup.html" target="_blank" rel="noopener">安裝說明</a></p>
             </div>`;
         document.body.appendChild(overlay);
         const badge = document.createElement('div');
