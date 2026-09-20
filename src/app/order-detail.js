@@ -1,8 +1,7 @@
-import { escapeHandlerArgument } from '../platform/markup.js';
 import { rpc, isConnected } from '../platform/rpc.js';
 import { state } from './state.js';
 import { setButtonLoading, handleError, showAlert } from './feedback.js';
-import { escapeHtml } from './customers.js';
+import { escapeHtml, escapeAttr } from './customers.js';
 import { formatDisplayDate } from './search.js';
 import { getStatusPillClass } from './order-status.js';
 import { initializeModalCloseHandlers } from './platform.js';
@@ -105,7 +104,7 @@ export function handleOrderDetails(details) {
   // 支援所有付款狀態：已確認、已付訂金、已付清、已付款（舊版）
   const canEditOrders = document.body.dataset.shopRole !== 'viewer';
   if (canEditOrders && details.status !== '完成') {
-    statusButtons += `<button class="btn btn-success" onclick="showStatusConfirm('${escapeHandlerArgument(details.orderId)}', '完成'); this.closest('.modal').remove();">完成</button>`;
+    statusButtons += `<button class="btn btn-success" data-arg0="${escapeAttr(details.orderId)}" onclick="showStatusConfirm(this.dataset.arg0, '完成'); this.closest('.modal').remove();">完成</button>`;
   }
   detailModal.innerHTML = `<div class="modal-content" onclick="event.stopPropagation()">
                 <div class="modal-header">
@@ -190,7 +189,7 @@ export function handleOrderDetails(details) {
                           canEditOrders && details.status !== '完成'
                             ? `
                         <div class="deposit-action">
-                            <button class="btn btn-deposit" onclick="showDepositModal('${escapeHandlerArgument(details.orderId)}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();">
+                            <button class="btn btn-deposit" data-arg0="${escapeAttr(details.orderId)}" data-arg1="${escapeAttr(details.totalAmount)}" data-arg2="${escapeAttr(details.depositAmount || 0)}" onclick="showDepositModal(this.dataset.arg0, Number(this.dataset.arg1), Number(this.dataset.arg2)); this.closest('.modal').remove();">
                                 <i class="fas fa-coins"></i> 設定訂金
                             </button>
                         </div>`
@@ -204,7 +203,7 @@ export function handleOrderDetails(details) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" onclick="editOrder('${escapeHandlerArgument(details.orderId)}'); this.closest('.modal').remove();"><i class="fas fa-edit"></i> 編輯</button>` : ''}
+                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" data-arg0="${escapeAttr(details.orderId)}" onclick="editOrder(this.dataset.arg0); this.closest('.modal').remove();"><i class="fas fa-edit"></i> 編輯</button>` : ''}
                     ${statusButtons}
                     <button class="btn btn-close-modal" onclick="this.closest('.modal').remove()">關閉</button>
                 </div>

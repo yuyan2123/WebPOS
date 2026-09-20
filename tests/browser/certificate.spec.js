@@ -58,12 +58,14 @@ test('login screen does not show certificate download or setup links', async ({ 
     document.getElementById('startupStatus').hidden = true;
   });
   const source = readFileSync('public/js/rpc-bridge.js', 'utf8');
-  await page.addScriptTag({
-    content: source.replace(
+  await page.route('**/__test__/auth-overlay.js', (route) => route.fulfill({
+    contentType: 'text/javascript',
+    body: source.replace(
       "document.addEventListener('DOMContentLoaded', function() {",
       "installAuthOverlay(); showAuthOverlay(); document.addEventListener('unused-test-event', function() {",
     ),
-  });
+  }));
+  await page.addScriptTag({ url: '/__test__/auth-overlay.js' });
   await expect(page.locator('#firebaseAuthOverlay')).toBeVisible();
   await expect(page.locator('#firebaseAuthOverlay a[href^="/certs"]')).toHaveCount(0);
 });

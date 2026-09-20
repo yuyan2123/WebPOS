@@ -3,6 +3,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase.js";
 import { assert } from "../lib/errors.js";
 import { text } from "../lib/values.js";
+import { MAX_SECURITY_DEVICES, securityLimitReference } from "../lib/rate-limit.js";
 
 const DEVICE_ID_PATTERN = /^[A-Za-z0-9._-]{16,128}$/;
 
@@ -31,7 +32,7 @@ export async function recordDeviceSession(user, request, secret, input = {}) {
   const reference = db.collection("users").doc(user.uid).collection("securityDevices").doc(deviceHash);
   const now = Timestamp.now();
 
-  await reference.set({
+  const data = {
     deviceHash,
     identifierType: "random-local-id-v1",
     lastSeenAt: now,
@@ -39,7 +40,23 @@ export async function recordDeviceSession(user, request, secret, input = {}) {
     lastIpHash: ipHash,
     userAgentHash,
     emailVerifiedAtLastSeen: true,
-  }, { merge: true });
+  };
+  await db.runTransaction(async (transaction) => {
+    const limitRef = securityLimitReference(user.uid);
+    const [existing, limitSnapshot] = await Promise.all([
+      transaction.get(reference),
+      transaction.get(limitRef),
+    ]);
+    if (!existing.exists) {
+      const oldest = await transaction.get(reference.parent.orderBy("lastSeenAt").limit(MAX_SECURITY_DEVICES + 1));
+      // Retain the latest 100 devices; pre-existing larger histories shrink on
+      // subsequent registrations. Existing hashes and record fields stay intact.
+      const removeCount = Math.max(0, oldest.size - MAX_SECURITY_DEVICES + 1);
+      for (const device of oldest.docs.slice(0, removeCount)) transaction.delete(device.ref);
+    }
+    transaction.set(limitRef, { deviceRevision: (limitSnapshot.data()?.deviceRevision || 0) + 1 }, { merge: true });
+    transaction.set(reference, data, { merge: true });
+  });
 
   return { recorded: true, deviceReference: deviceHash.slice(0, 12) };
 }

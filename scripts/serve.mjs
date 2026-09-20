@@ -1,7 +1,10 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
+import { readFileSync } from 'node:fs';
 const root = resolve('public');
+const hostingHeaders = JSON.parse(readFileSync('firebase.json', 'utf8')).hosting.headers
+  .find((entry) => entry.source === '**').headers;
 const mime = {
   '.cer': 'application/x-x509-ca-cert',
   '.html': 'text/html; charset=utf-8',
@@ -25,6 +28,7 @@ createServer(async (request, response) => {
     }
     const content = await readFile(file);
     response.writeHead(200, {
+      ...Object.fromEntries(hostingHeaders.map(({ key, value }) => [key, value])),
       'Content-Type': mime[extname(file)] || 'application/octet-stream',
       'Cache-Control': 'no-store',
     });

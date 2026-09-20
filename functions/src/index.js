@@ -3,7 +3,8 @@ import { setGlobalOptions } from "firebase-functions/v2/options";
 import { defineSecret } from "firebase-functions/params";
 import { logger } from "firebase-functions";
 import { REGION } from "./config.js";
-import { authorize } from "./lib/auth.js";
+import { authorize, requireCurrentSession } from "./lib/auth.js";
+import { enforceRateLimit } from "./lib/rate-limit.js";
 import { serialize } from "./lib/values.js";
 import {
   deleteProduct as deleteProductService,
@@ -107,7 +108,7 @@ const OWNER_METHODS = new Set([
 export const posRpc = onCall(
   {
     cors: true,
-    enforceAppCheck: process.env.ENFORCE_APP_CHECK === "true",
+    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" && process.env.ENFORCE_APP_CHECK !== "false",
     secrets: [securityHashSalt],
   },
   async (request) => {
@@ -141,6 +142,12 @@ export async function executeRpc(request) {
   }
   const method = String(request.data?.method || "");
   const args = Array.isArray(request.data?.args) ? request.data.args : [];
+  const handler = Object.hasOwn(methods, method) ? methods[method] : null;
+  if (!handler && method !== "initializeSession" && method !== "registerDeviceSession") {
+    throw new HttpsError("not-found", `Unknown POS method: ${method}`);
+  }
+  await requireCurrentSession(user);
+  await enforceRateLimit(user, method);
   if (method === "initializeSession") {
     const [shops, device] = await Promise.all([
       listMyShopsService(user),
@@ -156,8 +163,6 @@ export async function executeRpc(request) {
   if (method === "registerDeviceSession") {
     return serialize(await recordDeviceSession(user, request, securityHashSalt.value(), args[0]));
   }
-  const handler = Object.hasOwn(methods, method) ? methods[method] : null;
-  if (!handler) throw new HttpsError("not-found", `Unknown POS method: ${method}`);
   if (GLOBAL_METHODS.has(method)) {
     return serialize(await handler(user, ...args));
   }

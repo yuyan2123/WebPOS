@@ -1,4 +1,3 @@
-import { escapeHandlerArgument } from '../platform/markup.js';
 import { call, rpc, isConnected } from '../platform/rpc.js';
 import { state } from './state.js';
 import { showAlert, setButtonLoading } from './feedback.js';
@@ -6,7 +5,7 @@ import { updateCartDisplay } from './cart.js';
 import { showSectionById } from './platform.js';
 import { catalogStorageKey, localDbPut, localDbGet, restoreOrderDraftOnce } from './drafts.js';
 import { formatDisplayDate } from './search.js';
-import { escapeHtml } from './customers.js';
+import { escapeHtml, escapeAttr } from './customers.js';
 import { renderCalendar } from './calendar.js';
 import { renderProductCards } from './products.js';
 import { getEffectivePrice } from './pricing.js';
@@ -170,7 +169,7 @@ export function loadProductsByCategory(category, containerId) {
         return `
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col border ${hoverBorderClass} transition group relative h-full">
                     <!-- 上半部：點擊查看詳情/特價 -->
-                    <div class="cursor-pointer flex-1 flex flex-col" onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')">
+                    <div class="cursor-pointer flex-1 flex flex-col" data-arg0="${escapeAttr(p.productId)}" onclick="showProductDetail(this.dataset.arg0)">
                         <div class="h-32 ${bgClass} flex items-center justify-center relative overflow-hidden">
                             <i class="fas ${iconClass} text-5xl transform group-hover:scale-110 transition-transform duration-300"></i>
                             ${isCompanyPriceActive ? '<div class="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">企業價</div>' : ''}
@@ -184,11 +183,11 @@ export function loadProductsByCategory(category, containerId) {
                     <!-- 下半部：操作按鈕 -->
                     <div class="p-4 pt-0 mt-auto">
                         <div class="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <button onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')" class="flex-1 py-2 px-2 text-gray-600 text-sm font-medium hover:text-blue-600 transition flex items-center justify-center gap-1">
+                            <button data-arg0="${escapeAttr(p.productId)}" onclick="showProductDetail(this.dataset.arg0)" class="flex-1 py-2 px-2 text-gray-600 text-sm font-medium hover:text-blue-600 transition flex items-center justify-center gap-1">
                                 <i class="fas fa-edit"></i> 詳情
                             </button>
                             <div class="w-px h-6 bg-gray-300"></div>
-                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
+                            <button data-arg0="${escapeAttr(p.productId)}" onclick="addToCartDirectly(this.dataset.arg0)" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>

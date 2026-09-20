@@ -1,5 +1,4 @@
-import { escapeHandlerArgument } from '../platform/markup.js';
-import { escapeHtml } from './customers.js';
+import { escapeHtml, escapeAttr } from './customers.js';
 import { state } from './state.js';
 import { generateGiftboxDetailsHtml, updateCartDisplay } from './cart.js';
 
@@ -35,18 +34,18 @@ export function updateCartModalDisplay() {
                             </div>
                             <div class="cart-item-controls">
                                 <div class="cart-qty-group">
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)">
+                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), -1)">
                                         <i class="fas fa-minus"></i>
                                     </button>
                                     <div class="cart-qty-value">${item.quantity}</div>
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)">
+                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), 1)">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
-                                <button class="cart-edit-btn" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})" title="編輯禮盒內容">
+                                <button class="cart-edit-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); editGiftboxItem(Number(this.dataset.arg0))" title="編輯禮盒內容">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="cart-delete-btn" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})">
+                                <button class="cart-delete-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); removeFromCartModal(Number(this.dataset.arg0))">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -77,15 +76,15 @@ export function updateCartModalDisplay() {
                             </div>
                             <div class="cart-item-controls">
                                 <div class="cart-qty-group">
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)">
+                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), -1)">
                                         <i class="fas fa-minus"></i>
                                     </button>
                                     <div class="cart-qty-value">${item.quantity}</div>
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)">
+                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), 1)">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
-                                <button class="cart-delete-btn" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})">
+                                <button class="cart-delete-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); removeFromCartModal(Number(this.dataset.arg0))">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>

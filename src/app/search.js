@@ -2,7 +2,6 @@ import { rpc, isConnected } from '../platform/rpc.js';
 import { state } from './state.js';
 import { showAlert, setButtonLoading, handleError } from './feedback.js';
 import { escapeHtml, escapeAttr, selectSearchContactMethod } from './customers.js';
-import { escapeHandlerArgument } from '../platform/markup.js';
 import { getStatusPillClass } from './order-status.js';
 
 export function searchOrders() {
@@ -171,7 +170,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
                     </td>`;
       const rowClassAttr = rowClasses.length ? ` class="${rowClasses.join(' ')}"` : '';
       const rowClickAttr = canExpandItems
-        ? ` onclick="toggleOrderItems('${escapeHandlerArgument(orderId)}')"`
+        ? ` data-arg0="${escapeAttr(orderId)}" onclick="toggleOrderItems(this.dataset.arg0)"`
         : '';
       const expandedItemsRow =
         isExpanded || isCollapsing
