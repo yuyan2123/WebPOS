@@ -36,7 +36,7 @@ async function openWorkspace(page, role = 'owner') {
     document.body.dataset.userId = 'test-user';
     document.body.dataset.shopId = 'test-shop';
     document.body.dataset.shopRole = '${role}';
-    const products = [
+    const products = JSON.parse(sessionStorage.getItem('test-product-order') || 'null') || [
       {productId:'P1',productName:'原味餅',category:'伴手禮',price:50,companyPrice:40,status:'啟用',giftBoxEnabled:'是'},
       {productId:'P2',productName:'喜餅',category:'喜餅',price:100,status:'啟用',giftBoxEnabled:'是'}
     ];
@@ -45,6 +45,13 @@ async function openWorkspace(page, role = 'owner') {
       if (window.__fail === method) throw new Error('測試連線中斷');
       if (method === 'getShopBootstrap') return {products,capacityMonth:{key:'2026-9',data:{}},capacitySettings:{weekday:{'1':{dayOfWeek:1,maxQuantity:120,enabled:true}},dateOverrides:[{id:'2027-01-02',date:'2027-01-02',maxQuantity:45,enabled:true}]}};
       if (method === 'getProducts') return products;
+      if (method === 'saveProductOrder') {
+        if (window.__orderConflict) throw new Error('商品清單或順序已被其他人修改，請重新載入後再調整。');
+        const reordered = args[0].productIds.map(id => products.find(p => p.productId === id));
+        products.splice(0, products.length, ...reordered);
+        sessionStorage.setItem('test-product-order', JSON.stringify(products));
+        return {success:true,products};
+      }
       if (method === 'getOrderDetails') return window.__orderDetails;
       if (method === 'getMonthCapacityStatus') return {};
       if (method === 'getCapacitySettings') return {weekday:{},dateOverrides:[]};
@@ -1083,7 +1090,7 @@ test('confirmation sliders keep diagonal touch drags until release', async ({ pa
 test('catalog CRUD form, reports and demand remain accessible through management', async ({ page }) => {
   const errors = await openWorkspace(page);
   await openManagementPanel(page, 'products');
-  await page.locator('.btn-add-product').click();
+  await page.getByRole('button', { name: '新增商品', exact: true }).click();
   await page.locator('#productName').fill('新商品');
   await page.locator('#productCategory').fill('手工點心');
   await page.locator('#productPrice').fill('88');
@@ -1110,7 +1117,7 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
 }) => {
   await openWorkspace(page, 'viewer');
   await openManagementPanel(page, 'products');
-  await expect(page.locator('.btn-add-product')).toBeHidden();
+  await expect(page.locator('button[onclick="showAddProduct()"]')).toBeHidden();
   await expect(page.locator('.btn-card-edit').first()).toBeHidden();
   await openManagementPanel(page, 'capacity');
   await expect(page.locator('#overrideMaxQty')).toBeDisabled();
@@ -1526,7 +1533,7 @@ test.describe('product category picker touch support', () => {
   test('custom category menu supports touch selection and keyboard dismissal', async ({ page }, testInfo) => {
     const errors = await openWorkspace(page);
     await openManagementPanel(page, 'products');
-    await page.locator('.btn-add-product').click();
+    await page.locator('button[onclick="showAddProduct()"]').click();
     const toggle = page.getByRole('button', { name: '選擇商品類別', exact: true });
     const options = page.locator('#productCategoryOptions');
     await page.locator('#productEditModal .modal-content').evaluate(async (element) => {
@@ -1577,7 +1584,7 @@ test('custom categories support unified catalog, cart and order editing', async 
   await expect(page.locator('#nav-gift')).toHaveText('商品');
   await expect(page.locator('#nav-cake')).toHaveCount(0);
   await openManagementPanel(page, 'products');
-  await page.locator('.btn-add-product').click();
+  await page.locator('button[onclick="showAddProduct()"]').click();
   await expect(page.locator('#productCategory')).toHaveValue('');
   await page.locator('#productName').fill('烏龍茶');
   await page.locator('#productCategory').fill(' 茶飲 ');
@@ -1847,5 +1854,134 @@ for (const width of [384, 512, 576]) {
     const moduleSize = (qr.location.topRightCorner.x - qr.location.topLeftCorner.x) / (17 + qr.version * 4);
     expect(qr.location.topRightCorner.x + 4 * moduleSize).toBeCloseTo(width - 16, 0);
     expect(qr.location.topLeftCorner.y - 4 * moduleSize).toBeCloseTo(orderLine * 40, 0);
+  });
+}
+
+test('product order saves across management, POS and reload; cancel preserves order', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  await openManagementPanel(page, 'products');
+  const names = page.locator('#productsCardGrid .product-name');
+  await page.getByRole('button', { name: '調整順序', exact: true }).click();
+  const modal = page.locator('#productOrderModal');
+  await modal.getByRole('button', { name: '下移 原味餅', exact: true }).click();
+  await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
+  await modal.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(names).toHaveText(['原味餅', '喜餅']);
+  await page.getByRole('button', { name: '調整順序', exact: true }).click();
+  await modal.getByRole('button', { name: /拖曳排序 原味餅/ }).focus();
+  await page.keyboard.press('ArrowDown');
+  await modal.getByRole('button', { name: '儲存順序', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(names).toHaveText(['喜餅', '原味餅']);
+  await expect(page.locator('#giftProducts h3')).toHaveText(['喜餅', '原味餅']);
+  await page.reload();
+  await expect(page.locator('#giftProducts h3')).toHaveText(['喜餅', '原味餅']);
+  await openManagementPanel(page, 'products');
+  await expect(names).toHaveText(['喜餅', '原味餅']);
+  await page.locator('#productsFilterTabs').getByRole('button', { name: '伴手禮 (1)', exact: true }).click();
+  await page.getByRole('button', { name: '調整順序', exact: true }).click();
+  await expect(modal.locator('li')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('product order retains draft on errors and reload resolves conflicts', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  await openManagementPanel(page, 'products');
+  await page.getByRole('button', { name: '調整順序', exact: true }).click();
+  const modal = page.locator('#productOrderModal');
+  await modal.getByRole('button', { name: '下移 原味餅', exact: true }).click();
+  await page.evaluate(() => { window.__fail = 'saveProductOrder'; });
+  await modal.getByRole('button', { name: '儲存順序', exact: true }).click();
+  await expect(modal.getByRole('status')).toContainText('測試連線中斷');
+  await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
+  await expect(page.locator('#productsCardGrid .product-name')).toHaveText(['原味餅', '喜餅']);
+  await page.evaluate(() => { window.__fail = ''; window.__orderConflict = true; });
+  await modal.getByRole('button', { name: '儲存順序', exact: true }).click();
+  await expect(modal.getByRole('status')).toContainText('已被其他人修改');
+  await modal.getByRole('button', { name: '重新載入（捨棄調整）', exact: true }).click();
+  await expect(modal.locator('li strong')).toHaveText(['原味餅', '喜餅']);
+  await expect(modal.getByRole('button', { name: '儲存順序', exact: true })).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('product order supports pointer dragging and accessible layout', async ({ page }, testInfo) => {
+  const errors = await openWorkspace(page);
+  await openManagementPanel(page, 'products');
+  await page.getByRole('button', { name: '調整順序', exact: true }).click();
+  const modal = page.locator('#productOrderModal');
+  const first = await modal.locator('.product-order-handle').first().boundingBox();
+  const second = await modal.locator('li').nth(1).boundingBox();
+  const x = first.x + first.width / 2;
+  const startY = first.y + first.height / 2;
+  const endY = second.y + second.height - 5;
+  if (testInfo.project.name === 'phone') {
+    const touch = await page.context().newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: startY }] });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: endY }] });
+    await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
+    await expect(modal.locator('.product-order-floating')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('product-order-dragging.png') });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await touch.detach();
+  } else {
+    await page.mouse.move(x, startY);
+    await page.mouse.down();
+    await page.mouse.move(x, endY, { steps: 10 });
+    await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
+    await expect(modal.locator('.product-order-floating')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('product-order-dragging.png') });
+    await page.mouse.up();
+  }
+  await expect(modal.locator('.is-dragging')).toHaveCount(0);
+  const violations = (await new AxeBuilder({ page }).include('#productOrderModal').analyze()).violations;
+  expect(violations).toEqual([]);
+  await expect(modal.getByRole('button', { name: '儲存順序', exact: true })).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('product-order.png') });
+  expect(errors).toEqual([]);
+});
+
+test('product order is unavailable to viewers', async ({ page }) => {
+  await openWorkspace(page, 'viewer');
+  await openManagementPanel(page, 'products');
+  await expect(page.getByRole('button', { name: '調整順序', exact: true })).toBeHidden();
+  await page.evaluate(() => window.showProductOrder());
+  await expect(page.locator('#productOrderModal')).toHaveCount(0);
+});
+
+for (const reduced of [false, true]) {
+  test(`product order motion visibly exchanges rows; reduced motion=${reduced}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+    const errors = await openWorkspace(page);
+    await openManagementPanel(page, 'products');
+    await page.getByRole('button', { name: '調整順序', exact: true }).click();
+    const result = await page.locator('#productOrderModal').evaluate((modal) => {
+      const rows = [...modal.querySelectorAll('li')];
+      const before = rows.map(row => row.getBoundingClientRect().top);
+      modal.querySelector('[data-down]').click();
+      const animations = rows.flatMap(row => row.getAnimations());
+      animations.forEach(animation => { animation.pause(); animation.currentTime = 100; });
+      const middle = rows.map(row => row.getBoundingClientRect().top);
+      animations.forEach(animation => animation.finish());
+      const after = rows.map(row => row.getBoundingClientRect().top);
+      return { before, middle, after, count: animations.length };
+    });
+    if (reduced) {
+      expect(result.count).toBe(0);
+    } else {
+      expect(result.count).toBe(2);
+      expect(result.middle[0]).toBeGreaterThan(result.before[0]);
+      expect(result.middle[0]).toBeLessThan(result.after[0]);
+      expect(result.middle[1]).toBeLessThan(result.before[1]);
+      expect(result.middle[1]).toBeGreaterThan(result.after[1]);
+    }
+    await page.locator('#productOrderModal').evaluate(modal => {
+      for (let i=0;i<5;i++) modal.querySelector('li [data-down]').click();
+    });
+    await expect(page.locator('#productOrderModal li strong')).toHaveText(['原味餅','喜餅']);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.product-order-floating')).toHaveCount(0);
+    expect(errors).toEqual([]);
   });
 }

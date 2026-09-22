@@ -3,11 +3,13 @@ import { closeCapacityWarningModal } from '../app/checkout.js';
 import { closeDeleteConfirmModal, closeStatusConfirmModal, closeDepositModal } from '../app/payments.js';
 import { closeConfirmModal } from '../app/dialogs.js';
 import { closeCategoryOptions } from '../app/products.js';
+import { closeProductOrder } from '../app/product-order.js';
 
 const selector = '.modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverlay';
 const focusable =
   'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 const close = {
+  productOrderModal: closeProductOrder,
   cartModal: closeCartModal,
   capacityWarningModal: closeCapacityWarningModal,
   deleteConfirmModal: closeDeleteConfirmModal,
@@ -93,7 +95,13 @@ export function initializeAccessibility() {
     }
   }
   let pending = false;
-  new MutationObserver(() => {
+  new MutationObserver((records) => {
+    if (
+      records.every(
+        (record) => record.target instanceof Element && record.target.closest('#overlayScrollbars'),
+      )
+    )
+      return;
     if (pending) return;
     pending = true;
     queueMicrotask(() => {

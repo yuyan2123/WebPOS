@@ -1,0 +1,75 @@
+html.overlay-scrollbars-ready,
+.overlay-scrollbars-ready * {
+  scrollbar-width: none !important;
+  scrollbar-gutter: auto !important;
+  -ms-overflow-style: none !important;
+}
+.overlay-scrollbars-ready::-webkit-scrollbar,
+.overlay-scrollbars-ready *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+#overlayScrollbars {
+  position: fixed;
+  inset: 0;
+  z-index: 199999;
+  pointer-events: none;
+  contain: layout style;
+}
+#overlayScrollbars .overlay-scrollbar {
+  position: absolute;
+  box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  border-radius: 8px;
+  transition: opacity 160ms ease;
+}
+#overlayScrollbars .overlay-scrollbar[hidden] {
+  display: none !important;
+}
+#overlayScrollbars .overlay-scrollbar.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#overlayScrollbars .overlay-scrollbar-thumb {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background: rgba(72, 92, 82, 0.55);
+  background-clip: padding-box;
+}
+#overlayScrollbars .overlay-scrollbar-y .overlay-scrollbar-thumb {
+  width: 12px;
+}
+#overlayScrollbars .overlay-scrollbar-x .overlay-scrollbar-thumb {
+  height: 12px;
+}
+#overlayScrollbars .overlay-scrollbar:hover,
+#overlayScrollbars .overlay-scrollbar.is-dragging {
+  background: rgba(72, 92, 82, 0.1);
+}
+#overlayScrollbars .overlay-scrollbar:hover .overlay-scrollbar-thumb,
+#overlayScrollbars .is-dragging .overlay-scrollbar-thumb {
+  background-color: rgba(37, 101, 77, 0.8);
+  border-width: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #overlayScrollbars .overlay-scrollbar {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  #overlayScrollbars .overlay-scrollbar-thumb {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+@media print {
+  #overlayScrollbars {
+    display: none;
+  }
+}

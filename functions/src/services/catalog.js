@@ -4,6 +4,7 @@ import { assert } from "../lib/errors.js";
 import { customerDocumentId, newId, normalizeContactType, normalizeContactValue } from "../lib/ids.js";
 import { boolean, number, text } from "../lib/values.js";
 import { tenantCollection } from "../lib/tenant.js";
+import { HttpsError } from "firebase-functions/v2/https";
 
 function productFromSnapshot(snapshot) {
   return { productId: snapshot.id, ...snapshot.data() };
@@ -14,8 +15,47 @@ function optionalPrice(value) {
 }
 
 export async function getProducts(user) {
-  const snapshot = await tenantCollection(user, COLLECTIONS.products).orderBy("productName").get();
-  return snapshot.docs.map(productFromSnapshot);
+  const [snapshot, order] = await Promise.all([
+    tenantCollection(user, COLLECTIONS.products).orderBy("productName").get(),
+    tenantCollection(user, "settings").doc("productOrder").get(),
+  ]);
+  return orderedProducts(snapshot, order.data()?.productIds);
+}
+
+function orderedProducts(snapshot, productIds) {
+  const products = snapshot.docs.map(productFromSnapshot);
+  if (!Array.isArray(productIds)) return products;
+  const positions = new Map(productIds.map((id, index) => [id, index]));
+  return products.sort((a, b) => {
+    const first = positions.get(a.productId) ?? Number.MAX_SAFE_INTEGER;
+    const second = positions.get(b.productId) ?? Number.MAX_SAFE_INTEGER;
+    return first - second || (a.createTime?.toMillis?.() || 0) - (b.createTime?.toMillis?.() || 0)
+      || a.productId.localeCompare(b.productId);
+  });
+}
+
+export async function saveProductOrder(user, input = {}) {
+  const { productIds, expectedProductIds } = input || {};
+  for (const ids of [productIds, expectedProductIds]) {
+    assert(Array.isArray(ids) && ids.length <= 5000, "商品排序資料不正確（最多 5000 項）");
+    assert(ids.every((id) => typeof id === "string" && id.length > 0 && id.length <= 128 && !id.includes("/")), "商品編號不正確");
+    assert(new Set(ids).size === ids.length, "商品排序不可包含重複商品");
+  }
+  const expected = new Set(expectedProductIds);
+  assert(Buffer.byteLength(JSON.stringify(productIds), "utf8") <= 700000, "商品排序資料過大");
+  assert(productIds.length === expected.size && productIds.every((id) => expected.has(id)), "商品排序必須包含全部商品");
+  const products = tenantCollection(user, COLLECTIONS.products);
+  const reference = tenantCollection(user, "settings").doc("productOrder");
+  return products.firestore.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(products.orderBy("productName"));
+    const order = await transaction.get(reference);
+    const current = orderedProducts(snapshot, order.data()?.productIds);
+    if (current.length !== expectedProductIds.length || current.some((p, index) => p.productId !== expectedProductIds[index])) {
+      throw new HttpsError("failed-precondition", "商品清單或順序已被其他人修改，請重新載入後再調整。");
+    }
+    transaction.set(reference, { productIds, updateTime: Timestamp.now() });
+    return { success: true, products: orderedProducts(snapshot, productIds) };
+  });
 }
 
 export async function saveProduct(user, productData = {}) {
@@ -48,7 +88,18 @@ export async function saveProduct(user, productData = {}) {
     await reference.update(data);
   } else {
     data.createTime = now;
-    await reference.create(data);
+    // Persist the existing order when appending, including catalogs not yet manually sorted.
+    const products = tenantCollection(user, COLLECTIONS.products);
+    const orderRef = tenantCollection(user, "settings").doc("productOrder");
+    await products.firestore.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(products.orderBy("productName"));
+      const order = await transaction.get(orderRef);
+      const productIds = orderedProducts(snapshot, order.data()?.productIds).map((p) => p.productId);
+      productIds.push(productId);
+      assert(productIds.length <= 5000 && Buffer.byteLength(JSON.stringify(productIds), "utf8") <= 700000, "商品數量超過排序支援範圍");
+      transaction.create(reference, data);
+      transaction.set(orderRef, { productIds, updateTime: now });
+    });
   }
   return { success: true, productId, product: { productId, ...data } };
 }

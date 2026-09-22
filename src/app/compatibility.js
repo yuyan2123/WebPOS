@@ -1,4 +1,5 @@
 import { showSection, showSettingsSection } from './navigation.js';
+import { showProductOrder } from './product-order.js';
 import {
   toggleNameTitle,
   selectCustomerType,
@@ -66,6 +67,7 @@ import { viewOrderDetails } from './order-detail.js';
 
 // Compatibility boundary for existing static and dynamically rendered HTML handlers.
 Object.assign(window, {
+  showProductOrder,
   showSection,
   toggleNameTitle,
   selectCustomerType,

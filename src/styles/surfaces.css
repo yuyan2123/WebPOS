@@ -30,25 +30,6 @@ textarea:focus-visible,
   background: var(--pos-primary);
 }
 
-* {
-  scrollbar-color: #b8c4be transparent;
-  scrollbar-width: thin;
-}
-
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: #b8c4be;
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
-}
-
 /* App navigation */
 
 /* Main workspace and common surfaces */

@@ -1,7 +1,7 @@
 # Database calls and data storage inventory
 
 This inventory consolidates the implemented application workflows, browser persistence,
-and migration utilities as of 2026-09-07. It describes current source behavior; it is
+and migration utilities as of 2026-09-22. It describes current source behavior; it is
 not a production database inspection or a proposed schema change.
 
 Paths below are relative to `shops/{shopId}/` unless explicitly rooted at `users/`
@@ -46,9 +46,10 @@ Source: [shop services](../functions/src/services/shops.js). There is no exposed
 
 | Case / RPC | Reads | Writes / deletes |
 | --- | --- | --- |
-| Load/reload catalog: `getProducts` | All products ordered by `productName` | Browser caches the returned catalog in IndexedDB |
+| Load/reload catalog: `getProducts` | All products plus `settings/productOrder`; applies saved IDs, with name order for catalogs without saved order | Browser caches the ordered catalog in IndexedDB |
 | Initial shop load: `getShopBootstrap` | Products, capacity settings/date overrides, then monthly usage or legacy order fallback | Browser caches catalog in IndexedDB and monthly capacity in memory |
-| Create/edit product: `saveProduct` | No service-level pre-read | Creates a new product or updates an existing product, including name, category, prices, status, description and gift-box eligibility |
+| Create/edit product: `saveProduct` | Creation reads all products and `settings/productOrder` in a transaction; editing has no service-level pre-read | Creation atomically appends the ID to saved order and creates the product; editing updates product fields without changing order |
+| Reorder products: `saveProductOrder` | Transaction reads all products and `settings/productOrder`, compares the expected full ID sequence to detect stale edits | Writes the full ordered ID list and timestamp to `settings/productOrder`; returns the ordered catalog for management, POS and IndexedDB cache. Requires editor/owner; maximum 5,000 IDs and 700,000 UTF-8 JSON bytes |
 | Delete product: `deleteProduct` | No service-level pre-read | Deletes `products/{productId}`; no order cascade |
 | Change special price: `updateProductSpecialPrice` | No service-level pre-read | Updates product special price and timestamp |
 | Customer autocomplete: `searchCustomers` | Name/contact prefix query, limited to 8; phone search falls back to legacy `phone` if the new-field query is empty. Keywords shorter than 2 characters skip the customer query. | None |

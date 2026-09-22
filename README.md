@@ -16,6 +16,16 @@ record pickup or delivery orders, track deposits and payments, search orders, an
 daily reports and capacity. Customer entry accepts a name or contact information, with
 phone and LINE contact modes. Server-side authorization controls editing and member management.
 
+商品管理的「調整順序」會開啟排序視窗，支援拖曳、上移／下移與鍵盤方向鍵。
+按「儲存順序」後，同一店家的商品管理與 POS 共用順序；其他裝置重新載入後更新。
+新商品排最後，編輯不改變位置。只有 owner/editor 可儲存；多人修改衝突時保留草稿，
+可按「重新載入（捨棄調整）」取得最新清單。排序儲存在 `settings/productOrder`，
+支援最多 5,000 項商品，無需遷移既有資料。上線時需一併部署 Functions 與 Hosting。
+
+全站捲動區域使用不佔版面空間的懸浮捲軸，支援拖曳、滾輪、觸控及鍵盤。
+共用控制器 `src/ui/overlay-scrollbars.js` 自動處理動態視窗、巢狀區域與橫向表格，
+並套用到獨立憑證頁；原有捲動容器與尺寸維持不變。
+
 ## Build and work locally
 
 Install Node 22 and Rust through rustup, then run:

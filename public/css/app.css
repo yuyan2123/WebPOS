@@ -222,15 +222,6 @@ main {
   -webkit-overflow-scrolling: touch;
 }
 
-.capacity-weekday-strip::-webkit-scrollbar {
-  height: 4px;
-}
-
-.capacity-weekday-strip::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
 .capacity-day-col {
   flex: 1 0 0;
   min-width: 72px;
@@ -4157,6 +4148,170 @@ button.loading::after {
   }
 }
 
+#productOrderModal .product-order-content {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+.product-order-heading,
+.product-order-footer,
+.product-order-footer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.product-order-heading h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.product-order-info span {
+  color: #57534e;
+  font-size: 0.875rem;
+}
+#productOrderModal button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #d6d3d1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: #fff;
+  color: #292524;
+}
+#productOrderModal button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+#productOrderModal button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+#productOrderModal [data-save] {
+  background: #1d4ed8;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+.product-order-list {
+  position: relative;
+  overflow-anchor: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+}
+.product-order-list li,
+.product-order-floating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 12px;
+}
+.product-order-list li.is-dragging {
+  position: relative;
+  background: #eff6ff;
+  border-color: #2563eb;
+  border-style: dashed;
+}
+.product-order-list li.is-dragging > * {
+  visibility: hidden;
+}
+.product-order-list li.is-dragging::after {
+  content: "放在這裡";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #1d4ed8;
+  font-size: 0.875rem;
+}
+.product-order-floating {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  pointer-events: none;
+  transform-origin: top left;
+  background: #fff;
+  border-color: #2563eb;
+  box-shadow:
+    0 12px 30px #0f172a33,
+    0 2px 6px #2563eb22;
+  will-change: transform;
+}
+#productOrderModal .product-order-floating button:disabled {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-order-floating {
+    box-shadow: 0 2px 8px #0f172a33;
+  }
+}
+#productOrderModal .product-order-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+#productOrderModal .is-dragging .product-order-handle {
+  cursor: grabbing;
+}
+.product-order-position {
+  color: #57534e;
+  font-size: 0.8rem;
+  min-width: 1.2em;
+  text-align: center;
+}
+.product-order-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+.product-order-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.product-order-error {
+  font-size: 0.875rem;
+  color: #44403c;
+}
+.product-order-footer {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  #productOrderModal .product-order-content {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 16px;
+    gap: 12px;
+  }
+  .product-order-list li,
+  .product-order-floating {
+    gap: 6px;
+    padding: 8px 4px;
+  }
+  .product-order-position {
+    display: none;
+  }
+  .product-order-actions {
+    gap: 4px;
+  }
+  .product-order-footer > div {
+    margin-left: auto;
+  }
+}
+
 /* ==========================================================================
    金家 POS — 2026 responsive visual system
    Shared component surfaces. Layout and navigation live in workspace.css.
@@ -4187,25 +4342,6 @@ textarea:focus-visible,
 ::selection {
   color: #fff;
   background: var(--pos-primary);
-}
-
-* {
-  scrollbar-color: #b8c4be transparent;
-  scrollbar-width: thin;
-}
-
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: #b8c4be;
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
 }
 
 /* App navigation */

@@ -36,6 +36,15 @@ await build({
   logLevel: 'info',
   legalComments: 'none',
 });
+await build({
+  entryPoints: ['src/ui/overlay-scrollbars.js'],
+  outfile: 'public/js/overlay-scrollbars.js',
+  bundle: true,
+  format: 'iife',
+  target: ['safari15', 'chrome100', 'firefox100'],
+  logLevel: 'info',
+});
+cpSync('src/styles/scrollbars.css', 'public/css/scrollbars.css');
 // The worker caches exactly the generated local shell; no account data or API responses.
 const worker = readFileSync('public/sw.js', 'utf8');
 const { createHash } = await import('node:crypto');

@@ -9,6 +9,7 @@ import {
   deleteProduct as deleteProductService,
   getProducts as getProductsService,
   saveProduct as saveProductService,
+  saveProductOrder as saveProductOrderService,
   searchCustomers as searchCustomersService,
   updateProductSpecialPrice as updateProductSpecialPriceService,
 } from "./services/catalog.js";
@@ -60,6 +61,7 @@ const methods = Object.freeze({
   renameShop: renameShopService,
   getProducts: getProductsService,
   saveProduct: saveProductService,
+  saveProductOrder: saveProductOrderService,
   deleteProduct: deleteProductService,
   updateProductSpecialPrice: updateProductSpecialPriceService,
   searchCustomers: searchCustomersService,

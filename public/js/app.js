@@ -2539,16 +2539,16 @@ function showAlert(message, type = "success", duration = 0) {
   alertDiv.appendChild(close2);
   alertContainer.prepend(alertDiv);
   let removed = false;
-  function dismiss() {
+  function dismiss2() {
     if (removed) return;
     removed = true;
     alertDiv.style.opacity = "0";
     alertDiv.style.transform = "translateX(30%)";
     setTimeout(() => alertDiv.remove(), 300);
   }
-  alertDiv.addEventListener("click", dismiss);
+  alertDiv.addEventListener("click", dismiss2);
   const holdTime = duration > 0 ? duration : type === "error" || message.includes("\n") ? 6e3 : 3e3;
-  setTimeout(dismiss, holdTime);
+  setTimeout(dismiss2, holdTime);
 }
 function setButtonLoading(button, isLoading = true, loadingText = "") {
   if (typeof button === "string") {
@@ -4416,7 +4416,7 @@ function handleProductSaved(result) {
     const index = state.allProducts.findIndex((p) => p.productId === result.product.productId);
     if (index >= 0) state.allProducts[index] = { ...state.allProducts[index], ...result.product };
     else state.allProducts.push(result.product);
-    state.allProducts.sort((a, b) => String(a.productName).localeCompare(String(b.productName), "zh-TW"));
+    cacheProducts(state.allProducts);
     renderProductCards();
     updateProductDisplays();
     updateNavVisibility();
@@ -4449,6 +4449,7 @@ function deleteProduct(productId) {
       closeConfirmModal();
       showAlert("\u5546\u54C1\u5DF2\u522A\u9664", "success");
       state.allProducts = state.allProducts.filter((p) => p.productId !== productId);
+      cacheProducts(state.allProducts);
       renderProductCards();
       updateProductDisplays();
       updateNavVisibility();
@@ -5660,6 +5661,326 @@ function showSettingsSection(sectionName, navElement) {
     initOverrideDatepicker();
     loadCapacitySettings();
   }
+}
+
+// src/app/product-order.js
+var dismiss = null;
+function closeProductOrder() {
+  dismiss?.();
+}
+function showProductOrder() {
+  if (document.body.dataset.shopRole === "viewer" || document.getElementById("productOrderModal")) return;
+  const shopId = document.body.dataset.shopId;
+  let draft = [...state.allProducts];
+  let expected = draft.map((p) => p.productId);
+  let busy = false;
+  let drag = null;
+  let frame = 0;
+  let backdropPressed = false;
+  let finishDrop = null;
+  const motions = /* @__PURE__ */ new Map();
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const modal = document.createElement("div");
+  modal.id = "productOrderModal";
+  modal.className = "modal active";
+  modal.setAttribute("aria-labelledby", "productOrderTitle");
+  modal.innerHTML = `<div class="modal-content product-order-content">
+    <div class="product-order-heading"><h3 id="productOrderTitle">\u8ABF\u6574\u5546\u54C1\u9806\u5E8F</h3><button type="button" data-close aria-label="\u95DC\u9589\u6392\u5E8F\u8996\u7A97">\xD7</button></div>
+    <ol class="product-order-list" aria-label="\u5546\u54C1\u6392\u5E8F"></ol>
+    <span class="sr-only" data-announcement aria-live="polite"></span>
+    <p class="product-order-error" role="status" hidden></p>
+    <div class="product-order-footer"><button type="button" data-reload>\u91CD\u65B0\u8F09\u5165\uFF08\u6368\u68C4\u8ABF\u6574\uFF09</button><div><button type="button" data-cancel>\u53D6\u6D88</button><button type="button" data-save>\u5132\u5B58\u9806\u5E8F</button></div></div>
+  </div>`;
+  const list = modal.querySelector("ol");
+  const message = modal.querySelector('[role="status"]');
+  const announcement = modal.querySelector("[data-announcement]");
+  const save = modal.querySelector("[data-save]");
+  const rows = /* @__PURE__ */ new Map();
+  const sameShop = () => document.body.dataset.shopId === shopId;
+  const changed = () => draft.some((p, index) => p.productId !== expected[index]);
+  function controls() {
+    modal.querySelectorAll(".product-order-content button").forEach((button) => {
+      button.disabled = busy;
+    });
+    draft.forEach((p, index) => {
+      const row = rows.get(p.productId);
+      row.querySelector("[data-up]").disabled = busy || index === 0;
+      row.querySelector("[data-down]").disabled = busy || index === draft.length - 1;
+      row.querySelector(".product-order-position").textContent = String(index + 1);
+      if (drag?.id === p.productId) {
+        drag.overlay.querySelector(".product-order-position").textContent = String(index + 1);
+      }
+    });
+    save.disabled = busy || !changed();
+    save.textContent = busy ? "\u8655\u7406\u4E2D\u2026" : "\u5132\u5B58\u9806\u5E8F";
+    modal.setAttribute("aria-busy", String(busy));
+  }
+  function move(from, to) {
+    if (from === to || to < 0 || to >= draft.length) return;
+    const before = new Map([...rows.values()].map((row2) => [row2, row2.getBoundingClientRect().top]));
+    motions.forEach((animation) => animation.cancel());
+    motions.clear();
+    const [product] = draft.splice(from, 1);
+    draft.splice(to, 0, product);
+    const row = rows.get(product.productId);
+    list.insertBefore(row, from < to ? list.children[to].nextSibling : list.children[to]);
+    controls();
+    if (!reducedMotion.matches) {
+      for (const [item, top] of before) {
+        if (item.dataset.productId === drag?.id) continue;
+        const distance = top - item.getBoundingClientRect().top;
+        if (Math.abs(distance) < 1) continue;
+        const animation = item.animate(
+          [{ transform: `translateY(${distance}px)` }, { transform: "translateY(0)" }],
+          { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" }
+        );
+        motions.set(item, animation);
+        animation.finished.then(() => {
+          if (motions.get(item) === animation) motions.delete(item);
+        }).catch(() => {
+        });
+      }
+    }
+    announcement.textContent = `${product.productName} \u5DF2\u79FB\u81F3\u7B2C ${to + 1} \u9805\uFF0C\u5C1A\u672A\u5132\u5B58\u3002`;
+  }
+  function render() {
+    rows.clear();
+    list.replaceChildren();
+    draft.forEach((p) => {
+      const row = document.createElement("li");
+      row.dataset.productId = p.productId;
+      row.innerHTML = `<button type="button" class="product-order-handle"><i class="fas fa-grip-vertical" aria-hidden="true"></i></button><span class="product-order-position"></span><div class="product-order-info"><strong></strong><span></span></div><div class="product-order-actions"><button type="button" data-up>\u2191</button><button type="button" data-down>\u2193</button></div>`;
+      row.querySelector("strong").textContent = p.productName;
+      row.querySelector(".product-order-info span").textContent = `${p.category || "\u672A\u5206\u985E"} \xB7 ${p.status}`;
+      row.querySelector(".product-order-handle").setAttribute("aria-label", `\u62D6\u66F3\u6392\u5E8F ${p.productName}\uFF08\u9375\u76E4\u53EF\u7528\u4E0A\u4E0B\u65B9\u5411\u9375\uFF09`);
+      row.querySelector("[data-up]").setAttribute("aria-label", `\u4E0A\u79FB ${p.productName}`);
+      row.querySelector("[data-down]").setAttribute("aria-label", `\u4E0B\u79FB ${p.productName}`);
+      row.addEventListener("click", (event2) => {
+        const button = event2.target.closest("[data-up],[data-down]");
+        if (!button || busy || drag) return;
+        finishDrop?.();
+        const index = draft.findIndex((item) => item.productId === p.productId);
+        move(index, index + (button.hasAttribute("data-up") ? -1 : 1));
+        (button.disabled ? row.querySelector(".product-order-handle") : button).focus({
+          preventScroll: true
+        });
+        row.scrollIntoView({ block: "nearest" });
+      });
+      row.querySelector(".product-order-handle").addEventListener("keydown", (event2) => {
+        if (busy || drag || !["ArrowUp", "ArrowDown"].includes(event2.key)) return;
+        finishDrop?.();
+        event2.preventDefault();
+        const index = draft.findIndex((item) => item.productId === p.productId);
+        move(index, index + (event2.key === "ArrowUp" ? -1 : 1));
+        row.querySelector(".product-order-handle").focus({ preventScroll: true });
+        row.scrollIntoView({ block: "nearest" });
+      });
+      rows.set(p.productId, row);
+      list.append(row);
+    });
+    message.hidden = true;
+    message.textContent = "";
+    if (!draft.length) {
+      const empty = document.createElement("li");
+      empty.textContent = "\u5C1A\u7121\u5546\u54C1\u53EF\u6392\u5E8F\u3002";
+      list.append(empty);
+    }
+    controls();
+  }
+  function stopDrag(animateDrop = false) {
+    cancelAnimationFrame(frame);
+    finishDrop?.();
+    if (!drag) return;
+    const ended = drag;
+    drag = null;
+    if (modal.hasPointerCapture(ended.pointerId)) modal.releasePointerCapture(ended.pointerId);
+    const row = rows.get(ended.id);
+    const overlay = ended.overlay;
+    let animation;
+    const clean2 = () => {
+      animation?.cancel();
+      overlay.remove();
+      row?.classList.remove("is-dragging");
+      if (finishDrop === clean2) finishDrop = null;
+    };
+    finishDrop = clean2;
+    if (!animateDrop || reducedMotion.matches || !row?.isConnected) {
+      clean2();
+      return;
+    }
+    const start = overlay.getBoundingClientRect();
+    const target = row.getBoundingClientRect();
+    const x = ended.x - ended.startX;
+    const y = ended.y - ended.startY;
+    animation = overlay.animate(
+      [
+        { transform: `translate(${x}px, ${y}px) scale(1.02)` },
+        {
+          transform: `translate(${x + target.left - start.left}px, ${y + target.top - start.top}px) scale(1)`
+        }
+      ],
+      { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)", fill: "forwards" }
+    );
+    animation.finished.then(() => {
+      clean2();
+      if (row.isConnected)
+        row.animate(
+          [
+            { backgroundColor: "#dbeafe", borderColor: "#2563eb" },
+            { backgroundColor: "#fafaf9", borderColor: "#e7e5e4" }
+          ],
+          { duration: 450, easing: "ease-out" }
+        );
+    }).catch(() => {
+    });
+  }
+  function dragFrame() {
+    if (!drag) return;
+    const bounds = list.getBoundingClientRect();
+    drag.overlay.style.transform = `translate(${drag.x - drag.startX}px, ${drag.y - drag.startY}px) scale(1.02)`;
+    if (drag.y < bounds.top + 45) list.scrollTop -= 9;
+    else if (drag.y > bounds.bottom - 45) list.scrollTop += 9;
+    const index = draft.findIndex((p) => p.productId === drag.id);
+    let target = index;
+    for (let i = 0; i < draft.length; i++) {
+      const row = rows.get(draft[i].productId);
+      const center = bounds.top + row.offsetTop - list.scrollTop + row.offsetHeight / 2;
+      if (i < index && drag.y < center) {
+        target = i;
+        break;
+      }
+      if (i > index && drag.y > center) target = i;
+    }
+    move(index, target);
+    frame = requestAnimationFrame(dragFrame);
+  }
+  list.addEventListener("pointerdown", (event2) => {
+    const handle = event2.target.closest(".product-order-handle");
+    if (!handle || busy || drag || event2.button !== 0) return;
+    finishDrop?.();
+    motions.forEach((animation) => animation.cancel());
+    motions.clear();
+    event2.preventDefault();
+    handle.focus();
+    const row = handle.closest("li");
+    const rect = row.getBoundingClientRect();
+    const modalRect = modal.getBoundingClientRect();
+    const overlay = document.createElement("div");
+    overlay.className = "product-order-floating";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.inert = true;
+    overlay.innerHTML = row.innerHTML;
+    overlay.querySelectorAll("button").forEach((button) => {
+      button.disabled = true;
+      button.tabIndex = -1;
+    });
+    Object.assign(overlay.style, {
+      left: `${rect.left - modalRect.left}px`,
+      top: `${rect.top - modalRect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`
+    });
+    modal.append(overlay);
+    drag = {
+      id: row.dataset.productId,
+      x: event2.clientX,
+      y: event2.clientY,
+      startX: event2.clientX,
+      startY: event2.clientY,
+      pointerId: event2.pointerId,
+      overlay
+    };
+    row.classList.add("is-dragging");
+    modal.setPointerCapture(event2.pointerId);
+    frame = requestAnimationFrame(dragFrame);
+  });
+  modal.addEventListener("pointermove", (event2) => {
+    if (drag?.pointerId === event2.pointerId) {
+      drag.x = event2.clientX;
+      drag.y = event2.clientY;
+    }
+  });
+  modal.addEventListener("pointerup", (event2) => {
+    if (drag?.pointerId === event2.pointerId) stopDrag(true);
+  });
+  modal.addEventListener("pointercancel", () => stopDrag());
+  modal.addEventListener("lostpointercapture", () => {
+    if (drag) stopDrag();
+  });
+  modal.addEventListener("pointerdown", (event2) => {
+    backdropPressed = event2.target === modal;
+  });
+  dismiss = () => {
+    if (busy) return;
+    stopDrag();
+    motions.forEach((animation) => animation.cancel());
+    modal.classList.remove("active");
+    modal.remove();
+    dismiss = null;
+  };
+  modal.onclick = (event2) => {
+    if (event2.target === modal && backdropPressed || event2.target.closest("[data-close],[data-cancel]"))
+      closeProductOrder();
+  };
+  modal.querySelector("[data-reload]").onclick = async () => {
+    if (busy) return;
+    if (!sameShop()) {
+      closeProductOrder();
+      return;
+    }
+    stopDrag();
+    busy = true;
+    controls();
+    try {
+      const products = await call("getProducts");
+      if (!sameShop()) return;
+      if (!Array.isArray(products)) throw new Error("\u5546\u54C1\u8CC7\u6599\u4E0D\u5B8C\u6574\uFF0C\u8ACB\u91CD\u8A66\u3002");
+      draft = [...products];
+      expected = draft.map((p) => p.productId);
+      handleProductsLoaded(products, { skipDraft: true });
+      render();
+    } catch (error) {
+      message.textContent = `\u91CD\u65B0\u8F09\u5165\u5931\u6557\uFF0C\u5DF2\u4FDD\u7559\u8ABF\u6574\uFF1A${error.message}`;
+      message.hidden = false;
+    } finally {
+      busy = false;
+      controls();
+      if (!sameShop()) closeProductOrder();
+    }
+  };
+  save.onclick = async () => {
+    if (busy || !changed()) return;
+    if (!sameShop()) {
+      closeProductOrder();
+      return;
+    }
+    stopDrag();
+    busy = true;
+    controls();
+    try {
+      const result = await call("saveProductOrder", {
+        productIds: draft.map((p) => p.productId),
+        expectedProductIds: expected
+      });
+      if (!result?.success || !Array.isArray(result.products))
+        throw new Error("\u5132\u5B58\u7D50\u679C\u4E0D\u5B8C\u6574\uFF0C\u8ACB\u91CD\u65B0\u8F09\u5165\u78BA\u8A8D\u3002");
+      if (sameShop()) {
+        handleProductsLoaded(result.products, { skipDraft: true });
+        showAlert("\u5546\u54C1\u9806\u5E8F\u5DF2\u5132\u5B58\uFF0C\u5546\u54C1\u7BA1\u7406\u8207 POS \u5DF2\u540C\u6B65", "success");
+      }
+      busy = false;
+      closeProductOrder();
+    } catch (error) {
+      message.textContent = `\u672A\u80FD\u78BA\u8A8D\u5132\u5B58\uFF0C\u5DF2\u4FDD\u7559\u8ABF\u6574\uFF1A${error.message}`;
+      message.hidden = false;
+    } finally {
+      busy = false;
+      if (modal.isConnected) controls();
+      if (!sameShop()) closeProductOrder();
+    }
+  };
+  render();
+  document.body.append(modal);
 }
 
 // src/platform/printer-client.js
@@ -7279,6 +7600,7 @@ function handleOrderDetails(details) {
 
 // src/app/compatibility.js
 Object.assign(window, {
+  showProductOrder,
   showSection,
   toggleNameTitle,
   selectCustomerType,
@@ -7494,6 +7816,7 @@ function initializeWorkspace() {
 var selector = ".modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverlay";
 var focusable = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 var close = {
+  productOrderModal: closeProductOrder,
   cartModal: closeCartModal,
   capacityWarningModal: closeCapacityWarningModal,
   deleteConfirmModal: closeDeleteConfirmModal,
@@ -7565,7 +7888,11 @@ function initializeAccessibility() {
     }
   }
   let pending = false;
-  new MutationObserver(() => {
+  new MutationObserver((records) => {
+    if (records.every(
+      (record) => record.target instanceof Element && record.target.closest("#overlayScrollbars")
+    ))
+      return;
     if (pending) return;
     pending = true;
     queueMicrotask(() => {

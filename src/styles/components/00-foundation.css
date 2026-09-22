@@ -222,15 +222,6 @@ main {
   -webkit-overflow-scrolling: touch;
 }
 
-.capacity-weekday-strip::-webkit-scrollbar {
-  height: 4px;
-}
-
-.capacity-weekday-strip::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
 .capacity-day-col {
   flex: 1 0 0;
   min-width: 72px;

@@ -1,10 +1,12 @@
-const CACHE_VERSION = "gin-jia-pos-a3fee0f6b8fa";
+const CACHE_VERSION = "gin-jia-pos-c1de6f223043";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
   "/css/tailwind.generated.css",
   "/css/app.css",
+  "/css/scrollbars.css",
+  "/js/overlay-scrollbars.js",
   "/js/runtime-config.js",
   "/js/certificate-download.js",
   "/js/rpc-bridge.js",

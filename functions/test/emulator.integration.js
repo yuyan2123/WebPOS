@@ -73,6 +73,36 @@ const product = await rpc(
 );
 assert.equal((await rpc(viewer, "getProducts", [], shopId)).length, 1);
 assert.equal((await rpc(owner, "getShopBootstrap", [2026, 9], shopId)).products.length, 1);
+// Product ordering uses the same authenticated, shop-scoped RPC as catalog edits.
+const secondProduct = await rpc(owner, "saveProduct", [{ productName: "AAA 排序測試", category: "測試", price: 10, status: "停用" }], shopId);
+const originalIds = [product.productId, secondProduct.productId];
+const reversedIds = [...originalIds].reverse();
+const productIds = async () => (await rpc(viewer, "getProducts", [], shopId)).map((p) => p.productId);
+assert.deepEqual(await productIds(), originalIds, "New products append regardless of name");
+const sorting = { productIds: reversedIds, expectedProductIds: originalIds };
+await assert.rejects(rpc(viewer, "saveProductOrder", [sorting], shopId), (error) => error.code === "PERMISSION_DENIED");
+await assert.rejects(rpc(outsider, "saveProductOrder", [sorting], shopId), (error) => error.code === "NOT_FOUND");
+await assert.rejects(rpc(owner, "saveProductOrder", [{ ...sorting, productIds: [product.productId, product.productId] }], shopId), (error) => error.code === "INVALID_ARGUMENT");
+await assert.rejects(rpc(owner, "saveProductOrder", [{ ...sorting, productIds: [product.productId, "foreign-product"] }], shopId), (error) => error.code === "INVALID_ARGUMENT");
+await rpc(owner, "saveProductOrder", [sorting], shopId);
+assert.deepEqual(await productIds(), reversedIds);
+assert.deepEqual((await rpc(owner, "getShopBootstrap", [2026, 9], shopId)).products.map((p) => p.productId), reversedIds);
+await assert.rejects(rpc(owner, "saveProductOrder", [sorting], shopId), (error) => error.code === "FAILED_PRECONDITION");
+await rpc(owner, "saveProduct", [{ productId: secondProduct.productId, productName: "ZZZ 改名", price: 20, status: "啟用" }], shopId);
+assert.deepEqual(await productIds(), reversedIds, "Editing does not change order");
+const thirdProduct = await rpc(owner, "saveProduct", [{ productName: "000 新商品", price: 30 }], shopId);
+const threeIds = [...reversedIds, thirdProduct.productId];
+assert.deepEqual(await productIds(), threeIds);
+await assert.rejects(rpc(owner, "saveProductOrder", [{ productIds: originalIds, expectedProductIds: reversedIds }], shopId), (error) => error.code === "FAILED_PRECONDITION");
+const attempts = await Promise.allSettled([
+  rpc(owner, "saveProductOrder", [{ productIds: [...threeIds].reverse(), expectedProductIds: threeIds }], shopId),
+  rpc(owner, "saveProductOrder", [{ productIds: [threeIds[1], threeIds[0], threeIds[2]], expectedProductIds: threeIds }], shopId),
+]);
+assert.equal(attempts.filter((result) => result.status === "fulfilled").length, 1, "Concurrent stale reorder must not overwrite the winner");
+assert.equal(attempts.find((result) => result.status === "rejected").reason.code, "FAILED_PRECONDITION");
+await rpc(owner, "deleteProduct", [secondProduct.productId], shopId);
+await rpc(owner, "deleteProduct", [thirdProduct.productId], shopId);
+assert.deepEqual(await productIds(), [product.productId]);
 await rpc(
   owner,
   "saveWeekdayCapacity",

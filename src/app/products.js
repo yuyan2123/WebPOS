@@ -4,7 +4,7 @@ import { rpc } from '../platform/rpc.js';
 import { state } from './state.js';
 import { initializeModalCloseHandlers } from './platform.js';
 import { showAlert, setButtonLoading, handleError } from './feedback.js';
-import { updateProductDisplays, updateNavVisibility } from './catalog.js';
+import { updateProductDisplays, updateNavVisibility, cacheProducts } from './catalog.js';
 import { showConfirmModal, closeConfirmModal } from './dialogs.js';
 
 export function closeCategoryOptions() {
@@ -302,7 +302,7 @@ export function handleProductSaved(result) {
     const index = state.allProducts.findIndex((p) => p.productId === result.product.productId);
     if (index >= 0) state.allProducts[index] = { ...state.allProducts[index], ...result.product };
     else state.allProducts.push(result.product);
-    state.allProducts.sort((a, b) => String(a.productName).localeCompare(String(b.productName), 'zh-TW'));
+    cacheProducts(state.allProducts);
     renderProductCards();
     updateProductDisplays();
     updateNavVisibility();
@@ -339,6 +339,7 @@ export function deleteProduct(productId) {
         closeConfirmModal();
         showAlert('商品已刪除', 'success');
         state.allProducts = state.allProducts.filter((p) => p.productId !== productId);
+        cacheProducts(state.allProducts);
         renderProductCards();
         updateProductDisplays();
         updateNavVisibility();
