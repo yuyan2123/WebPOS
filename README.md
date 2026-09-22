@@ -150,6 +150,19 @@ requests without a valid App Check token are rejected before POS code runs.
 The web app loads its Firebase configuration from Hosting's reserved
 `/__/firebase/init.json` URL, so no Firebase keys need to be copied into source files.
 
+Installed PWAs use Google redirect sign-in; browser tabs use a popup. Startup consumes
+the redirect result before showing the login screen. On deployed Hosting domains,
+`authDomain` uses the current hostname so Safari can access the sign-in helper on the
+same origin. Local emulators retain their supplied configuration.
+
+For each deployed domain, enable it in Firebase Authentication's authorized domains
+and add `https://<domain>/__/auth/handler` to the Google OAuth web client's authorized
+redirect URIs (including `https://webpos-14776.web.app/__/auth/handler` when using web.app).
+Custom domains must serve Firebase Hosting's reserved `/__/auth/` endpoints.
+See [Firebase's redirect setup](https://firebase.google.com/docs/auth/web/redirect-best-practices).
+To verify on an iPhone, update the installed PWA, sign in with Google, then close and
+reopen it and confirm that the account and shop remain available.
+
 ## Security and account isolation
 
 - The Hosting HTML and JavaScript are public, but contain no catalog, customer, order, phone,

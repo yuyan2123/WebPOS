@@ -501,12 +501,17 @@
     async function initializeFirebase() {
         if (firebaseStatePromise) return firebaseStatePromise;
         firebaseStatePromise = (async function() {
-            const [appSdk, authSdk, functionsSdk, config] = await Promise.all([
+            const [appSdk, authSdk, functionsSdk, loadedConfig] = await Promise.all([
                 import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app.js`),
                 import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-auth.js`),
                 import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-functions.js`),
                 loadFirebaseConfig(),
             ]);
+            const config = { ...loadedConfig };
+            const localHost = ['localhost', '127.0.0.1'].includes(location.hostname);
+            // Hosting serves /__/auth on this origin too. Safari must be able to
+            // read the redirect helper's storage without crossing domains.
+            if (!localHost) config.authDomain = location.hostname;
             const app = appSdk.initializeApp(config);
             const auth = authSdk.getAuth(app);
             const appCheckSiteKey = String(window.__POS_RUNTIME_CONFIG__?.appCheckSiteKey || '').trim();
@@ -520,7 +525,6 @@
             const functions = functionsSdk.getFunctions(app, REGION);
             await authSdk.setPersistence(auth, authSdk.browserLocalPersistence);
 
-            const localHost = ['localhost', '127.0.0.1'].includes(location.hostname);
             if (localHost) {
                 authSdk.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
                 functionsSdk.connectFunctionsEmulator(functions, '127.0.0.1', 5001);
@@ -577,7 +581,13 @@
                 const button = this;
                 button.disabled = true;
                 try {
-                    await authSdk.signInWithPopup(auth, new authSdk.GoogleAuthProvider());
+                    const provider = new authSdk.GoogleAuthProvider();
+                    const standalone = navigator.standalone === true ||
+                        window.matchMedia('(display-mode: standalone)').matches;
+                    // An iOS PWA popup can lose its opener when the system
+                    // browser hands control back to the installed app.
+                    if (standalone) await authSdk.signInWithRedirect(auth, provider);
+                    else await authSdk.signInWithPopup(auth, provider);
                 } catch (error) {
                     showAuthOverlay(error.message || '登入失敗，請稍後再試');
                 } finally {
@@ -623,6 +633,14 @@
                 location.reload();
             });
 
+            // Finish the OAuth return before presenting the signed-out UI.
+            // Keep return errors visible while still allowing another login.
+            let redirectError = '';
+            try {
+                await authSdk.getRedirectResult(auth);
+            } catch (error) {
+                redirectError = error.message || 'Google 登入未完成，請再試一次。';
+            }
             await new Promise((resolve) => {
                 let initialStateResolved = false;
                 authSdk.onAuthStateChanged(auth, (user) => {
@@ -655,7 +673,8 @@
                         availableShops = [];
                         updateShopBadge();
                         setAccountBadgeVisible(false);
-                        showAuthOverlay();
+                        showAuthOverlay(redirectError);
+                        redirectError = '';
                     }
                     if (!initialStateResolved) {
                         initialStateResolved = true;
@@ -675,7 +694,6 @@
         const state = await initializeFirebase();
         if (state.auth.currentUser?.emailVerified) return state;
         if (state.auth.currentUser) showAuthOverlay('', 'verify', state.auth.currentUser);
-        else showAuthOverlay();
         await new Promise((resolve, reject) => authWaiters.push({ resolve, reject }));
         return state;
     }
