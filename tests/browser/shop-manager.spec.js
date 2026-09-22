@@ -8,9 +8,8 @@ async function openManager(page) {
   });
   const source = readFileSync('public/js/rpc-bridge.js', 'utf8');
   // Exercise the real bridge UI with a controllable RPC, without Firebase credentials.
-  await page.route('**/__test__/shop-manager.js', (route) => route.fulfill({
-    contentType: 'text/javascript',
-    body: source.replace(
+  await page.addScriptTag({
+    content: source.replace(
       "document.addEventListener('DOMContentLoaded', function() {",
       `installAuthOverlay();
     installShopEventHandlers();
@@ -26,8 +25,7 @@ async function openManager(page) {
     setAccountBadgeVisible(true);
     document.addEventListener('unused-test-event', function() {`,
     ),
-  }));
-  await page.addScriptTag({ url: '/__test__/shop-manager.js' });
+  });
   await page.locator('#firebaseShopButton').click();
 }
 

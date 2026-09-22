@@ -1,5 +1,4 @@
 import { HttpsError } from "firebase-functions/v2/https";
-import { getAuth } from "firebase-admin/auth";
 
 export function authorize(request) {
   if (!request.auth) {
@@ -27,29 +26,4 @@ export function authorize(request) {
     name: String(request.auth.token.name || ""),
     emailVerified: true,
   };
-}
-
-// Callable token verification checks signature/expiry, but not revocation. Keep
-// this live check outside Firestore rules: all POS operations use the Admin SDK.
-export async function requireCurrentSession(user) {
-  let account;
-  try {
-    account = await getAuth().getUser(user.uid);
-  } catch (error) {
-    if (error.code === "auth/user-not-found") {
-      throw new HttpsError("unauthenticated", "登入狀態已失效，請重新登入");
-    }
-    throw error;
-  }
-  const validAfter = Date.parse(account.tokensValidAfterTime);
-  if (
-    account.disabled ||
-    !account.emailVerified ||
-    String(account.email || "").toLowerCase() !== user.email ||
-    !Number.isFinite(user.authTime) ||
-    !Number.isFinite(validAfter) ||
-    user.authTime < Math.floor(validAfter / 1000)
-  ) {
-    throw new HttpsError("unauthenticated", "登入狀態已失效，請重新登入");
-  }
 }

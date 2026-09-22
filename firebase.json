@@ -25,117 +25,58 @@
       {
         "source": "/certs/*.cer",
         "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/x-x509-ca-cert"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "no-store"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          }
+          { "key": "Content-Type", "value": "application/x-x509-ca-cert" },
+          { "key": "Cache-Control", "value": "no-store" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
         ]
       },
       {
         "source": "**/*.wasm",
         "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/wasm"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, must-revalidate"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          }
+          { "key": "Content-Type", "value": "application/wasm" },
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
         ]
       },
       {
         "source": "/index.html",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
+          { "key": "Cache-Control", "value": "no-cache" }
         ]
       },
       {
         "source": "/",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
+          { "key": "Cache-Control", "value": "no-cache" }
         ]
       },
       {
         "source": "**/*.@(css|js)",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, must-revalidate"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          }
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
         ]
       },
       {
         "source": "**/*.@(png|svg|woff2)",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=3600, stale-while-revalidate=86400"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          }
+          { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
         ]
       },
       {
         "source": "**",
         "headers": [
-          {
-            "key": "Referrer-Policy",
-            "value": "strict-origin-when-cross-origin"
-          },
-          {
-            "key": "Permissions-Policy",
-            "value": "camera=(), microphone=(), geolocation=()"
-          },
-          {
-            "key": "X-Frame-Options",
-            "value": "SAMEORIGIN"
-          },
-          {
-            "key": "Content-Security-Policy",
-            "value": "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-orPsA+l36SJ0ejtva5DIBpkrw2tmVv8LKSkVFTjFSPA=' 'sha256-TKvsQPCB6ZSAPnOpS8yuqxsD5NyYB8CWgUHXXms1cec=' 'sha256-G70pZ4N9lx1kOwtgoArIZQ4c2JTknxVJz4G/Kr3bl8Q=' 'sha256-pGVp3wogUm3PtBWqdOGZ4BCjAmFN7NP2Tmas/r//HFQ=' 'sha256-av8uC4kWOfOf9EoYbFmAhL1gFREHCFjLx4bEfK+1dkU=' 'sha256-e2XA9D2HzRkKNrfUTSJYtbM00vLI+su07HpgM8ULN2s=' 'sha256-Br6oN14qY10NTJ2WkM6qqqXoCPQVhnD9OpOfnvu/Ehk=' 'sha256-nNtKO2y8iaUOgXn5T86ysdefhytmGYUxt/pfPECnxIM=' 'sha256-XH1N2OERyHW3iA4Baf87zb79nbaGia8roiuREDhcwPA=' 'sha256-MlUhV5M324HMKozHOCPWb9I0IVc91mGz107rJtAtEOE=' 'sha256-0oc4Sh4DahsurUJ5R7tRDaQ+EbLzW4T5KOhW+J4ov20=' 'sha256-Eazfj2Ubs4J29NKhwNTlVS3lFNXdEP03+7Ir+RgEHpc=' 'sha256-faNTDE3Bp2C4SXVV0Ulow8Z2wvyyE+V+4oEBcedr8rE=' 'sha256-oZMIbCYQa4ITcI2QxFt5IN+uQN6lvjnMu0KH+18cUWY=' 'sha256-s8I8VH4l/6gHV7WLNhoM1d+uM7wWjfuLS+zATdrc6EE=' 'sha256-saFrHTsZgElTKtst3YwpVMMWhQEUdU2HhsNDoGDiMrU=' 'sha256-c7uaDZtOEd7iMN2GPc57UHMQQi2KuDO0+MHrApsD1UA=' 'sha256-gYNizwmVnEacy2L0MNHsSVOItxOIqR2yQQRtbcNqhdg=' 'sha256-qxEHJks5IJF/29qu2Y28iPZNWk1GrQjxP+Y9j3tjrWc=' 'sha256-EDFijdzvQPQfi4cqITNkWtFLajIF/n5Kf0H0UHrtDWU=' 'sha256-50A3sIjDFDTysdb33OXCNoDFpTeMbgOE1OQd/79wyZs=' 'sha256-bZxhPiwNk1PFUyYZMLrHq3EB7CLUm4zZrtTLGvKaJdU=' 'sha256-/RTyJX3VWVLdMeuc1BJTk+LXEIOnY1CKFBRpEASV9rg=' 'sha256-bnHh3qcItV9oNHGYf0vkajIQQh0VmNcDdKsbcC+AlbI=' 'sha256-zgzkaQ5tRLefSg5iH0P7FUHnid9sK+0zgIh9z+dATPc=' 'sha256-+yk1izbxb7x6Kf0BbDr5irzqaCrocsKA8p83Q3lS6Ks=' 'sha256-6uHoT2EGdFQvBwjkBMwRpa+lNVHUPO/skYjWI5q4kvg=' 'sha256-I5DC16aYgfj81qR+uGK8Uqa3ypHCYI4r41ASWDp5XsM=' 'sha256-jHF5hTIlMDyGZRAsNK0HO/WFYrwPvI2I1q0o1xKKB6I=' 'sha256-JtIxACrRE/pf29Ii7djuUBjerrva/DnoABnJRUFYznI=' 'sha256-g9f7nkuoZMBtWkg5y11TieN4hrFHIRrjWIHLyi0kY/w=' 'sha256-6d7vNuFQt5lbaIb1JNBgi/td3R8jZk/oL2TVSd5ukYI=' 'sha256-Eky0+v2foUWbNXaTOLSfkcVew4ea4HzC3Kxe3zDmvc4=' 'sha256-o5pmjQI0pYFA6cDc0qwsBlb+ME7ifSXiAUl3VSy7f78=' 'sha256-PEXMRar0sQrvistXQLWpBmj0m7ysrDdNyHh76QCrP38=' 'sha256-LNXd+rc3aaqpI6NkSgwPfNyOTWT6lSGA6HxT8BV8FtI=' 'sha256-gWnt2/6kMNOKhA1vU8VKumO2lnxee3pmz0DOzbjt9r0=' 'sha256-dFVkftJL2YzQcy6X/xaXqmq+XPxuEafcceU8KVPuijU=' 'sha256-c/gZqjK0zUqLwcksrSgFLLZYQdlC+5CG2PVAK6ea6kg=' 'sha256-QQs1Nd3htvIwvBIEH7bNYFiW39eucskIKDFN0Pixczg=' 'sha256-xvP0T1FwFg838RyXPC0aMX7HQFgdDbP53SdRoL+LEKY=' 'sha256-9gOBGqEQINNDuds+tkXbNzih6klbz+KeCyxEj4KRLeM=' 'sha256-7FG1ZIxnZbguIqeg27SzinXfmh4f8r1boTgG5/qe+6M=' 'sha256-aZC1v1e+q+mNVj9vE+DLymA+FyoMXB6kn/9+56B+cYg=' 'sha256-/FqZOOoMINkJCTAY/UiqKyfyGPe9jhG0ks7k+6W76ZI=' 'sha256-4Kz59NOW3OhZkTD1f4VBa0HaMKbFeef+btzCzfpYbLg=' 'sha256-x7/clTUWwtxsgGjn/emMuG2DJLU6S7knIMBoFqboU94=' 'sha256-eA/Spy627GaFTwQSV54/Ak7+BbT7OdtABquyHJ2fiQY=' 'sha256-rbvpxnk4UCCFJjQuOMV7qjrlU59lty9Yf9jUh2tSeAA=' 'sha256-AnDnuA8kW/3OvLaAwn6/ZtSRGDTMYTf2Uy/jfspM7FM=' 'sha256-w8IhVspabMFc/DKwUgUnIKJJxRJHB9Yg/aDw7YXs4GU=' 'sha256-7u/oLgRxDRFVz/0GdzwidpCIvHRmcN//ghZLHFvJuQA=' 'sha256-bIoTJZdvzL9s3NtpsPEJzOAuRVAPPd611uZtkzZkHUA=' 'sha256-odsQ98L6Fovqf14EGVcXELLyBLtz+LpS/KCJz1GxQus=' 'sha256-dLVKHwSQ1BuCve6JdZtouxob0c5ffwJJZnRxTaRa9yE=' 'sha256-3V/zJEfFBP1ddI7ub5TVWdwTaOjTok/VY2c5ZpLRmHQ=' 'sha256-VpRI35JYUlpDNw1Sto59WCPe4Xi3F29MCH6lh7jfwLk=' 'sha256-5Gl4PP0onnOXFtdNn4p7Hy4Qt81rggVRJBUTOVANGRE=' 'sha256-ty4fQ2pmM1sAlWxWKF88VOQRb20W4Y7hGFnFhJYs/sM=' 'sha256-QDaNIm4srP3tnkrPCrW/uWyaPlB+bJWLrzUDL5UX5Gw=' 'sha256-MiPxmag1kWv4R+gPnUI046314WWtOCD54cohZPbg7bU=' 'sha256-oSsEGKVZwPysmPLrltKc0l3pqNgqFlc+ra96dr/cxHE=' 'sha256-9FlcfAHZuKmj+D2NHVZNhPDxozrP1/VWAeDn55F90gM=' 'sha256-RPuoqRcuRKJnPU15Kecnf92CxjTwFxA2mIfGfQsAMdc=' 'sha256-YdhA1+jdEDL+f4JGO9pOiEXgeFfze8SLzBuMOBh+TG4=' 'sha256-04R7mhV2csO0PVK2A40w2zpJUOHjfgSzUOyw5O5K6Ig=' 'sha256-ETizr9OvWy5MfpqFC5G8uqsY8HXLuOg473jgGzjt0TQ=' 'sha256-8mufbPD3HjDbnD4L7LDSRkW5mdRMDzewe2LuL0VaYzo=' 'sha256-/stTiAovLXXLFF7j4Zep2s/kSC1lPpd/ojohVGbvb+4=' 'sha256-/CiDGph3qFk7xKzDzW58umjPPLJT7rqkxt+yTFTNAhM=' 'sha256-08RbzyzIj4roi1fqSVJ8MW6Lem5iCm5m9itlJdC7yPQ=' 'sha256-2QkyUGot3/MPaXxeFFPu8bHZlSRodeiGmns90ifTa6o=' 'sha256-biFQTroSCI3Z5BmsMGyEE2jFZdwjjG1Oe7JLytgH6jM=' 'sha256-XeRoXWtbLGDiMs8FJD0wMoIdUqnsYYAPVrQErGWZ8AM=' 'sha256-AGTc8fvF6bmQG2Pi3mJfi2AQh5wKDuxlUYfK2WHKtFw=' 'sha256-PI6DIOiX/LFKr1kJHhCY55MhYrqG43JliW4X0Co52ek=' 'sha256-sC3fslT/Wcp6wOCFPwtUce09VnUu7QSVpK/vR2YY9Sg=' 'sha256-8Vn33NRkky1y7xIen6n4tAryjpVIv2I1szAnNFx5T1I=' 'sha256-U38subcooG7q9/Fwx5H1Aonoko5ZXhuOf6HUS8m8804=' 'sha256-MVl/SR0916PyqGOKYoW0f6hGh+xtuDsqB/b98V4nGKo=' 'sha256-FhH1lXWYeW8IYka2vQ8upSTtzHNppX+m+3W4xoC8g+g=' 'sha256-YFRZ5zi38uACCeNw52N8Wrx60Zh607zPhhf1tMTjIQQ=' https://www.gstatic.com/firebasejs/ https://www.gstatic.com/recaptcha/ https://www.google.com/recaptcha/ https://www.recaptcha.net/recaptcha/ https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self'; connect-src 'self' https: wss: http://127.0.0.1:9099 http://127.0.0.1:5001; frame-src 'self' https://webpos-14776.firebaseapp.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.recaptcha.net/recaptcha/; worker-src 'self'; manifest-src 'self'"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          }
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+          { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
         ]
       },
       {
         "source": "/sw.js",
         "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          },
-          {
-            "key": "Service-Worker-Allowed",
-            "value": "/"
-          }
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+          { "key": "Service-Worker-Allowed", "value": "/" }
         ]
       }
     ],

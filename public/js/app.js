@@ -2375,7 +2375,7 @@ function getEffectivePrice(product) {
 }
 
 // src/app/state.js
-var initialState = () => ({
+var state = {
   currentCustomer: {},
   currentDeliveryDate: "",
   giftCart: [],
@@ -2466,16 +2466,15 @@ var initialState = () => ({
   currentDepositOrderId: null,
   currentDepositTotalAmount: 0,
   currentDepositAmount: 0
-});
-var state = initialState();
-window.addEventListener("pos:session-ending", () => {
-  for (const key2 of ["draftSaveTimer", "acDebounceTimer", "viewportRemeasureTimer", "_weekdayCapacityDebounceTimer", "orderSubmitWatchdog"]) {
-    clearTimeout(state[key2]);
-  }
-  state.posLocalDbPromise?.then((db) => db?.close()).catch(() => {
-  });
-  Object.assign(state, initialState(), { suppressDraftSave: true });
-});
+};
+
+// src/platform/markup.js
+function escapeHandlerArgument(value) {
+  return String(value ?? "").replace(
+    /[\\'"<>&\r\n\u2028\u2029]/g,
+    (character) => "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0")
+  );
+}
 
 // src/platform/rpc.js
 function call(method, ...args) {
@@ -2635,18 +2634,18 @@ function updateCartModalDisplay() {
                             </div>
                             <div class="cart-item-controls">
                                 <div class="cart-qty-group">
-                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), -1)">
+                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)">
                                         <i class="fas fa-minus"></i>
                                     </button>
                                     <div class="cart-qty-value">${item.quantity}</div>
-                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), 1)">
+                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
-                                <button class="cart-edit-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); editGiftboxItem(Number(this.dataset.arg0))" title="\u7DE8\u8F2F\u79AE\u76D2\u5167\u5BB9">
+                                <button class="cart-edit-btn" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})" title="\u7DE8\u8F2F\u79AE\u76D2\u5167\u5BB9">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="cart-delete-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); removeFromCartModal(Number(this.dataset.arg0))">
+                                <button class="cart-delete-btn" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -2675,15 +2674,15 @@ function updateCartModalDisplay() {
                             </div>
                             <div class="cart-item-controls">
                                 <div class="cart-qty-group">
-                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), -1)">
+                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)">
                                         <i class="fas fa-minus"></i>
                                     </button>
                                     <div class="cart-qty-value">${item.quantity}</div>
-                                    <button class="cart-qty-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); updateCartItemQuantity(Number(this.dataset.arg0), 1)">
+                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
-                                <button class="cart-delete-btn" data-arg0="${escapeAttr(index)}" onclick="event.stopPropagation(); removeFromCartModal(Number(this.dataset.arg0))">
+                                <button class="cart-delete-btn" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -3385,7 +3384,7 @@ function displayOrderTable(orders, containerId, type = "search") {
                       </div>
                     </td>`;
     const rowClassAttr = rowClasses.length ? ` class="${rowClasses.join(" ")}"` : "";
-    const rowClickAttr = canExpandItems ? ` data-arg0="${escapeAttr(orderId)}" onclick="toggleOrderItems(this.dataset.arg0)"` : "";
+    const rowClickAttr = canExpandItems ? ` onclick="toggleOrderItems('${escapeHandlerArgument(orderId)}')"` : "";
     const expandedItemsRow = isExpanded || isCollapsing ? renderExpandedOrderItems(order.items, tableHeaders.split("</th>").length - 1, isCollapsing) : "";
     return `<tr${rowClassAttr}${rowClickAttr}>${cells}</tr>${expandedItemsRow}`;
   }).join("");
@@ -3651,7 +3650,7 @@ function renderOverrideTable() {
       statusBadge = '<span style="color: #9ca3af;">\u505C\u7528</span>';
     }
     var rowStyle = isExpired ? ' style="opacity: 0.5;"' : "";
-    var deleteButton = document.body.dataset.shopRole === "viewer" ? "" : '<button class="requires-editor" aria-label="\u522A\u9664 ' + escapeAttr(o.date) + ' \u65E5\u671F\u8986\u5BEB" data-override-id="' + escapeAttr(o.id) + '" onclick="deleteDateOverrideById(this.dataset.overrideId)" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>';
+    var deleteButton = document.body.dataset.shopRole === "viewer" ? "" : '<button class="requires-editor" aria-label="\u522A\u9664 ' + escapeAttr(o.date) + ` \u65E5\u671F\u8986\u5BEB" onclick="deleteDateOverrideById('` + escapeAttr(o.id) + `')" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`;
     return "<tr" + rowStyle + "><td>" + escapeHtml(o.date) + "</td><td>" + dayStr + '</td><td style="font-weight: 600;">' + maxStr + "</td><td>" + statusBadge + '</td><td style="text-align: center;">' + deleteButton + "</td></tr>";
   }).join("");
 }
@@ -4080,7 +4079,7 @@ function loadProductsByCategory(category, containerId) {
     return `
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col border ${hoverBorderClass} transition group relative h-full">
                     <!-- \u4E0A\u534A\u90E8\uFF1A\u9EDE\u64CA\u67E5\u770B\u8A73\u60C5/\u7279\u50F9 -->
-                    <div class="cursor-pointer flex-1 flex flex-col" data-arg0="${escapeAttr(p.productId)}" onclick="showProductDetail(this.dataset.arg0)">
+                    <div class="cursor-pointer flex-1 flex flex-col" onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')">
                         <div class="h-32 ${bgClass} flex items-center justify-center relative overflow-hidden">
                             <i class="fas ${iconClass} text-5xl transform group-hover:scale-110 transition-transform duration-300"></i>
                             ${isCompanyPriceActive ? '<div class="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">\u4F01\u696D\u50F9</div>' : ""}
@@ -4094,11 +4093,11 @@ function loadProductsByCategory(category, containerId) {
                     <!-- \u4E0B\u534A\u90E8\uFF1A\u64CD\u4F5C\u6309\u9215 -->
                     <div class="p-4 pt-0 mt-auto">
                         <div class="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <button data-arg0="${escapeAttr(p.productId)}" onclick="showProductDetail(this.dataset.arg0)" class="flex-1 py-2 px-2 text-gray-600 text-sm font-medium hover:text-blue-600 transition flex items-center justify-center gap-1">
+                            <button onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')" class="flex-1 py-2 px-2 text-gray-600 text-sm font-medium hover:text-blue-600 transition flex items-center justify-center gap-1">
                                 <i class="fas fa-edit"></i> \u8A73\u60C5
                             </button>
                             <div class="w-px h-6 bg-gray-300"></div>
-                            <button data-arg0="${escapeAttr(p.productId)}" onclick="addToCartDirectly(this.dataset.arg0)" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
+                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -4335,10 +4334,10 @@ function renderProductCards() {
                         </div>
                     </div>
                     ${document.body.dataset.shopRole === "viewer" ? "" : `<div class="product-card-actions requires-editor">
-                        <button class="btn-card-edit" data-arg0="${escapeAttr(p.productId)}" onclick="editProduct(this.dataset.arg0)">
+                        <button class="btn-card-edit" onclick="editProduct('${escapeHandlerArgument(p.productId)}')">
                             <i class="fas fa-edit"></i> \u7DE8\u8F2F
                         </button>
-                        <button class="btn-card-delete" data-arg0="${escapeAttr(p.productId)}" onclick="event.stopPropagation(); deleteProduct(this.dataset.arg0)">
+                        <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${escapeHandlerArgument(p.productId)}')">
                             <i class="fas fa-trash-alt"></i> \u522A\u9664
                         </button>
                     </div>`}
@@ -5061,11 +5060,11 @@ function loadGiftboxProducts() {
                         <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + "</span>" : ""}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</span>
                     </div>
                     <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, -1)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display" id="display_${escapeAttr(p.productId)}" value="0" onfocus="this.select()" data-arg0="${escapeAttr(p.productId)}" onchange="setGiftboxQty(this.dataset.arg0, this.value)">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, 1)">
+                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display" id="display_${escapeAttr(p.productId)}" value="0" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
@@ -5339,11 +5338,11 @@ function loadGiftboxProductsForEdit(existingProducts) {
                         <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + "</span>" : ""}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</span>
                     </div>
                     <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, -1)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display ${hasQty ? "has-value" : ""}" id="display_${escapeAttr(p.productId)}" value="${existingQty}" onfocus="this.select()" data-arg0="${escapeAttr(p.productId)}" onchange="setGiftboxQty(this.dataset.arg0, this.value)">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, 1)">
+                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display ${hasQty ? "has-value" : ""}" id="display_${escapeAttr(p.productId)}" value="${existingQty}" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
@@ -7185,7 +7184,7 @@ function handleOrderDetails(details) {
   let statusButtons = "";
   const canEditOrders = document.body.dataset.shopRole !== "viewer";
   if (canEditOrders && details.status !== "\u5B8C\u6210") {
-    statusButtons += `<button class="btn btn-success" data-arg0="${escapeAttr(details.orderId)}" onclick="showStatusConfirm(this.dataset.arg0, '\u5B8C\u6210'); this.closest('.modal').remove();">\u5B8C\u6210</button>`;
+    statusButtons += `<button class="btn btn-success" onclick="showStatusConfirm('${escapeHandlerArgument(details.orderId)}', '\u5B8C\u6210'); this.closest('.modal').remove();">\u5B8C\u6210</button>`;
   }
   detailModal.innerHTML = `<div class="modal-content" onclick="event.stopPropagation()">
                 <div class="modal-header">
@@ -7256,7 +7255,7 @@ function handleOrderDetails(details) {
                         </div>
                         ${canEditOrders && details.status !== "\u5B8C\u6210" ? `
                         <div class="deposit-action">
-                            <button class="btn btn-deposit" data-arg0="${escapeAttr(details.orderId)}" data-arg1="${escapeAttr(details.totalAmount)}" data-arg2="${escapeAttr(details.depositAmount || 0)}" onclick="showDepositModal(this.dataset.arg0, Number(this.dataset.arg1), Number(this.dataset.arg2)); this.closest('.modal').remove();">
+                            <button class="btn btn-deposit" onclick="showDepositModal('${escapeHandlerArgument(details.orderId)}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();">
                                 <i class="fas fa-coins"></i> \u8A2D\u5B9A\u8A02\u91D1
                             </button>
                         </div>` : ""}
@@ -7268,7 +7267,7 @@ function handleOrderDetails(details) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" data-arg0="${escapeAttr(details.orderId)}" onclick="editOrder(this.dataset.arg0); this.closest('.modal').remove();"><i class="fas fa-edit"></i> \u7DE8\u8F2F</button>` : ""}
+                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" onclick="editOrder('${escapeHandlerArgument(details.orderId)}'); this.closest('.modal').remove();"><i class="fas fa-edit"></i> \u7DE8\u8F2F</button>` : ""}
                     ${statusButtons}
                     <button class="btn btn-close-modal" onclick="this.closest('.modal').remove()">\u95DC\u9589</button>
                 </div>

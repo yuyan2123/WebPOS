@@ -136,9 +136,9 @@ export function renderOverrideTable() {
           ? ''
           : '<button class="requires-editor" aria-label="刪除 ' +
             escapeAttr(o.date) +
-            ' 日期覆寫" data-override-id="' +
+            ' 日期覆寫" onclick="deleteDateOverrideById(\'' +
             escapeAttr(o.id) +
-            '" onclick="deleteDateOverrideById(this.dataset.overrideId)" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
+            '\')" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
             '<i class="fas fa-trash-alt" aria-hidden="true"></i>' +
             '</button>';
       return (

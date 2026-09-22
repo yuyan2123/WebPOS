@@ -1,3 +1,4 @@
+import { escapeHandlerArgument } from '../platform/markup.js';
 import { escapeHtml, escapeAttr } from './customers.js';
 import { state } from './state.js';
 import { setButtonLoading, showAlert } from './feedback.js';
@@ -53,11 +54,11 @@ export function loadGiftboxProducts() {
                         <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + '</span>' : ''}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</span>
                     </div>
                     <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, -1)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display" id="display_${escapeAttr(p.productId)}" value="0" onfocus="this.select()" data-arg0="${escapeAttr(p.productId)}" onchange="setGiftboxQty(this.dataset.arg0, this.value)">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, 1)">
+                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display" id="display_${escapeAttr(p.productId)}" value="0" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
@@ -385,11 +386,11 @@ export function loadGiftboxProductsForEdit(existingProducts) {
                         <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + '</span>' : ''}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</span>
                     </div>
                     <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, -1)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display ${hasQty ? 'has-value' : ''}" id="display_${escapeAttr(p.productId)}" value="${existingQty}" onfocus="this.select()" data-arg0="${escapeAttr(p.productId)}" onchange="setGiftboxQty(this.dataset.arg0, this.value)">
-                        <button type="button" class="giftbox-qty-btn" data-arg0="${escapeAttr(p.productId)}" onclick="adjustGiftboxQty(this.dataset.arg0, 1)">
+                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display ${hasQty ? 'has-value' : ''}" id="display_${escapeAttr(p.productId)}" value="${existingQty}" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
+                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>

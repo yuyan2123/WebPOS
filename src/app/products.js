@@ -1,4 +1,5 @@
-import { escapeHtml, escapeAttr } from './customers.js';
+import { escapeHandlerArgument } from '../platform/markup.js';
+import { escapeHtml } from './customers.js';
 import { rpc } from '../platform/rpc.js';
 import { state } from './state.js';
 import { initializeModalCloseHandlers } from './platform.js';
@@ -202,10 +203,10 @@ export function renderProductCards() {
                       document.body.dataset.shopRole === 'viewer'
                         ? ''
                         : `<div class="product-card-actions requires-editor">
-                        <button class="btn-card-edit" data-arg0="${escapeAttr(p.productId)}" onclick="editProduct(this.dataset.arg0)">
+                        <button class="btn-card-edit" onclick="editProduct('${escapeHandlerArgument(p.productId)}')">
                             <i class="fas fa-edit"></i> 編輯
                         </button>
-                        <button class="btn-card-delete" data-arg0="${escapeAttr(p.productId)}" onclick="event.stopPropagation(); deleteProduct(this.dataset.arg0)">
+                        <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${escapeHandlerArgument(p.productId)}')">
                             <i class="fas fa-trash-alt"></i> 刪除
                         </button>
                     </div>`

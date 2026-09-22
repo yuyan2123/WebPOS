@@ -5,8 +5,6 @@ import { assert, forbidden, notFound } from "../lib/errors.js";
 import { newId } from "../lib/ids.js";
 import { text } from "../lib/values.js";
 import { initializeSystemAdmin, isSystemAdmin } from "../lib/system-admin.js";
-import { MAX_OWNED_SHOPS, securityLimitReference } from "../lib/rate-limit.js";
-import { HttpsError } from "firebase-functions/v2/https";
 
 const ROLE_LEVEL = Object.freeze({ viewer: 1, editor: 2, owner: 3 });
 
@@ -73,17 +71,6 @@ export async function createShop(user, input = {}) {
   const now = Timestamp.now();
 
   await db.runTransaction(async (transaction) => {
-    // This shared document serializes concurrent creations from every instance.
-    // Query the existing ownership field so legacy shops count without migration.
-    const limitRef = securityLimitReference(user.uid);
-    const [limitSnapshot, owned] = await Promise.all([
-      transaction.get(limitRef),
-      transaction.get(db.collection("shops").where("ownerUid", "==", user.uid).limit(MAX_OWNED_SHOPS)),
-    ]);
-    if (owned.size >= MAX_OWNED_SHOPS) {
-      throw new HttpsError("resource-exhausted", "已達可建立的店鋪數量上限");
-    }
-    transaction.set(limitRef, { shopRevision: (limitSnapshot.data()?.shopRevision || 0) + 1 }, { merge: true });
     transaction.create(shopRef, {
       name,
       ownerUid: user.uid,

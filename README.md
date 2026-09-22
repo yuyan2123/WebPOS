@@ -142,37 +142,27 @@ Customize the verification and password-reset messages under Authentication → 
 
 ### Production abuse protection
 
-The WebPOS Web app and reCAPTCHA Enterprise provider are registered for the two production
-Hosting domains. Their public app ID and site key are in `public/js/runtime-config.js`.
-Production Functions enforce App Check by default; local emulators disable it. An explicit
-`ENFORCE_APP_CHECK=false` is a temporary rollout/rollback override. Publish the updated client
-and refresh installed PWAs before enforcing it on Functions. See the
-[security changes and rollout procedure](docs/security-hardening.md).
+Before public launch, register the Web app with Firebase App Check using reCAPTCHA Enterprise.
+Put its public site key in `public/js/runtime-config.js`, set `ENFORCE_APP_CHECK=true` in the
+Functions environment, verify App Check metrics, and redeploy. When enforcement is on, callable
+requests without a valid App Check token are rejected before POS code runs.
 
 The web app loads its Firebase configuration from Hosting's reserved
-`/__/firebase/init.json` URL. Older responses omit `appId`; the runtime configuration supplements
-only that field for the matching project. The API key, Auth domain and backend endpoints stay unchanged.
+`/__/firebase/init.json` URL, so no Firebase keys need to be copied into source files.
 
 ## Security and account isolation
 
 - The Hosting HTML and JavaScript are public, but contain no catalog, customer, order, phone,
   address, or report records.
 - Every RPC requires a valid Firebase Authentication token.
-- Every RPC also checks live Auth state: disabled/deleted accounts, revoked sessions,
-  unverified accounts and stale email identities are rejected before Firestore access.
 - Every RPC requires the token's `email_verified` claim to be true; hiding or changing the browser UI cannot bypass this check.
 - The backend takes the caller UID only from `request.auth.uid`; a UID sent by browser code is ignored.
 - Every shop-scoped request enforces server-side authorization before accessing `shops/{shopId}`. Session, device registration and shop creation/listing use account-level authorization.
 - Firestore rules deny all direct browser reads and writes, including a user's own records.
-- Signing out or changing accounts clears rendered data and memory before reloading, including
-  changes originating in another tab. Responses from an earlier identity are discarded.
+- Changing accounts or shops reloads the page so records cannot remain in browser memory.
 - The optional email allowlist makes the entire application invite-only.
 - App Check can additionally reject requests that did not originate from the registered web app.
 - After a verified login, the app creates a random browser-local device ID and records a security-history document. Device ID, IP address, and user agent are stored only as keyed HMAC hashes under the user's private server-only collection.
-- Distributed account limits, shop creation quotas and a 100-device history cap bound abuse.
-  Independent `posSecurityLimits/{uid}` records expire after two inactive days using Firestore TTL.
-- Hosting CSP allows fixed, hashed HTML handlers and approved script origins; arbitrary inline
-  scripts are blocked. HTTPS diagnostics and WSS printer addresses remain configurable.
 
 IP addresses and browser/device identifiers never replace account verification. They can be shared,
 spoofed, copied, or reset, so this project uses them only for audit history—not to grant access or
@@ -244,7 +234,6 @@ when the host is `localhost` or `127.0.0.1`.
 - `shops/{shopId}/members/{uid}` — owner, editor, or viewer membership
 - `users/{uid}/shops/{shopId}` — each account's shop selector index
 - `users/{uid}/securityDevices/{deviceHash}` — server-only pseudonymous login/device history
-- `posSecurityLimits/{uid}` — server-only counters, transaction revision markers and TTL; no business data
 - `shops/{shopId}/products/{productId}` — collaborative catalog and prices
 - `shops/{shopId}/customers/{normalizedContact}` — collaborative customer data; legacy phones keep their numeric ID and LINE IDs use an opaque hash
 - `shops/{shopId}/orders/{orderId}` — collaborative orders and gift-box composition

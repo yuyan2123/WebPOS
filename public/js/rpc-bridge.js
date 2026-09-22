@@ -13,8 +13,6 @@
     let sessionBootstrapPromise = null;
     let shopsLoaded = false;
     let shopManagerLoading = false;
-    let sessionEnding = false;
-    let sessionGeneration = 0;
     const GLOBAL_METHODS = new Set(['listMyShops', 'createShop', 'registerDeviceSession']);
 
     function installAuthOverlay() {
@@ -170,7 +168,6 @@
     }
 
     function showAuthOverlay(message, mode, user) {
-        if (sessionEnding) return;
         installAuthOverlay();
         const verificationMode = mode === 'verify';
         const title = document.getElementById('firebaseAuthTitle');
@@ -222,60 +219,9 @@
         return `ginJiaPos.activeShop.${activeUid || 'anonymous'}`;
     }
 
-    function sessionChangedError() {
-        return Object.assign(new Error('登入狀態已變更，請重新登入'), { code: 'auth/session-changed' });
-    }
-
-    function endSession() {
-        if (sessionEnding) return;
-        sessionEnding = true;
-        sessionGeneration++;
-        window.dispatchEvent(new Event('pos:session-ending'));
-        activeUid = null;
-        activeShop = null;
-        availableShops = [];
-        shopsLoaded = false;
-        sessionBootstrapPromise = null;
-        shopSelectionPromise = null;
-        resolveShopSelection = null;
-        window.posCapabilities = Object.freeze({ canRead: false, canEdit: false, canManageShop: false });
-        authWaiters.splice(0).forEach((waiter) => waiter.reject(sessionChangedError()));
-        delete document.body.dataset.userId;
-        delete document.body.dataset.shopId;
-        delete document.body.dataset.shopRole;
-        // Remove all previously rendered customer/order data before navigation.
-        // A failed/delayed reload must never expose the previous account's page.
-        document.body.replaceChildren();
-        document.body.inert = true;
-    }
-
-    async function signOutSession(state) {
-        endSession();
-        try {
-            await state.signOut();
-        } finally {
-            location.reload();
-        }
-    }
-
     async function rawRpc(state, method, args, shopId) {
-        if (sessionEnding) throw sessionChangedError();
-        const generation = sessionGeneration;
-        const uid = state.auth.currentUser?.uid;
         const remote = state.functionsSdk.httpsCallable(state.functions, 'posRpc');
-        let result;
-        try {
-            result = await remote({ method, args: args || [], shopId: shopId || null });
-        } catch (error) {
-            if (sessionEnding || generation !== sessionGeneration || state.auth.currentUser?.uid !== uid) {
-                throw sessionChangedError();
-            }
-            if (error.code === 'functions/unauthenticated') await signOutSession(state);
-            throw error;
-        }
-        if (sessionEnding || generation !== sessionGeneration || state.auth.currentUser?.uid !== uid) {
-            throw sessionChangedError();
-        }
+        const result = await remote({ method, args: args || [], shopId: shopId || null });
         return result.data;
     }
 
@@ -561,16 +507,10 @@
                 import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-functions.js`),
                 loadFirebaseConfig(),
             ]);
-            const runtime = window.__POS_RUNTIME_CONFIG__ || {};
-            // Older Hosting init.json responses omit appId. Keep every existing
-            // project/API/Auth setting and supplement only the registered app ID.
-            if (!config.appId && runtime.projectId === config.projectId) config.appId = runtime.appId;
-            const localHost = ['localhost', '127.0.0.1'].includes(location.hostname);
             const app = appSdk.initializeApp(config);
             const auth = authSdk.getAuth(app);
             const appCheckSiteKey = String(window.__POS_RUNTIME_CONFIG__?.appCheckSiteKey || '').trim();
-            if (!localHost && !appCheckSiteKey) throw new Error('網站驗證尚未設定，請聯絡系統管理員');
-            if (!localHost && appCheckSiteKey) {
+            if (appCheckSiteKey) {
                 const appCheckSdk = await import(`https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app-check.js`);
                 appCheckSdk.initializeAppCheck(app, {
                     provider: new appCheckSdk.ReCaptchaEnterpriseProvider(appCheckSiteKey),
@@ -580,6 +520,7 @@
             const functions = functionsSdk.getFunctions(app, REGION);
             await authSdk.setPersistence(auth, authSdk.browserLocalPersistence);
 
+            const localHost = ['localhost', '127.0.0.1'].includes(location.hostname);
             if (localHost) {
                 authSdk.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
                 functionsSdk.connectFunctionsEmulator(functions, '127.0.0.1', 5001);
@@ -644,7 +585,9 @@
                 }
             });
             document.getElementById('firebaseSignOut').addEventListener('click', async function() {
-                await signOutSession({ signOut: () => authSdk.signOut(auth) });
+                window.dispatchEvent(new Event('pos:session-ending'));
+                await authSdk.signOut(auth);
+                location.reload();
             });
             document.getElementById('firebaseSendVerification').addEventListener('click', async function() {
                 const button = this;
@@ -675,19 +618,20 @@
                 }
             });
             document.getElementById('firebaseVerificationSignOut').addEventListener('click', async function() {
-                await signOutSession({ signOut: () => authSdk.signOut(auth) });
+                window.dispatchEvent(new Event('pos:session-ending'));
+                await authSdk.signOut(auth);
+                location.reload();
             });
 
             await new Promise((resolve) => {
                 let initialStateResolved = false;
                 authSdk.onAuthStateChanged(auth, (user) => {
-                    if (sessionEnding) return;
-                    if (activeUid && (activeUid !== user?.uid || (activeShop && !user?.emailVerified))) {
-                        endSession();
-                        location.reload();
-                        return;
-                    }
                     if (user?.emailVerified) {
+                        if (activeUid && activeUid !== user.uid) {
+                            window.dispatchEvent(new Event('pos:session-ending'));
+                            location.reload();
+                            return;
+                        }
                         activeUid = user.uid;
                         document.body.dataset.userId = user.uid;
                         hideAuthOverlay();
@@ -719,7 +663,7 @@
                     }
                 });
             });
-            return { auth, functions, functionsSdk, signOut: () => authSdk.signOut(auth) };
+            return { auth, functions, functionsSdk };
         })().catch((error) => {
             showAuthOverlay(error.message);
             throw error;
@@ -728,7 +672,6 @@
     }
 
     async function ensureSignedIn() {
-        if (sessionEnding) throw sessionChangedError();
         const state = await initializeFirebase();
         if (state.auth.currentUser?.emailVerified) return state;
         if (state.auth.currentUser) showAuthOverlay('', 'verify', state.auth.currentUser);
@@ -774,9 +717,7 @@
                     return function(handler) { failureHandler = handler || failureHandler; return this; };
                 }
                 return function(...args) {
-                    invoke(String(property), args)
-                        .then((result) => { if (!sessionEnding) successHandler(result); })
-                        .catch((error) => { if (!sessionEnding) failureHandler(error); });
+                    invoke(String(property), args).then(successHandler).catch(failureHandler);
                 };
             }
         });

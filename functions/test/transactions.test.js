@@ -10,7 +10,6 @@ import {
   deleteOrder,
 } from "../src/services/orders.js";
 import { executeRpc } from "../src/index.js";
-import { getAuth } from "firebase-admin/auth";
 
 const order = () => ({
   clientRequestId: "regression-request",
@@ -144,7 +143,7 @@ test("editing paid order down preserves refund note, creation time and deposit",
 });
 
 test("RPC rejects inherited methods, invalid contracts and viewer mutations", async (t) => {
-  const auth = { uid: "viewer-user", token: { email_verified: true, email: "viewer@example.test", auth_time: 1789000000 } };
+  const auth = { uid: "viewer-user", token: { email_verified: true, email: "viewer@example.test" } };
   for (const method of ["__proto__", "constructor", "toString"]) {
     await assert.rejects(
       executeRpc({ auth, data: { method, args: [] } }),
@@ -156,11 +155,6 @@ test("RPC rejects inherited methods, invalid contracts and viewer mutations", as
     (error) => error.code === "invalid-argument",
   );
   const prototype = Object.getPrototypeOf(db.doc("shops/test/members/viewer-user"));
-  t.mock.method(getAuth(), "getUser", async () => ({
-    email: "viewer@example.test", emailVerified: true, disabled: false,
-    tokensValidAfterTime: new Date(1789000000 * 1000).toISOString(),
-  }));
-  transactionStore(t);
   t.mock.method(prototype, "get", async () => ({ exists: true, data: () => ({ role: "viewer" }) }));
   await assert.rejects(
     executeRpc({ auth, data: { method: "deleteOrder", shopId: "test", args: ["order"] } }),

@@ -1,7 +1,7 @@
 import { generateUniqueId } from './pricing.js';
 
 // Session state stays private to this module graph; persisted records remain UID/shop scoped.
-const initialState = () => ({
+export const state = {
   currentCustomer: {},
   currentDeliveryDate: '',
   giftCart: [],
@@ -93,14 +93,4 @@ const initialState = () => ({
   currentDepositOrderId: null,
   currentDepositTotalAmount: 0,
   currentDepositAmount: 0,
-});
-
-export const state = initialState();
-
-window.addEventListener('pos:session-ending', () => {
-  for (const key of ['draftSaveTimer', 'acDebounceTimer', 'viewportRemeasureTimer', '_weekdayCapacityDebounceTimer', 'orderSubmitWatchdog']) {
-    clearTimeout(state[key]);
-  }
-  state.posLocalDbPromise?.then((db) => db?.close()).catch(() => {});
-  Object.assign(state, initialState(), { suppressDraftSave: true });
-});
+};

@@ -5,7 +5,7 @@ and migration utilities as of 2026-09-07. It describes current source behavior; 
 not a production database inspection or a proposed schema change.
 
 Paths below are relative to `shops/{shopId}/` unless explicitly rooted at `users/`
-or `system/`, plus the independent `posSecurityLimits/` collection. Read/write descriptions cover service work; the shared authorization
+or `system/`. Read/write descriptions cover service work; the shared authorization
 reads described below also apply. A single RPC can perform multiple queries, document
 writes, or transaction retries, so RPC counts are not Firestore billing counts.
 
@@ -19,12 +19,11 @@ mutations require editor or owner; membership management and renaming require ow
 | Case / entry point | Reads or remote calls | Persistent changes |
 | --- | --- | --- |
 | Register, sign in with email/password or Google, sign out, reset password, verify email | Firebase Auth SDK calls; verification refresh reloads the user and forces an ID token refresh | Firebase Auth maintains accounts and authentication state; browser uses `browserLocalPersistence`. These are separate from POS Firestore documents. |
-| Every recognized RPC: current-session and abuse checks | Live Auth user status/revocation time; transaction reads `posSecurityLimits/{uid}` | Updates independent request buckets and two-day `expiresAt`; Firestore TTL cleans inactive limit records. No existing business fields change. |
 | Authorize every shop-scoped RPC: `requireShopAccess` | `system/systemAdmin`; ordinary users: `members/{uid}`. A matching system administrator additionally requires live Auth account validation and a read of `shops/{shopId}`. | None |
 | List shops: `listMyShops` | System-admin initialization/check; normal users query `users/{uid}/shops` ordered by name; system admin queries all `shops` ordered by name | May initialize `system/systemAdmin` on first use |
 | Initialize system administrator: `initializeSystemAdmin` | Reads `system/systemAdmin`; if absent, paginates Auth users to identify the unique earliest-created account, then rechecks the document in a transaction | Creates the server-only identity document once; ambiguous earliest timestamps fail initialization |
 | Login initialization: `initializeSession` | Runs `listMyShops` and device recording concurrently | Same initialization side effect as shop listing, plus device history below |
-| Device audit: `registerDeviceSession` / `recordDeviceSession` | Transaction reads target device and security-limit lock; new devices query up to 101 oldest records | Preserves the existing device path, fields, hashes and atomic seen-count increment; evicts oldest records beyond the 100-device cap and increments an independent transaction marker |
+| Device audit: `registerDeviceSession` / `recordDeviceSession` | Uses the authenticated identity and request metadata; no explicit document pre-read | Merges `users/{uid}/securityDevices/{deviceHash}` with last-seen timestamp, atomic seen-count increment, HMAC device/IP/user-agent hashes and verified-email flag |
 
 Sources: [RPC dispatcher](../functions/src/index.js), [shop services](../functions/src/services/shops.js),
 [system administrator](../functions/src/lib/system-admin.js), [security history](../functions/src/services/security.js),
@@ -34,7 +33,7 @@ Sources: [RPC dispatcher](../functions/src/index.js), [shop services](../functio
 
 | Case / RPC | Reads | Writes / deletes |
 | --- | --- | --- |
-| Create shop: `createShop` | Transaction reads the security-limit lock and up to 20 existing shops where `ownerUid` matches | Enforces the ownership cap, advances an independent transaction marker, then creates unchanged shop metadata, owner membership, `users/{uid}/shops/{shopId}` and `settings/capacity` with `usageVersion: 1` |
+| Create shop: `createShop` | No service-level Firestore pre-read | One transaction creates shop metadata, owner membership, `users/{uid}/shops/{shopId}` and `settings/capacity` with `usageVersion: 1` |
 | List members: `listShopMembers` | `members`, ordered by role | None |
 | Add member: `addShopMember` | Auth lookup by email and verified-email check; transaction reads shop and target membership | Transaction writes membership and user shop index; increments shop member count for a new member |
 | Change role: `updateShopMemberRole` | Transaction reads target membership | Updates both membership and user shop index; owner role cannot be changed |

@@ -73,8 +73,6 @@
     }
   ],
   "fieldOverrides": [
-    { "collectionGroup": "posSecurityLimits", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
-    { "collectionGroup": "posSecurityLimits", "fieldPath": "buckets", "indexes": [] },
     { "collectionGroup": "orders", "fieldPath": "items", "indexes": [] },
     { "collectionGroup": "orders", "fieldPath": "customerAddress", "indexes": [] },
     { "collectionGroup": "orders", "fieldPath": "shippingNotes", "indexes": [] },

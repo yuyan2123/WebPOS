@@ -1,6 +1,5 @@
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, cpSync, mkdirSync, readdirSync } from 'node:fs';
-import { writeContentSecurityPolicy } from './content-security-policy.mjs';
 
 mkdirSync('public/vendor', { recursive: true });
 cpSync('node_modules/air-datepicker/air-datepicker.js', 'public/vendor/air-datepicker.js');
@@ -37,7 +36,6 @@ await build({
   logLevel: 'info',
   legalComments: 'none',
 });
-writeContentSecurityPolicy();
 // The worker caches exactly the generated local shell; no account data or API responses.
 const worker = readFileSync('public/sw.js', 'utf8');
 const { createHash } = await import('node:crypto');

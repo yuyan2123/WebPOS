@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
 const projectId = "demo-ginjia-pos";
 assert.equal(process.env.GCLOUD_PROJECT, projectId, "Integration tests require the isolated demo project");
@@ -129,64 +128,14 @@ await rpc(owner, "deleteDateOverrideCapacity", ["2026-09-07"], shopId);
 await rpc(owner, "renameShop", ["重新命名測試店"], shopId);
 await rpc(owner, "updateShopMemberRole", [{ uid: viewer.uid, role: "editor" }], shopId);
 await rpc(viewer, "updateProductSpecialPrice", [product.productId, 40], shopId);
-// Ordinary members must lose access immediately, while their membership and
-// already-issued ID token still exist.
-await auth.updateUser(viewer.uid, { disabled: true });
-await assert.rejects(rpc(viewer, "getProducts", [], shopId), (error) => error.code === "UNAUTHENTICATED");
-await assert.rejects(rpc(viewer, "updateProductSpecialPrice", [product.productId, 1], shopId), (error) => error.code === "UNAUTHENTICATED");
-await auth.updateUser(viewer.uid, { disabled: false });
-// Revocation timestamps use seconds. Wait only if login occurred this second.
-const issuedAuthTime = JSON.parse(Buffer.from(viewer.token.split('.')[1], 'base64url').toString()).auth_time;
-const untilNextSecond = (issuedAuthTime + 1) * 1000 - Date.now();
-if (untilNextSecond > 0) await new Promise((resolve) => setTimeout(resolve, untilNextSecond + 50));
-await auth.revokeRefreshTokens(viewer.uid);
-await assert.rejects(rpc(viewer, "getProducts", [], shopId), (error) => error.code === "UNAUTHENTICATED");
 await rpc(owner, "removeShopMember", [viewer.uid], shopId);
-await assert.rejects(rpc(viewer, "getProducts", [], shopId), (error) => error.code === "UNAUTHENTICATED");
+await assert.rejects(rpc(viewer, "getProducts", [], shopId), (error) => error.code === "NOT_FOUND");
 await rpc(owner, "deleteProduct", [product.productId], shopId);
 const direct = await fetch(
   `http://${process.env.FIRESTORE_EMULATOR_HOST}/v1/projects/${projectId}/databases/(default)/documents/shops/${shopId}`,
   { headers: { Authorization: `Bearer ${owner.token}` } },
 );
 assert.equal(direct.status, 403, "Direct browser-equivalent Firestore access must remain denied");
-const db = getFirestore();
-const limits = db.doc(`posSecurityLimits/${outsider.uid}`);
-// Seed only the isolated emulator near the boundary to test racing requests
-// without generating a large volume of traffic.
-await limits.set({ buckets: { rpc: { start: Date.now(), count: 119 } } });
-const racing = await Promise.allSettled([rpc(outsider, "listMyShops"), rpc(outsider, "listMyShops")]);
-assert.equal(racing.filter((result) => result.status === "fulfilled").length, 1);
-assert.equal(racing.filter((result) => result.status === "rejected" && result.reason.code === "RESOURCE_EXHAUSTED").length, 1);
-assert.equal((await limits.get()).data().buckets.rpc.count, 120);
-await limits.set({ buckets: { createShop: { start: Date.now(), count: 5 } } });
-await assert.rejects(rpc(outsider, "createShop", [{ name: "不應建立" }]), (error) => error.code === "RESOURCE_EXHAUSTED");
-assert.equal((await db.collection('shops').where('ownerUid', '==', outsider.uid).get()).size, 0);
-// Existing shops count without data migration; concurrent creation cannot
-// exceed the lifetime ownership quota.
-const quotaSeed = db.batch();
-for (let index = 0; index < 19; index++) quotaSeed.set(db.doc(`shops/quota-${index}`), { ownerUid: outsider.uid, name: `Existing ${index}` });
-await quotaSeed.commit();
-await limits.set({ buckets: {} });
-const shopRace = await Promise.allSettled([
-  rpc(outsider, "createShop", [{ name: "最後店鋪一" }]),
-  rpc(outsider, "createShop", [{ name: "最後店鋪二" }]),
-]);
-assert.equal(shopRace.filter((result) => result.status === "fulfilled").length, 1);
-assert.equal(shopRace.filter((result) => result.status === "rejected" && result.reason.code === "RESOURCE_EXHAUSTED").length, 1);
-assert.equal((await db.collection('shops').where('ownerUid', '==', outsider.uid).get()).size, 20);
-const devices = db.collection(`users/${outsider.uid}/securityDevices`);
-const deviceSeed = db.batch();
-for (let index = 0; index < 100; index++) deviceSeed.set(devices.doc(`old-${index}`), { lastSeenAt: Timestamp.fromMillis(index) });
-await deviceSeed.commit();
-const newDevice = await rpc(outsider, "registerDeviceSession", [{ deviceId: "new-device-0123456789" }]);
-assert.deepEqual(Object.keys(newDevice).sort(), ['deviceReference', 'recorded']);
-assert.equal((await devices.get()).size, 100);
-assert.equal((await devices.doc('old-0').get()).exists, false);
-const privateLimit = await fetch(
-  `http://${process.env.FIRESTORE_EMULATOR_HOST}/v1/projects/${projectId}/databases/(default)/documents/posSecurityLimits/${outsider.uid}`,
-  { headers: { Authorization: `Bearer ${outsider.token}` } },
-);
-assert.equal(privateLimit.status, 403);
 console.log(
-  "PASS: authenticated workflows, immediate revocation, concurrent rate/shop limits, device retention, unchanged RPC/data contracts and deny-all rules",
+  "PASS: authenticated emulator workflows, roles/isolation, idempotency, capacity, payments, reports, catalog, membership and deny-all rules",
 );
