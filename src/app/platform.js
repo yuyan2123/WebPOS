@@ -36,6 +36,12 @@ export function initAccessibleDialogs() {
 }
 
 export function initVisibleViewportFit() {
+  // Installed apps fill their own viewport; iframe clipping offsets can become
+  // stale during rotation and must not shrink the standalone app shell.
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    document.documentElement.classList.add('standalone-app');
+    return;
+  }
   const probe = document.getElementById('viewportProbe');
   if (!probe || typeof IntersectionObserver === 'undefined') return;
   // 密集 threshold，外層網頁捲動造成的可視範圍變化才會即時回報

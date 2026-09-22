@@ -7,6 +7,43 @@ import { updateCartDisplay, closeCartModal } from './cart.js';
 import { showSectionById } from './platform.js';
 
 // === 禮盒功能函數 ===
+function renderGiftboxFilterTabs(products) {
+  const tabs = document.getElementById('giftboxFilterTabs');
+  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))];
+  let selected = categories.includes(tabs.dataset.category) ? tabs.dataset.category : '';
+  function applyFilter() {
+    tabs.dataset.category = selected;
+    for (const button of tabs.children) {
+      const active = button.dataset.category === selected;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }
+    // Keep every quantity input mounted so filtering never loses selections or
+    // excludes hidden categories from the progress and final combination.
+    for (const product of products) {
+      const card = document.getElementById('card_' + product.productId);
+      if (card) card.style.display = !selected || product.category === selected ? '' : 'none';
+    }
+  }
+  tabs.replaceChildren(
+    ...['', ...categories].map((category) => {
+      const button = document.createElement('button');
+      const count = category
+        ? products.filter((product) => product.category === category).length
+        : products.length;
+      button.type = 'button';
+      button.dataset.category = category;
+      button.textContent = `${category || '全部類別'} (${count})`;
+      button.onclick = () => {
+        selected = category;
+        applyFilter();
+      };
+      return button;
+    }),
+  );
+  applyFilter();
+}
+
 export function selectGiftboxSize(size, btnElement) {
   const sizeBtn = btnElement || window.event?.currentTarget || window.event?.target?.closest('button');
   // 防止重複點擊
@@ -32,6 +69,7 @@ export function loadGiftboxProducts() {
   const giftboxProducts = state.allProducts.filter((p) => p.status === '啟用' && p.giftBoxEnabled === '是');
   const container = document.getElementById('giftboxProducts');
   if (giftboxProducts.length === 0) {
+    renderGiftboxFilterTabs(giftboxProducts);
     container.innerHTML =
       '<p style="text-align: center; padding: 20px; color: #6b7280;">目前沒有可用於禮盒的商品</p>';
     return;
@@ -67,6 +105,7 @@ export function loadGiftboxProducts() {
     })
     .join('')}</div>`;
   updateGiftboxProgress();
+  renderGiftboxFilterTabs(giftboxProducts);
 }
 
 export function adjustGiftboxQty(productId, change) {
@@ -362,6 +401,7 @@ export function loadGiftboxProductsForEdit(existingProducts) {
   const giftboxProducts = state.allProducts.filter((p) => p.status === '啟用' && p.giftBoxEnabled === '是');
   const container = document.getElementById('giftboxProducts');
   if (giftboxProducts.length === 0) {
+    renderGiftboxFilterTabs(giftboxProducts);
     container.innerHTML =
       '<p style="text-align: center; padding: 20px; color: #6b7280;">目前沒有可用於禮盒的商品</p>';
     return;
@@ -400,6 +440,7 @@ export function loadGiftboxProductsForEdit(existingProducts) {
     })
     .join('')}</div>`;
   updateGiftboxProgress();
+  renderGiftboxFilterTabs(giftboxProducts);
 }
 
 export function backToStep1() {

@@ -667,8 +667,12 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
   padding: clamp(16px, 2vw, 24px);
 }
 
+#settingsProducts .settings-panel-header,
 .products-filter-tabs {
   gap: 7px;
+}
+
+.products-filter-tabs {
   padding: 14px 0;
 }
 

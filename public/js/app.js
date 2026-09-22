@@ -2985,6 +2985,10 @@ function initAccessibleDialogs() {
   });
 }
 function initVisibleViewportFit() {
+  if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
+    document.documentElement.classList.add("standalone-app");
+    return;
+  }
   const probe = document.getElementById("viewportProbe");
   if (!probe || typeof IntersectionObserver === "undefined") return;
   const thresholds = [];
@@ -5023,6 +5027,38 @@ function toggleShippingFeeInput() {
 }
 
 // src/app/giftboxes.js
+function renderGiftboxFilterTabs(products) {
+  const tabs = document.getElementById("giftboxFilterTabs");
+  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))];
+  let selected = categories.includes(tabs.dataset.category) ? tabs.dataset.category : "";
+  function applyFilter() {
+    tabs.dataset.category = selected;
+    for (const button of tabs.children) {
+      const active2 = button.dataset.category === selected;
+      button.classList.toggle("active", active2);
+      button.setAttribute("aria-pressed", String(active2));
+    }
+    for (const product of products) {
+      const card = document.getElementById("card_" + product.productId);
+      if (card) card.style.display = !selected || product.category === selected ? "" : "none";
+    }
+  }
+  tabs.replaceChildren(
+    ...["", ...categories].map((category) => {
+      const button = document.createElement("button");
+      const count = category ? products.filter((product) => product.category === category).length : products.length;
+      button.type = "button";
+      button.dataset.category = category;
+      button.textContent = `${category || "\u5168\u90E8\u985E\u5225"} (${count})`;
+      button.onclick = () => {
+        selected = category;
+        applyFilter();
+      };
+      return button;
+    })
+  );
+  applyFilter();
+}
 function selectGiftboxSize(size, btnElement) {
   const sizeBtn = btnElement || window.event?.currentTarget || window.event?.target?.closest("button");
   if (sizeBtn.classList.contains("loading")) return;
@@ -5045,6 +5081,7 @@ function loadGiftboxProducts() {
   const giftboxProducts = state.allProducts.filter((p) => p.status === "\u555F\u7528" && p.giftBoxEnabled === "\u662F");
   const container = document.getElementById("giftboxProducts");
   if (giftboxProducts.length === 0) {
+    renderGiftboxFilterTabs(giftboxProducts);
     container.innerHTML = '<p style="text-align: center; padding: 20px; color: #6b7280;">\u76EE\u524D\u6C92\u6709\u53EF\u7528\u65BC\u79AE\u76D2\u7684\u5546\u54C1</p>';
     return;
   }
@@ -5073,6 +5110,7 @@ function loadGiftboxProducts() {
                 </div>`;
   }).join("")}</div>`;
   updateGiftboxProgress();
+  renderGiftboxFilterTabs(giftboxProducts);
 }
 function adjustGiftboxQty(productId, change) {
   const input = document.getElementById("qty_" + productId);
@@ -5321,6 +5359,7 @@ function loadGiftboxProductsForEdit(existingProducts) {
   const giftboxProducts = state.allProducts.filter((p) => p.status === "\u555F\u7528" && p.giftBoxEnabled === "\u662F");
   const container = document.getElementById("giftboxProducts");
   if (giftboxProducts.length === 0) {
+    renderGiftboxFilterTabs(giftboxProducts);
     container.innerHTML = '<p style="text-align: center; padding: 20px; color: #6b7280;">\u76EE\u524D\u6C92\u6709\u53EF\u7528\u65BC\u79AE\u76D2\u7684\u5546\u54C1</p>';
     return;
   }
@@ -5352,6 +5391,7 @@ function loadGiftboxProductsForEdit(existingProducts) {
             `;
   }).join("")}</div>`;
   updateGiftboxProgress();
+  renderGiftboxFilterTabs(giftboxProducts);
 }
 function backToStep1() {
   document.querySelectorAll(".giftbox-step").forEach((step) => step.classList.remove("active"));
@@ -6405,6 +6445,8 @@ var role = "";
 var active = null;
 var generation = 0;
 var bridgeConfig = null;
+var statusController = null;
+var connectionState = "unknown";
 var automaticOrders = /* @__PURE__ */ new Set();
 var bridgeFields = [
   "printer-target-ip",
@@ -6417,6 +6459,40 @@ var bridgeFields = [
 var key = () => `ginJiaPos.printer.${scope}`;
 var canPrint = () => Boolean(currentLocalScope()) && ["owner", "editor"].includes(document.body.dataset.shopRole);
 var element = (id) => document.getElementById(id);
+function updatePrinterBadge(nextState = connectionState) {
+  connectionState = nextState;
+  const badge = element("firebasePrinterStatus");
+  if (!badge) return;
+  badge.hidden = !canPrint() || !readConfig().enabled;
+  const labels = {
+    unknown: "\u5370\u8868\u6A5F\uFF1A\u5C1A\u672A\u78BA\u8A8D\u9023\u7DDA",
+    checking: "\u5370\u8868\u6A5F\uFF1A\u6AA2\u67E5\u9023\u7DDA\u4E2D",
+    online: "\u5370\u8868\u6A5F\uFF1A\u5DF2\u9023\u7DDA",
+    offline: "\u5370\u8868\u6A5F\uFF1A\u96E2\u7DDA\u6216\u7121\u6CD5\u9023\u7DDA"
+  };
+  badge.dataset.state = nextState;
+  badge.disabled = nextState === "checking";
+  badge.title = labels[nextState] + "\uFF1B\u9EDE\u64CA\u6AA2\u67E5\u72C0\u614B";
+  badge.querySelector(".sr-only").textContent = badge.title;
+}
+async function refreshPrinterBadge() {
+  updatePrinterBadge();
+  if (!element("firebasePrinterStatus") || !canPrint() || !readConfig().enabled || document.hidden || active || statusController || element("printer-preview"))
+    return;
+  const expectedGeneration = generation;
+  const controller = new AbortController();
+  statusController = controller;
+  updatePrinterBadge("checking");
+  try {
+    const result = await printerRequest({ ...readConfig(), signal: controller.signal });
+    if (!controller.signal.aborted && generation === expectedGeneration)
+      updatePrinterBadge(result.offline ? "offline" : "online");
+  } catch {
+    if (!controller.signal.aborted && generation === expectedGeneration) updatePrinterBadge("offline");
+  } finally {
+    if (statusController === controller) statusController = null;
+  }
+}
 function selectPrinterPage(name) {
   for (const page of ["print", "device"]) {
     element("printer-page-" + page).hidden = page !== name;
@@ -6443,8 +6519,14 @@ function loadSettings() {
   }
   element("printer-status").textContent = canPrint() ? "\u5C1A\u672A\u6AA2\u67E5\u9023\u7DDA" : "\u50C5 owner\uFF0Feditor \u53EF\u8A2D\u5B9A\u53CA\u64CD\u4F5C\u5217\u5370";
   updateControls();
+  updatePrinterBadge("unknown");
 }
 function updateControls() {
+  if (active && statusController) {
+    statusController.abort();
+    statusController = null;
+    updatePrinterBadge("unknown");
+  }
   document.querySelectorAll(
     "#printer-settings input, #printer-settings select, #printer-settings button, [data-printer-order], #printer-send"
   ).forEach((control) => {
@@ -6535,6 +6617,9 @@ function saveSettings() {
   sessionStorage.removeItem(key());
   localStorage.setItem(key(), JSON.stringify({ ...config, token: config.remember ? config.token : "" }));
   if (!config.remember && config.token) sessionStorage.setItem(key(), config.token);
+  statusController?.abort();
+  statusController = null;
+  updatePrinterBadge("unknown");
   return config;
 }
 function assertContext(expectedScope, expectedGeneration) {
@@ -6552,14 +6637,18 @@ async function runOperation(config, data, output, expectedScope = scope, expecte
     if (!config.enabled) throw new Error("\u8ACB\u5148\u5230\u300C\u7BA1\u7406 \u2192 \u51FA\u55AE\u6A5F\u300D\u555F\u7528\u4E26\u5132\u5B58\u8A2D\u5B9A");
     active = controller;
     updateControls();
+    updatePrinterBadge("checking");
     output.textContent = data ? "\u6B63\u5728\u50B3\u9001\uFF0C\u8ACB\u52FF\u95DC\u9589\u9801\u9762\u2026" : "\u6B63\u5728\u67E5\u8A62\u5370\u8868\u6A5F\u2026";
     const result = await printerRequest({ ...config, data, signal: controller.signal });
     assertContext(expectedScope, expectedGeneration);
+    updatePrinterBadge(result.offline ? "offline" : "online");
     output.textContent = data ? `\u5DF2\u50B3\u9001 ${result.bytes.toLocaleString()} bytes \u81F3\u5370\u8868\u6A5F\uFF0C\u8ACB\u78BA\u8A8D\u5BE6\u969B\u51FA\u7D19\u3002` : `\u5370\u8868\u6A5F${result.offline ? "\u96E2\u7DDA" : "\u5DF2\u9023\u7DDA"}\uFF08\u72C0\u614B 0x${result.raw.toString(16).padStart(2, "0")}\uFF09`;
     return true;
   } catch (error) {
-    if (currentLocalScope() === expectedScope && generation === expectedGeneration)
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
+      updatePrinterBadge("offline");
       output.textContent = error.message;
+    }
     return false;
   } finally {
     if (active === controller) active = null;
@@ -6736,6 +6825,9 @@ function initializePrinter() {
       }
     }
     generation++;
+    statusController?.abort();
+    statusController = null;
+    updatePrinterBadge("unknown");
     automaticOrders.clear();
     active?.abort();
     element("printer-preview")?.remove();
@@ -6754,6 +6846,21 @@ function initializePrinter() {
   scope = currentLocalScope();
   role = document.body.dataset.shopRole || "";
   loadSettings();
+  document.addEventListener("click", (event2) => {
+    if (event2.target.closest("#firebasePrinterStatus")) void refreshPrinterBadge();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      statusController?.abort();
+      statusController = null;
+      updatePrinterBadge("unknown");
+    }
+  });
+  window.addEventListener("offline", () => {
+    statusController?.abort();
+    statusController = null;
+    updatePrinterBadge("offline");
+  });
   for (const name of ["print", "device"])
     element("printer-tab-" + name).addEventListener("click", () => selectPrinterPage(name));
   new MutationObserver(syncContext).observe(document.body, {
@@ -6763,9 +6870,15 @@ function initializePrinter() {
   window.addEventListener("pos:shop-changed", syncContext);
   window.addEventListener("pos:session-ending", () => {
     clearSession();
+    if (element("firebasePrinterStatus")) element("firebasePrinterStatus").hidden = true;
     element("printer-token").value = "";
   });
-  window.addEventListener("pagehide", () => active?.abort());
+  window.addEventListener("pagehide", () => {
+    active?.abort();
+    statusController?.abort();
+    statusController = null;
+    updatePrinterBadge("unknown");
+  });
   for (const id of ["printer-url", "printer-token"])
     element(id).addEventListener("input", () => {
       clearBridgeConfig();

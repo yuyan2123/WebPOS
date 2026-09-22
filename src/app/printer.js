@@ -21,6 +21,8 @@ let role = '';
 let active = null;
 let generation = 0;
 let bridgeConfig = null;
+let statusController = null;
+let connectionState = 'unknown';
 const automaticOrders = new Set();
 const bridgeFields = [
   'printer-target-ip',
@@ -34,6 +36,50 @@ const key = () => `ginJiaPos.printer.${scope}`;
 const canPrint = () =>
   Boolean(currentLocalScope()) && ['owner', 'editor'].includes(document.body.dataset.shopRole);
 const element = (id) => document.getElementById(id);
+
+function updatePrinterBadge(nextState = connectionState) {
+  connectionState = nextState;
+  const badge = element('firebasePrinterStatus');
+  if (!badge) return;
+  badge.hidden = !canPrint() || !readConfig().enabled;
+  const labels = {
+    unknown: '印表機：尚未確認連線',
+    checking: '印表機：檢查連線中',
+    online: '印表機：已連線',
+    offline: '印表機：離線或無法連線',
+  };
+  badge.dataset.state = nextState;
+  badge.disabled = nextState === 'checking';
+  badge.title = labels[nextState] + '；點擊檢查狀態';
+  badge.querySelector('.sr-only').textContent = badge.title;
+}
+
+async function refreshPrinterBadge() {
+  updatePrinterBadge();
+  if (
+    !element('firebasePrinterStatus') ||
+    !canPrint() ||
+    !readConfig().enabled ||
+    document.hidden ||
+    active ||
+    statusController ||
+    element('printer-preview')
+  )
+    return;
+  const expectedGeneration = generation;
+  const controller = new AbortController();
+  statusController = controller;
+  updatePrinterBadge('checking');
+  try {
+    const result = await printerRequest({ ...readConfig(), signal: controller.signal });
+    if (!controller.signal.aborted && generation === expectedGeneration)
+      updatePrinterBadge(result.offline ? 'offline' : 'online');
+  } catch {
+    if (!controller.signal.aborted && generation === expectedGeneration) updatePrinterBadge('offline');
+  } finally {
+    if (statusController === controller) statusController = null;
+  }
+}
 
 function selectPrinterPage(name) {
   for (const page of ['print', 'device']) {
@@ -63,9 +109,15 @@ function loadSettings() {
   }
   element('printer-status').textContent = canPrint() ? '尚未檢查連線' : '僅 owner／editor 可設定及操作列印';
   updateControls();
+  updatePrinterBadge('unknown');
 }
 
 function updateControls() {
+  if (active && statusController) {
+    statusController.abort();
+    statusController = null;
+    updatePrinterBadge('unknown');
+  }
   document
     .querySelectorAll(
       '#printer-settings input, #printer-settings select, #printer-settings button, [data-printer-order], #printer-send',
@@ -176,6 +228,9 @@ function saveSettings() {
   sessionStorage.removeItem(key());
   localStorage.setItem(key(), JSON.stringify({ ...config, token: config.remember ? config.token : '' }));
   if (!config.remember && config.token) sessionStorage.setItem(key(), config.token);
+  statusController?.abort();
+  statusController = null;
+  updatePrinterBadge('unknown');
   return config;
 }
 
@@ -195,16 +250,20 @@ async function runOperation(config, data, output, expectedScope = scope, expecte
     if (!config.enabled) throw new Error('請先到「管理 → 出單機」啟用並儲存設定');
     active = controller;
     updateControls();
+    updatePrinterBadge('checking');
     output.textContent = data ? '正在傳送，請勿關閉頁面…' : '正在查詢印表機…';
     const result = await printerRequest({ ...config, data, signal: controller.signal });
     assertContext(expectedScope, expectedGeneration);
+    updatePrinterBadge(result.offline ? 'offline' : 'online');
     output.textContent = data
       ? `已傳送 ${result.bytes.toLocaleString()} bytes 至印表機，請確認實際出紙。`
       : `印表機${result.offline ? '離線' : '已連線'}（狀態 0x${result.raw.toString(16).padStart(2, '0')}）`;
     return true;
   } catch (error) {
-    if (currentLocalScope() === expectedScope && generation === expectedGeneration)
+    if (currentLocalScope() === expectedScope && generation === expectedGeneration) {
+      updatePrinterBadge('offline');
       output.textContent = error.message;
+    }
     return false;
   } finally {
     if (active === controller) active = null;
@@ -396,6 +455,9 @@ export function initializePrinter() {
       }
     }
     generation++;
+    statusController?.abort();
+    statusController = null;
+    updatePrinterBadge('unknown');
     automaticOrders.clear();
     active?.abort();
     element('printer-preview')?.remove();
@@ -414,6 +476,21 @@ export function initializePrinter() {
   scope = currentLocalScope();
   role = document.body.dataset.shopRole || '';
   loadSettings();
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('#firebasePrinterStatus')) void refreshPrinterBadge();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      statusController?.abort();
+      statusController = null;
+      updatePrinterBadge('unknown');
+    }
+  });
+  window.addEventListener('offline', () => {
+    statusController?.abort();
+    statusController = null;
+    updatePrinterBadge('offline');
+  });
   for (const name of ['print', 'device'])
     element('printer-tab-' + name).addEventListener('click', () => selectPrinterPage(name));
   new MutationObserver(syncContext).observe(document.body, {
@@ -423,9 +500,15 @@ export function initializePrinter() {
   window.addEventListener('pos:shop-changed', syncContext);
   window.addEventListener('pos:session-ending', () => {
     clearSession();
+    if (element('firebasePrinterStatus')) element('firebasePrinterStatus').hidden = true;
     element('printer-token').value = '';
   });
-  window.addEventListener('pagehide', () => active?.abort());
+  window.addEventListener('pagehide', () => {
+    active?.abort();
+    statusController?.abort();
+    statusController = null;
+    updatePrinterBadge('unknown');
+  });
   for (const id of ['printer-url', 'printer-token'])
     element(id).addEventListener('input', () => {
       clearBridgeConfig();

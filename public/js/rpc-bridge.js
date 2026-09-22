@@ -131,7 +131,7 @@
         document.body.appendChild(overlay);
         const badge = document.createElement('div');
         badge.id = 'firebaseAccountBadge';
-        badge.innerHTML = '<span id="firebaseAccountEmail"></span><button id="firebaseShopButton" type="button">選擇店鋪</button><button id="firebaseSignOut" type="button">登出</button>';
+        badge.innerHTML = '<button id="firebasePrinterStatus" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i><span class="printer-connection-mark" aria-hidden="true"></span><span class="sr-only" aria-live="polite"></span></button><span id="firebaseAccountEmail"></span><button id="firebaseShopButton" type="button">選擇店鋪</button><button id="firebaseSignOut" type="button">登出</button>';
         document.body.appendChild(badge);
 
         const shopOverlay = document.createElement('div');

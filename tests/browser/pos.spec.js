@@ -103,6 +103,47 @@ async function openManagementPanel(page, panel) {
   if (panel === 'printer') await page.locator('#printer-tab-device').click();
 }
 
+test('standalone shell stays within the viewport across tablet rotations', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { value: true });
+  });
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await openWorkspace(page);
+  await expect(page.locator('html')).toHaveClass(/standalone-app/);
+  // Long content must scroll inside main without making the root scrollable.
+  await page.locator('main').evaluate((main) => {
+    const content = document.createElement('div');
+    content.style.cssText = 'min-height: 2400px; flex-shrink: 0';
+    main.append(content);
+  });
+  for (const size of [
+    { width: 820, height: 1180 },
+    { width: 1180, height: 820 },
+    { width: 820, height: 1180 },
+  ]) {
+    await page.setViewportSize(size);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bounds = document.body.getBoundingClientRect();
+          return Math.abs(bounds.top) < 1 && Math.abs(bounds.bottom - innerHeight) < 1;
+        }),
+      )
+      .toBe(true);
+    const result = await page.evaluate(() => {
+      window.scrollTo(0, 300);
+      const main = document.querySelector('main');
+      main.scrollTop = 300;
+      return {
+        rootScroll: window.scrollY,
+        contentScroll: main.scrollTop,
+        rootFits: document.documentElement.scrollHeight <= innerHeight + 1,
+      };
+    });
+    expect(result).toEqual({ rootScroll: 0, contentScroll: 300, rootFits: true });
+  }
+});
+
 async function mockPrinter(page) {
   await page.addInitScript(() => {
     window.__printerFrames = [];
@@ -393,6 +434,85 @@ async function configurePrinter(page) {
   await expect(page.locator('#printer-status')).toContainText('已連線');
   await page.locator('#printer-tab-print').click();
 }
+
+test('account badge shows printer connectivity without clipping on narrow phones', async ({ page }) => {
+  await page.clock.install();
+  await mockPrinter(page);
+  await openWorkspace(page);
+  // The RPC bridge is mocked for offline tests; use its actual badge markup.
+  const bridge = require('node:fs').readFileSync('public/js/rpc-bridge.js', 'utf8');
+  const markup = bridge.match(/badge.innerHTML = '([^']+)'/)[1];
+  await page.evaluate((html) => {
+    const badge = document.createElement('div');
+    badge.id = 'firebaseAccountBadge';
+    badge.className = 'active';
+    badge.style.cssText = 'position:fixed; display:flex; align-items:center; gap:8px; padding:7px 9px;';
+    badge.innerHTML = html;
+    badge.querySelector('#firebaseShopButton').textContent = '非常非常長的測試店鋪名稱金佳餅店分店';
+    document.body.append(badge);
+  }, markup);
+  const indicator = page.locator('#firebasePrinterStatus');
+  await expect(indicator).toBeHidden();
+  await configurePrinter(page);
+  await expect(indicator).toBeVisible();
+  await expect(indicator).toHaveAttribute('data-state', 'online');
+  const connections = await page.evaluate(() => window.__printerConnections);
+  await page.clock.fastForward(31000);
+  expect(await page.evaluate(() => window.__printerConnections)).toBe(connections);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect
+      .poll(() =>
+        indicator.evaluate((icon) => {
+          const rect = icon.getBoundingClientRect();
+          const badge = icon.parentElement.getBoundingClientRect();
+          return (
+            rect.width === 28 &&
+            rect.left >= 0 &&
+            rect.right <= innerWidth &&
+            badge.left >= 0 &&
+            badge.right <= innerWidth &&
+            icon === icon.parentElement.firstElementChild
+          );
+        }),
+      )
+      .toBe(true);
+  }
+  await page.evaluate(() => {
+    window.__printerMode = 'handshake-error';
+  });
+  await indicator.click();
+  await expect(indicator).toHaveAttribute('data-state', 'offline');
+  expect(
+    await indicator
+      .locator('.printer-connection-mark')
+      .evaluate((mark) => getComputedStyle(mark, '::before').content),
+  ).toContain('×');
+  await page.evaluate(() => {
+    window.__printerMode = 'hold';
+    window.dispatchEvent(new Event('online'));
+  });
+  await expect(indicator).toHaveAttribute('data-state', 'offline');
+  await indicator.click();
+  await expect(indicator).toHaveAttribute('data-state', 'checking');
+  await expect(indicator).toBeDisabled();
+  await expect(indicator.locator('.printer-connection-mark')).toHaveCSS(
+    'animation-name',
+    'printer-status-spin',
+  );
+  await page.clock.fastForward(16000);
+  await expect(indicator).toHaveAttribute('data-state', 'offline');
+  await page.evaluate(() => {
+    window.__printerMode = '';
+  });
+  await indicator.focus();
+  await page.keyboard.press('Enter');
+  await expect(indicator).toHaveAttribute('data-state', 'online');
+  await page.locator('#printer-tab-print').click();
+  await page.locator('#printer-enabled').uncheck();
+  await page.locator('#printer-settings').evaluate((form) => form.requestSubmit());
+  await expect(indicator).toBeHidden();
+});
 
 test('printer diagnostics compare HTTPS and WSS without auth or changing saved settings', async ({
   page,
@@ -840,7 +960,17 @@ test('accessibility checks across customer, search and calendar', async ({ page 
           .map((animation) => animation.finished.catch(() => {})),
       ),
     );
-    const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    // Product requirement: lock scaling to prevent iOS input-focus zoom from
+    // trapping the POS at an enlarged scale. This is a known zoom-accessibility
+    // exception; continue checking every other WCAG rule.
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      'content',
+      'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover',
+    );
+    const result = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .disableRules(['meta-viewport'])
+      .analyze();
     await page.screenshot({ path: testInfo.outputPath(section + '.png') });
     if (result.violations.length)
       console.log(
@@ -1382,6 +1512,79 @@ test('customer autocomplete and product filtering preserve selection and recover
   expect(errors).toEqual([]);
 });
 
+test('gift-box categories preserve quantities across filters and editing', async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      'test-product-order',
+      JSON.stringify([
+        {
+          productId: 'P1',
+          productName: '原味餅',
+          category: '伴手禮',
+          price: 50,
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+        {
+          productId: 'P2',
+          productName: '喜餅',
+          category: '喜餅',
+          price: 100,
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+        {
+          productId: 'P3',
+          productName: '單售商品',
+          category: '單售',
+          price: 30,
+          status: '啟用',
+          giftBoxEnabled: '否',
+        },
+        {
+          productId: 'P4',
+          productName: '停用商品',
+          category: '停用',
+          price: 30,
+          status: '停用',
+          giftBoxEnabled: '是',
+        },
+      ]),
+    );
+  });
+  await openWorkspace(page);
+  await page.locator('#nav-giftbox').click();
+  await page.getByRole('button', { name: '6入', exact: true }).click();
+  const tabs = page.locator('#giftboxFilterTabs');
+  await expect(tabs.getByRole('button')).toHaveText(['全部類別 (2)', '伴手禮 (1)', '喜餅 (1)']);
+  await tabs.getByRole('button', { name: '伴手禮 (1)', exact: true }).click();
+  await expect(page.locator('#card_P2')).toBeHidden();
+  await page.locator('#display_P1').fill('2');
+  await page.locator('#display_P1').press('Tab');
+  await tabs.getByRole('button', { name: '喜餅 (1)', exact: true }).click();
+  await expect(page.locator('#card_P1')).toBeHidden();
+  await page.locator('#display_P2').fill('4');
+  await page.locator('#display_P2').press('Tab');
+  await expect(page.locator('#selectedCount')).toHaveText('6');
+  await tabs.getByRole('button', { name: '全部類別 (2)', exact: true }).click();
+  await expect(page.locator('#display_P1')).toHaveValue('2');
+  await expect(page.locator('#display_P2')).toHaveValue('4');
+  await expect(tabs.getByRole('button', { name: '全部類別 (2)', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.locator('#proceedStep3').click();
+  await expect(page.locator('#giftboxSummary')).toContainText('500');
+  await page.locator('.btn-add-cart').click();
+  await page.evaluate(() => window.editGiftboxItem(0));
+  await tabs.getByRole('button', { name: '喜餅 (1)', exact: true }).click();
+  await expect(page.locator('#card_P1')).toBeHidden();
+  await expect(page.locator('#display_P2')).toHaveValue('4');
+  await expect(page.locator('#selectedCount')).toHaveText('6');
+  await tabs.getByRole('button', { name: '伴手禮 (1)', exact: true }).click();
+  await expect(page.locator('#display_P1')).toHaveValue('2');
+});
+
 test('gift-box composition, custom price, notes and quantity survive checkout', async ({ page }) => {
   const errors = await openWorkspace(page);
   await prepareOrder(page);
@@ -1892,12 +2095,17 @@ test('product order retains draft on errors and reload resolves conflicts', asyn
   await page.getByRole('button', { name: '調整順序', exact: true }).click();
   const modal = page.locator('#productOrderModal');
   await modal.getByRole('button', { name: '下移 原味餅', exact: true }).click();
-  await page.evaluate(() => { window.__fail = 'saveProductOrder'; });
+  await page.evaluate(() => {
+    window.__fail = 'saveProductOrder';
+  });
   await modal.getByRole('button', { name: '儲存順序', exact: true }).click();
   await expect(modal.getByRole('status')).toContainText('測試連線中斷');
   await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
   await expect(page.locator('#productsCardGrid .product-name')).toHaveText(['原味餅', '喜餅']);
-  await page.evaluate(() => { window.__fail = ''; window.__orderConflict = true; });
+  await page.evaluate(() => {
+    window.__fail = '';
+    window.__orderConflict = true;
+  });
   await modal.getByRole('button', { name: '儲存順序', exact: true }).click();
   await expect(modal.getByRole('status')).toContainText('已被其他人修改');
   await modal.getByRole('button', { name: '重新載入（捨棄調整）', exact: true }).click();
@@ -1958,13 +2166,16 @@ for (const reduced of [false, true]) {
     await page.getByRole('button', { name: '調整順序', exact: true }).click();
     const result = await page.locator('#productOrderModal').evaluate((modal) => {
       const rows = [...modal.querySelectorAll('li')];
-      const before = rows.map(row => row.getBoundingClientRect().top);
+      const before = rows.map((row) => row.getBoundingClientRect().top);
       modal.querySelector('[data-down]').click();
-      const animations = rows.flatMap(row => row.getAnimations());
-      animations.forEach(animation => { animation.pause(); animation.currentTime = 100; });
-      const middle = rows.map(row => row.getBoundingClientRect().top);
-      animations.forEach(animation => animation.finish());
-      const after = rows.map(row => row.getBoundingClientRect().top);
+      const animations = rows.flatMap((row) => row.getAnimations());
+      animations.forEach((animation) => {
+        animation.pause();
+        animation.currentTime = 100;
+      });
+      const middle = rows.map((row) => row.getBoundingClientRect().top);
+      animations.forEach((animation) => animation.finish());
+      const after = rows.map((row) => row.getBoundingClientRect().top);
       return { before, middle, after, count: animations.length };
     });
     if (reduced) {
@@ -1976,10 +2187,10 @@ for (const reduced of [false, true]) {
       expect(result.middle[1]).toBeLessThan(result.before[1]);
       expect(result.middle[1]).toBeGreaterThan(result.after[1]);
     }
-    await page.locator('#productOrderModal').evaluate(modal => {
-      for (let i=0;i<5;i++) modal.querySelector('li [data-down]').click();
+    await page.locator('#productOrderModal').evaluate((modal) => {
+      for (let i = 0; i < 5; i++) modal.querySelector('li [data-down]').click();
     });
-    await expect(page.locator('#productOrderModal li strong')).toHaveText(['原味餅','喜餅']);
+    await expect(page.locator('#productOrderModal li strong')).toHaveText(['原味餅', '喜餅']);
     await page.keyboard.press('Escape');
     await expect(page.locator('.product-order-floating')).toHaveCount(0);
     expect(errors).toEqual([]);

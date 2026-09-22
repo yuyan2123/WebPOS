@@ -28,6 +28,8 @@
 }
 html {
   height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   padding-top: var(--vp-top);
   padding-bottom: var(--vp-bottom);
   background: var(--pos-bg);
@@ -47,6 +49,22 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   user-select: text;
+}
+/* Keep the installed app attached to the current viewport across rotations.
+   Scrolling belongs to main and the individual dialog/list containers. */
+html.standalone-app {
+  height: 100dvh;
+  padding: 0;
+}
+.standalone-app body {
+  position: fixed;
+  inset: 0;
+  height: 100%;
+  height: 100dvh;
+  overscroll-behavior: none;
+}
+.standalone-app main {
+  overscroll-behavior: none;
 }
 button,
 input,
@@ -473,6 +491,67 @@ body #firebaseAccountBadge {
   border: 1px solid var(--pos-line) !important;
   box-shadow: none !important;
 }
+body #firebasePrinterStatus:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--pos-muted);
+  background: var(--pos-surface-muted);
+  border-radius: 50%;
+  pointer-events: auto;
+}
+#firebasePrinterStatus .printer-connection-mark {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+}
+#firebasePrinterStatus[data-state='offline'] .printer-connection-mark {
+  display: grid;
+  place-items: center;
+  font: 800 14px/12px sans-serif;
+}
+#firebasePrinterStatus[data-state='offline'] .printer-connection-mark::before {
+  content: '×';
+}
+#firebasePrinterStatus[data-state='checking'] .printer-connection-mark {
+  display: block;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: printer-status-spin 0.8s linear infinite;
+}
+@keyframes printer-status-spin {
+  to { transform: rotate(360deg); }
+}
+#firebasePrinterStatus .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+body #firebasePrinterStatus[data-state='online'] { color: var(--pos-success); }
+body #firebasePrinterStatus[data-state='offline'] { color: var(--pos-danger); }
+body #firebasePrinterStatus[data-state='checking'] { color: #ca8a04; cursor: progress; }
+body #firebaseAccountEmail { min-width: 0; }
+body #firebaseShopButton {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body #firebaseSignOut { flex-shrink: 0; }
 .slider-thumb:focus-visible {
   outline: 3px solid var(--pos-primary) !important;
 }
@@ -634,8 +713,8 @@ body #firebaseAccountBadge {
   }
   body #firebaseAccountBadge {
     top: calc(14px + var(--vp-top)) !important;
-    right: 14px !important;
-    max-width: 200px !important;
+    max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    right: max(14px, env(safe-area-inset-right)) !important;
   }
   .pwa-banner {
     bottom: calc(150px + env(safe-area-inset-bottom)) !important;
