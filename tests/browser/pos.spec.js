@@ -2117,8 +2117,15 @@ test('product order retains draft on errors and reload resolves conflicts', asyn
 test('product order supports pointer dragging and accessible layout', async ({ page }, testInfo) => {
   const errors = await openWorkspace(page);
   await openManagementPanel(page, 'products');
+  // Exercise a slow entrance so fast local runs also cover the CI timing race.
+  await page.addStyleTag({ content: '.product-order-content { animation-duration: 1s; }' });
   await page.getByRole('button', { name: '調整順序', exact: true }).click();
   const modal = page.locator('#productOrderModal');
+  // Raw mouse/touch coordinates do not get Playwright's locator stability wait.
+  // Read both endpoints only after the dialog's translateY animation finishes.
+  await modal
+    .locator('.product-order-content')
+    .evaluate((content) => Promise.all(content.getAnimations().map((animation) => animation.finished)));
   const first = await modal.locator('.product-order-handle').first().boundingBox();
   const second = await modal.locator('li').nth(1).boundingBox();
   const x = first.x + first.width / 2;
@@ -2127,6 +2134,7 @@ test('product order supports pointer dragging and accessible layout', async ({ p
   if (testInfo.project.name === 'phone') {
     const touch = await page.context().newCDPSession(page);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: startY }] });
+    await expect(modal.locator('.is-dragging')).toHaveCount(1);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: endY }] });
     await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
     await expect(modal.locator('.product-order-floating')).toBeVisible();
@@ -2136,6 +2144,7 @@ test('product order supports pointer dragging and accessible layout', async ({ p
   } else {
     await page.mouse.move(x, startY);
     await page.mouse.down();
+    await expect(modal.locator('.is-dragging')).toHaveCount(1);
     await page.mouse.move(x, endY, { steps: 10 });
     await expect(modal.locator('li strong')).toHaveText(['喜餅', '原味餅']);
     await expect(modal.locator('.product-order-floating')).toBeVisible();
