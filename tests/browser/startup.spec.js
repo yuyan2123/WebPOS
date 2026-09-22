@@ -147,6 +147,33 @@ test('initial request failure stays below complete and offers retry without spli
   await expect(page.locator('#startupStatus')).toBeHidden();
 });
 
+test('first worker claim preserves startup while later worker replacement reloads', async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem('worker-test-loads', String(Number(sessionStorage.getItem('worker-test-loads') || 0) + 1));
+    const serviceWorker = new EventTarget();
+    serviceWorker.controller = null;
+    serviceWorker.register = async () => new EventTarget();
+    Object.defineProperty(navigator, 'serviceWorker', { value: serviceWorker });
+    window.claimTestWorker = () => {
+      serviceWorker.controller = {};
+      serviceWorker.dispatchEvent(new Event('controllerchange'));
+    };
+  });
+  await page.goto('/');
+  await expect(page.locator('#startupMessage')).toHaveText('取得資料中...');
+  await page.evaluate(async () => {
+    window.claimTestWorker();
+    // A first claim must not interrupt an in-flight startup/login redirect.
+    await new Promise(resolve => setTimeout(resolve, 300));
+  });
+  expect(await page.evaluate(() => sessionStorage.getItem('worker-test-loads'))).toBe('1');
+  await Promise.all([
+    page.waitForEvent('domcontentloaded'),
+    page.evaluate(() => window.claimTestWorker()),
+  ]);
+  expect(await page.evaluate(() => sessionStorage.getItem('worker-test-loads'))).toBe('2');
+});
+
 test('update reload message is consumed once and normal reload restores loading text', async ({ page }) => {
   await page.addInitScript(() => {
     const serviceWorker = new EventTarget();

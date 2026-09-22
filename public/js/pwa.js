@@ -151,7 +151,13 @@
       console.warn("PWA 註冊失敗", error);
     });
     let refreshing = false;
+    let hadController = Boolean(navigator.serviceWorker.controller);
     navigator.serviceWorker.addEventListener("controllerchange", async () => {
+      const replacingWorker = hadController;
+      hadController = Boolean(navigator.serviceWorker.controller);
+      // The first installation only claims this already-loaded page. Reloading
+      // here can cancel Google sign-in before its redirect leaves the app.
+      if (!replacingWorker && !updateRequested) return;
       if (refreshing) return;
       refreshing = true;
       try { await window.saveOrderDraftNow?.(); } catch (error) { console.warn("更新前草稿保存失敗", error); refreshing = false; return; }
