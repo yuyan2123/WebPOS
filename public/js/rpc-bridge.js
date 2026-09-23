@@ -131,8 +131,33 @@
         document.body.appendChild(overlay);
         const badge = document.createElement('div');
         badge.id = 'firebaseAccountBadge';
-        badge.innerHTML = '<button id="firebasePrinterStatus" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i><span class="printer-connection-mark" aria-hidden="true"></span><span class="sr-only" aria-live="polite"></span></button><span id="firebaseAccountEmail"></span><button id="firebaseShopButton" type="button">選擇店鋪</button><button id="firebaseSignOut" type="button">登出</button>';
+        badge.innerHTML = `
+            <button id="firebasePrinterStatus" type="button" hidden><i class="fas fa-print" aria-hidden="true"></i><span class="printer-connection-mark" aria-hidden="true"></span><span class="sr-only" aria-live="polite"></span></button>
+            <button id="firebaseShopButton" type="button">選擇店鋪</button>
+            <button id="firebaseAccountToggle" type="button" aria-label="使用者帳號" aria-expanded="false" aria-controls="firebaseAccountMenu"><i class="fas fa-user" aria-hidden="true"></i></button>
+            <div id="firebaseAccountMenu" hidden>
+                <span id="firebaseAccountEmail"></span>
+                <button id="firebaseSignOut" type="button">登出</button>
+            </div>`;
         document.body.appendChild(badge);
+        const accountToggle = document.getElementById('firebaseAccountToggle');
+        accountToggle.addEventListener('click', () => {
+            setAccountMenuOpen(accountToggle.getAttribute('aria-expanded') !== 'true');
+        });
+        document.addEventListener('click', (event) => {
+            if (!accountToggle.contains(event.target) && !document.getElementById('firebaseAccountMenu').contains(event.target)) {
+                setAccountMenuOpen(false);
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && accountToggle.getAttribute('aria-expanded') === 'true') {
+                setAccountMenuOpen(false);
+                accountToggle.focus();
+            }
+        });
+        badge.addEventListener('focusout', (event) => {
+            if (!badge.contains(event.relatedTarget)) setAccountMenuOpen(false);
+        });
 
         const shopOverlay = document.createElement('div');
         shopOverlay.id = 'firebaseShopOverlay';
@@ -262,10 +287,23 @@
 
     function updateShopBadge() {
         const button = document.getElementById('firebaseShopButton');
-        if (button) button.textContent = activeShop ? activeShop.name : '選擇店鋪';
+        if (button) {
+            const name = activeShop ? activeShop.name : '選擇店鋪';
+            const characters = Array.from(name);
+            button.textContent = characters.length > 5 ? `${characters.slice(0, 5).join('')}...` : name;
+            button.title = name;
+            button.setAttribute('aria-label', name);
+        }
+    }
+
+    function setAccountMenuOpen(open) {
+        const menu = document.getElementById('firebaseAccountMenu');
+        if (menu) menu.hidden = !open;
+        document.getElementById('firebaseAccountToggle')?.setAttribute('aria-expanded', String(open));
     }
 
     function setAccountBadgeVisible(visible) {
+        if (!visible) setAccountMenuOpen(false);
         document.getElementById('firebaseAccountBadge')?.classList.toggle('active', Boolean(visible));
         document.body.classList.toggle('account-badge-visible', Boolean(visible));
     }

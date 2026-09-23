@@ -1200,6 +1200,25 @@ button.loading::after {
   letter-spacing: 0.5px;
 }
 
+/* Keep the number input's intrinsic width from pushing the buttons off-screen on iOS. */
+#productModal .product-quantity-control {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 56px;
+  align-items: center;
+  width: 100%;
+}
+
+#productModal #modalQuantity {
+  width: 100%;
+  min-width: 0;
+}
+
+#modalProductName,
+#modalProductDescription {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .delete-order-info .customer-name {
   font-size: 1.1rem;
   color: #1f2937;
@@ -6630,7 +6649,48 @@ body #firebasePrinterStatus:not([hidden]) {
 body #firebasePrinterStatus[data-state='online'] { color: var(--pos-success); }
 body #firebasePrinterStatus[data-state='offline'] { color: var(--pos-danger); }
 body #firebasePrinterStatus[data-state='checking'] { color: #ca8a04; cursor: progress; }
-body #firebaseAccountEmail { min-width: 0; }
+body #firebaseAccountEmail {
+  display: block;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+body #firebaseAccountToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--pos-primary);
+  background: var(--pos-primary-soft);
+  cursor: pointer;
+}
+body #firebaseAccountToggle:focus-visible {
+  outline: 2px solid var(--pos-primary);
+  outline-offset: 2px;
+}
+body #firebaseAccountMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 12px;
+  width: 260px;
+  max-width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  padding: 16px;
+  border: 1px solid var(--pos-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--pos-shadow-sm);
+  pointer-events: auto;
+}
+body #firebaseAccountMenu[hidden] { display: none; }
+body #firebaseAccountMenu #firebaseSignOut { justify-self: end; }
 body #firebaseShopButton {
   min-width: 0;
   overflow: hidden;

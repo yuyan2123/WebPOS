@@ -435,13 +435,43 @@ async function configurePrinter(page) {
   await page.locator('#printer-tab-print').click();
 }
 
+for (const enabled of [true, false]) {
+  test(`startup checks printer status only when enabled (${enabled})`, async ({ page }) => {
+    await mockPrinter(page);
+    const bridge = require('node:fs').readFileSync('public/js/rpc-bridge.js', 'utf8');
+    const markup = bridge.match(/badge.innerHTML = `([\s\S]*?)`;/)[1];
+    await page.addInitScript(({ enabled, markup }) => {
+      localStorage.setItem('ginJiaPos.printer.test-user:test-shop', JSON.stringify({
+        enabled, remember: true, token: 'test-secret', url: 'wss://xprinter.local/ws',
+      }));
+      document.addEventListener('DOMContentLoaded', () => {
+        const badge = document.createElement('div');
+        badge.id = 'firebaseAccountBadge';
+        badge.className = 'active';
+        badge.innerHTML = markup;
+        document.body.append(badge);
+      });
+    }, { enabled, markup });
+    await openWorkspace(page);
+    const indicator = page.locator('#firebasePrinterStatus');
+    if (enabled) {
+      await expect(indicator).toHaveAttribute('data-state', 'online');
+      expect(await page.evaluate(() => window.__printerConnections)).toBe(1);
+      expect(await page.evaluate(() => window.__printerFrames.some(frame => frame.type === 'begin' || frame.bytes))).toBe(false);
+    } else {
+      await expect(indicator).toBeHidden();
+      expect(await page.evaluate(() => window.__printerConnections)).toBe(0);
+    }
+  });
+}
+
 test('account badge shows printer connectivity without clipping on narrow phones', async ({ page }) => {
   await page.clock.install();
   await mockPrinter(page);
   await openWorkspace(page);
   // The RPC bridge is mocked for offline tests; use its actual badge markup.
   const bridge = require('node:fs').readFileSync('public/js/rpc-bridge.js', 'utf8');
-  const markup = bridge.match(/badge.innerHTML = '([^']+)'/)[1];
+  const markup = bridge.match(/badge.innerHTML = `([\s\S]*?)`;/)[1];
   await page.evaluate((html) => {
     const badge = document.createElement('div');
     badge.id = 'firebaseAccountBadge';

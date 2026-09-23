@@ -472,10 +472,12 @@ export function initializePrinter() {
     scope = nextScope;
     role = nextRole;
     loadSettings();
+    void refreshPrinterBadge();
   }
   scope = currentLocalScope();
   role = document.body.dataset.shopRole || '';
   loadSettings();
+  void refreshPrinterBadge();
   document.addEventListener('click', (event) => {
     if (event.target.closest('#firebasePrinterStatus')) void refreshPrinterBadge();
   });
@@ -484,6 +486,8 @@ export function initializePrinter() {
       statusController?.abort();
       statusController = null;
       updatePrinterBadge('unknown');
+    } else if (connectionState === 'unknown') {
+      void refreshPrinterBadge();
     }
   });
   window.addEventListener('offline', () => {
