@@ -67,6 +67,7 @@ test("worker installs the complete local release, including Rust and datepicker"
   const paths = app.installed.map((request) => new URL(request.url).pathname);
   assert.ok(paths.includes("/wasm/pos_domain_bg.wasm"));
   assert.ok(paths.includes("/vendor/air-datepicker.js"));
+  assert.ok(paths.includes("/js/theme.js"));
   assert.ok(app.installed.every((request) => request.cache === "reload"));
   await app.dispatch("activate");
   assert.deepEqual(app.removed, ["gin-jia-pos-old"]);
@@ -75,7 +76,7 @@ test("worker installs the complete local release, including Rust and datepicker"
 test("worker serves HTML, JS and Wasm from the same installed release", async () => {
   const app = worker();
   await app.dispatch("install");
-  for (const path of ["/js/app.js", "/wasm/pos_domain_bg.wasm"]) {
+  for (const path of ["/js/app.js", "/js/theme.js", "/wasm/pos_domain_bg.wasm"]) {
     const response = await app.dispatch("fetch", {
       request: { method: "GET", url: "https://pos.test" + path, mode: "cors" },
     });

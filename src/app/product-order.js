@@ -24,7 +24,7 @@ export function showProductOrder() {
   modal.id = 'productOrderModal';
   modal.className = 'modal active';
   modal.setAttribute('aria-labelledby', 'productOrderTitle');
-  modal.innerHTML = `<div class="modal-content product-order-content">
+  modal.innerHTML = `<div class="modal-content product-order-content gj-pos-dialog">
     <div class="product-order-heading"><h3 id="productOrderTitle">調整商品順序</h3><button type="button" data-close aria-label="關閉排序視窗">×</button></div>
     <ol class="product-order-list" aria-label="商品排序"></ol>
     <span class="sr-only" data-announcement aria-live="polite"></span>
@@ -174,8 +174,8 @@ export function showProductOrder() {
         if (row.isConnected)
           row.animate(
             [
-              { backgroundColor: '#dbeafe', borderColor: '#2563eb' },
-              { backgroundColor: '#fafaf9', borderColor: '#e7e5e4' },
+              { backgroundColor: 'var(--gj-primary-soft)', borderColor: 'var(--gj-primary)' },
+              { backgroundColor: 'var(--gj-surface)', borderColor: 'var(--gj-border)' },
             ],
             { duration: 450, easing: 'ease-out' },
           );

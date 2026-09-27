@@ -1,10 +1,10 @@
 /* 內容區塊 */
 
 .settings-panel {
-  background: #f8fafc;
+  background: var(--gj-bg);
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--gj-border);
 }
 
 .settings-panel-header {
@@ -20,11 +20,11 @@
   gap: 10px;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 .settings-panel-title i {
-  color: #1f6f5f;
+  color: var(--gj-primary);
 }
 
 /* 姓名稱謂按鈕組 */
@@ -47,26 +47,26 @@
 
 .name-title-btn {
   padding: 6px 14px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gj-border);
   border-radius: 10px;
-  background: #f9fafb;
-  color: #6b7280;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
   white-space: nowrap;
 }
 
 .name-title-btn:hover {
-  border-color: #9bc7b9;
-  background: #f1f8f5;
+  border-color: var(--gj-primary-soft);
+  background: var(--gj-primary-soft);
 }
 
 .name-title-btn.active {
-  background: #1f6f5f;
-  color: white;
-  border-color: #1f6f5f;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
+  border-color: var(--gj-primary);
 }
 
 /* 客戶 autocomplete */
@@ -82,8 +82,8 @@
   left: 0;
   right: 0;
   z-index: 50;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-border);
   border-radius: 12px;
   margin-top: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -102,16 +102,16 @@
   gap: 12px;
   padding: 12px 16px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: none;
 }
 
 .customer-ac-item:not(:last-child) {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--gj-bg);
 }
 
 .customer-ac-item:hover,
 .customer-ac-item.highlight {
-  background: #f1f8f5;
+  background: var(--gj-primary-soft);
 }
 
 .customer-ac-item:first-child {
@@ -126,8 +126,8 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #e4f2ed;
-  color: #1f6f5f;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -143,12 +143,12 @@
 .customer-ac-name {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 .customer-ac-phone {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--gj-muted);
 }
 
 /* 手機版返回按鈕 */
@@ -160,19 +160,19 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  background: var(--gj-success);
+  color: var(--gj-on-primary);
   border: none;
   border-radius: 10px;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-add-product:hover {
-  background: linear-gradient(135deg, #059669, #047857);
+  background: var(--gj-success);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
@@ -190,24 +190,24 @@
 .products-filter-tabs button {
   padding: 8px 16px;
   border-radius: 20px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #6b7280;
+  border: 1px solid var(--gj-border);
+  background: var(--gj-surface);
+  color: var(--gj-muted);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: transform 0.2s;
 }
 
 .products-filter-tabs button.active {
-  background: #1f6f5f;
-  color: white;
-  border-color: #1f6f5f;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
+  border-color: var(--gj-primary);
 }
 
 .products-filter-tabs button:not(.active):hover {
-  background: #f3f4f6;
+  background: var(--gj-bg);
 }
 
 /* 商品卡片 grid */
@@ -228,9 +228,9 @@
 /* 商品卡片 */
 
 .product-card {
-  background: white;
+  background: var(--gj-surface);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gj-border);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -247,7 +247,7 @@
 .product-card-header .product-name {
   font-size: 1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 .product-card-tags {
@@ -269,28 +269,28 @@
 }
 
 .status-badge.enabled {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--gj-surface);
+  color: var(--gj-success);
 }
 
 .status-badge.disabled {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--gj-surface);
+  color: var(--gj-danger);
 }
 
 .status-badge.yes {
-  background: #e4f2ed;
-  color: #1f6f5f;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
 }
 
 .status-badge.no {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
 }
 
 .status-badge.category {
-  background: #f0f9ff;
-  color: #0369a1;
+  background: var(--gj-surface);
+  color: var(--gj-primary);
 }
 
 /* 價格區塊 */
@@ -300,7 +300,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 0;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--gj-bg);
 }
 
 .product-card-prices .price-row {
@@ -311,22 +311,22 @@
 }
 
 .price-row .price-label {
-  color: #6b7280;
+  color: var(--gj-muted);
   font-weight: 500;
 }
 
 .price-row .price-value {
   font-weight: 600;
-  color: #374151;
+  color: var(--gj-muted);
 }
 
 .price-row .price-special {
   font-weight: 600;
-  color: #dc2626;
+  color: var(--gj-danger);
 }
 
 .price-row .price-none {
-  color: #9ca3af;
+  color: var(--gj-muted);
   font-style: italic;
 }
 
@@ -336,7 +336,7 @@
   display: flex;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--gj-bg);
 }
 
 .product-card-actions button {
@@ -347,27 +347,27 @@
   font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .btn-card-edit {
-  background: #f1f8f5;
-  color: #1f6f5f;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
 }
 
 .btn-card-edit:hover {
-  background: #e4f2ed;
-  color: #1f6f5f;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
 }
 
 .btn-card-delete {
-  background: #fef2f2;
-  color: #ef4444;
+  background: var(--gj-surface);
+  color: var(--gj-danger);
 }
 
 .btn-card-delete:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--gj-surface);
+  color: var(--gj-danger);
 }
 
 /* 卡片空狀態 */
@@ -375,7 +375,7 @@
 .products-empty {
   text-align: center;
   padding: 48px 16px;
-  color: #9ca3af;
+  color: var(--gj-muted);
 }
 
 .products-empty i {
@@ -390,22 +390,19 @@
 /* 營業報表區塊 */
 
 .report-form {
-  display: flex;
-  gap: 16px;
-  align-items: flex-end;
   margin-bottom: 24px;
 }
 
 .report-form .form-group {
   flex: 1;
-  max-width: 300px;
+  min-width: 0;
 }
 
 .report-form label {
   display: block;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--gj-muted);
   margin-bottom: 8px;
 }
 
@@ -414,21 +411,21 @@
 #searchDate {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gj-border);
   border-radius: 10px;
   font-size: 0.9rem;
-  color: #374151;
-  background: white;
+  color: var(--gj-muted);
+  background: var(--gj-surface);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
   outline: none;
 }
 
 #reportDatePicker:focus,
 #demandDatePicker:focus,
 #searchDate:focus {
-  border-color: #1f6f5f;
-  box-shadow: 0 0 0 3px rgba(31, 111, 95, 0.1);
+  border-color: var(--gj-primary);
+  box-shadow: var(--gj-focus);
 }
 
 /* 營業報表結果 */
@@ -436,9 +433,9 @@
 .report-date-label {
   text-align: center;
   padding: 8px 16px;
-  background: #ecfdf5;
+  background: var(--gj-surface);
   border-radius: 8px;
-  color: #065f46;
+  color: var(--gj-success);
   font-weight: 600;
   margin-bottom: 16px;
 }
@@ -458,7 +455,7 @@
 
 .report-summary-card .card-label {
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--gj-muted);
   margin-bottom: 4px;
 }
 
@@ -468,15 +465,15 @@
 }
 
 .report-summary-card.revenue {
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border: 1px solid #6ee7b7;
+  background: linear-gradient(135deg, var(--gj-surface), var(--gj-bg));
+  border: 1px solid var(--gj-success);
 }
 
 .report-summary-card.revenue .card-value {
-  color: #047857;
+  color: var(--gj-success);
 }
 
 .report-summary-card.orders {
-  background: linear-gradient(135deg, #f1f8f5, #e4f2ed);
-  border: 1px solid #9bc7b9;
+  background: var(--gj-primary-soft);
+  border: 1px solid var(--gj-primary-soft);
 }

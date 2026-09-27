@@ -5,15 +5,15 @@
 }
 
 .alert {
-  --alert-tone: #25654d;
-  --alert-tint: #e8f1e9;
+  --alert-tone: var(--gj-primary);
+  --alert-tint: var(--gj-primary-soft);
   width: 100%;
   min-width: 0;
   padding: 16px;
   gap: 12px;
-  border: 1px solid var(--pos-line, #dce2dc);
+  border: 1px solid var(--pos-line, var(--gj-border));
   border-radius: 18px;
-  background: #fff;
+  background: var(--gj-surface);
   box-shadow:
     0 12px 36px #192a201a,
     0 2px 6px #192a2008;
@@ -22,18 +22,18 @@
 }
 
 .alert-error {
-  --alert-tone: #b53838;
-  --alert-tint: #fff0f0;
+  --alert-tone: var(--gj-danger);
+  --alert-tint: var(--gj-surface);
 }
 
 .alert-warning {
-  --alert-tone: #895719;
-  --alert-tint: #fff4df;
+  --alert-tone: var(--gj-warning);
+  --alert-tint: var(--gj-surface);
 }
 
 .alert-info {
-  --alert-tone: #326482;
-  --alert-tint: #edf4f9;
+  --alert-tone: var(--gj-primary);
+  --alert-tint: var(--gj-bg);
 }
 
 .alert .alert-icon {
@@ -60,7 +60,7 @@
 
 .alert .alert-message {
   padding-top: 4px;
-  color: #48534d;
+  color: var(--gj-muted);
   font-size: 14px;
   font-weight: 400;
   line-height: 1.65;
@@ -72,13 +72,13 @@
   min-width: 40px;
   min-height: 40px;
   border-radius: 10px;
-  color: #626f67;
+  color: var(--gj-muted);
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: none;
 }
 
 .alert .alert-close:hover {
-  background: #f0f3ef;
+  background: var(--gj-bg);
 }
 
 .alert .alert-close:focus-visible {

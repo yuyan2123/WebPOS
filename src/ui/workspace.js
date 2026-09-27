@@ -5,13 +5,13 @@ import { toggleCartModal } from '../app/cart.js';
 import { getTaipeiDate } from '../app/platform.js';
 
 const sections = {
-  customer: ['建立訂單', '先填寫客戶與配送資料'],
-  date: ['交貨安排', '選擇日期，掌握每日供應量'],
-  gift: ['商品', '挑選商品，隨時檢視訂單'],
-  cake: ['商品', '挑選商品，隨時檢視訂單'],
-  giftbox: ['禮盒組合', '選擇規格，自由搭配內容'],
-  search: ['訂單管理', '查詢進度、付款與交貨資訊'],
-  settings: ['商品管理', '新增、編輯與管理商品'],
+  customer: ['建立訂單', '客戶資料與配送方式'],
+  date: ['交貨安排', '交貨日期與每日供應量'],
+  gift: ['商品', '選擇商品並加入訂單'],
+  cake: ['商品', '選擇商品並加入訂單'],
+  giftbox: ['禮盒組合', '禮盒規格與商品數量'],
+  search: ['訂單管理', '依客戶或交貨日期查詢'],
+  settings: ['商品管理', '品項、價格與上架狀態'],
 };
 const panels = {
   products: '商品管理',
@@ -22,12 +22,12 @@ const panels = {
   printer: '出單機',
 };
 const panelSubtitles = {
-  products: '新增、編輯與管理商品',
-  capacity: '設定每日供應量與指定日期上限',
-  demand: '依交貨日期彙整商品需求',
-  reports: '依交貨日期區間查看營收與商品銷售',
-  device: '查看目前使用的裝置與瀏覽器',
-  printer: '管理列印方式與出單機連線',
+  products: '品項、價格與上架狀態',
+  capacity: '星期預設與日期上限',
+  demand: '依交貨日期統計商品數量',
+  reports: '依交貨日期統計營收與銷量',
+  device: '版本、更新與瀏覽器資訊',
+  printer: '列印設定與裝置連線',
 };
 let restoring = false;
 

@@ -11,12 +11,14 @@ const mime = {
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
   '.png': 'image/png',
+  '.svg': 'image/svg+xml',
   '.woff2': 'font/woff2',
 };
 createServer(async (request, response) => {
   try {
     const url = new URL(request.url, 'http://localhost');
-    const pathname = url.pathname === '/certs' || url.pathname === '/certs/' ? '/certs/setup.html' : url.pathname;
+    const pathname =
+      url.pathname === '/certs' || url.pathname === '/certs/' ? '/certs/setup.html' : url.pathname;
     const file = resolve(root, '.' + decodeURIComponent(pathname === '/' ? '/index.html' : pathname));
     if (!file.startsWith(root + sep)) {
       response.writeHead(403);

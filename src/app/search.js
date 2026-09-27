@@ -183,7 +183,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
   container.innerHTML = `
                 ${headerContent}
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table gj-table">
                         <thead><tr>${tableHeaders}</tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table>
@@ -281,7 +281,7 @@ export function renderExpandedOrderItems(items, columnCount, isCollapsing = fals
                         <div class="order-items-expand">
                             <div class="order-items-scroll">
                               <div class="order-items-content">
-                                <table class="order-items-table">
+                                <table class="order-items-table gj-table">
                                     <thead><tr><th>商品</th><th>數量</th><th>單價</th><th>小計</th></tr></thead>
                                     <tbody>${itemsHtml}</tbody>
                                 </table>

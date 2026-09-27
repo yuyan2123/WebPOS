@@ -61,7 +61,7 @@ import {
   showDeleteConfirm,
 } from './payments.js';
 import { updateCartItemQuantity, removeFromCartModal } from './cart-detail.js';
-import { loadProducts, addToCartDirectly } from './catalog.js';
+import { loadProducts, addToCartDirectly, adjustCatalogQuantity, setCatalogQuantity } from './catalog.js';
 import { editOrder } from './order-editor.js';
 import { viewOrderDetails } from './order-detail.js';
 
@@ -121,6 +121,8 @@ Object.assign(window, {
   loadProducts,
   showProductDetail,
   addToCartDirectly,
+  adjustCatalogQuantity,
+  setCatalogQuantity,
   adjustGiftboxQty,
   setGiftboxQty,
   showStatusConfirm,

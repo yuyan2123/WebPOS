@@ -63,7 +63,7 @@ export function handleReportGenerated(report) {
       '<i class="fas fa-calendar-check" style="margin-right:6px;"></i>' +
       dateLabel +
       '</div>' +
-      '<p style="padding:20px;text-align:center;color:#64748b;">此期間無營業記錄</p>';
+      '<p style="padding:20px;text-align:center;color:var(--gj-muted);">此期間無營業記錄</p>';
     return;
   }
   var totalRevenue = Math.round(report.totalRevenue);
@@ -79,28 +79,28 @@ export function handleReportGenerated(report) {
   // 摘要卡片
   html += '<div class="report-summary-cards">';
   html +=
-    '<div class="report-summary-card revenue">' +
+    '<div class="report-summary-card revenue gj-pos-card">' +
     '<div class="card-label">總營業額</div>' +
     '<div class="card-value">$' +
     totalRevenue.toLocaleString() +
     '</div>' +
     '</div>';
   html +=
-    '<div class="report-summary-card orders">' +
+    '<div class="report-summary-card orders gj-pos-card">' +
     '<div class="card-label">訂單數</div>' +
     '<div class="card-value">' +
     report.totalOrders +
     '</div>' +
     '</div>';
   html +=
-    '<div class="report-summary-card items">' +
+    '<div class="report-summary-card items gj-pos-card">' +
     '<div class="card-label">商品總數</div>' +
     '<div class="card-value">' +
     report.totalItems +
     '</div>' +
     '</div>';
   html +=
-    '<div class="report-summary-card avg">' +
+    '<div class="report-summary-card avg gj-pos-card">' +
     '<div class="card-label">平均客單價</div>' +
     '<div class="card-value">$' +
     avgOrder.toLocaleString() +
@@ -112,7 +112,7 @@ export function handleReportGenerated(report) {
     html +=
       '<div class="demand-section-title"><i class="fas fa-chart-bar" style="margin-right:8px;"></i>商品銷售明細</div>';
     html +=
-      '<table class="demand-stats-table"><thead><tr><th>商品名稱</th><th>數量</th><th>金額</th><th>佔比</th></tr></thead><tbody>';
+      '<table class="demand-stats-table gj-table"><thead><tr><th>商品名稱</th><th>數量</th><th>金額</th><th>佔比</th></tr></thead><tbody>';
     for (var i = 0; i < report.productSales.length; i++) {
       var p = report.productSales[i];
       var amount = Math.round(p.amount);
@@ -135,7 +135,7 @@ export function handleReportGenerated(report) {
     }
     html += '</tbody></table>';
   } else {
-    html += '<p style="padding:20px;text-align:center;color:#64748b;">此期間無商品銷售明細</p>';
+    html += '<p style="padding:20px;text-align:center;color:var(--gj-muted);">此期間無商品銷售明細</p>';
   }
   container.innerHTML = html;
 }
@@ -179,7 +179,7 @@ export function renderDemandResults(result, startDate, endDate) {
   const container = document.getElementById('demandResults');
   if (!result || result.orderCount === 0) {
     container.innerHTML =
-      '<p style="padding: 20px; text-align: center; color: #64748b;">此期間無訂單資料</p>';
+      '<p style="padding: 20px; text-align: center; color: var(--gj-muted);">此期間無訂單資料</p>';
     return;
   }
   const dateLabel = startDate === endDate ? startDate : startDate + ' ~ ' + endDate;
@@ -191,7 +191,7 @@ export function renderDemandResults(result, startDate, endDate) {
     html +=
       '<div class="demand-section-title"><i class="fas fa-boxes-stacked" style="margin-right:8px;"></i>各商品需求量</div>';
     html +=
-      '<table class="demand-stats-table"><thead><tr><th>商品名稱</th><th>散裝</th><th>禮盒內</th><th>合計</th></tr></thead><tbody>';
+      '<table class="demand-stats-table gj-table"><thead><tr><th>商品名稱</th><th>散裝</th><th>禮盒內</th><th>合計</th></tr></thead><tbody>';
     result.productStats.forEach((p) => {
       html += `<tr>
                         <td>${escapeHtml(p.name)}</td>
@@ -208,7 +208,7 @@ export function renderDemandResults(result, startDate, endDate) {
       '<div class="demand-section-title"><i class="fas fa-box" style="margin-right:8px;"></i>禮盒規格統計</div>';
     html += '<div class="demand-summary-cards">';
     result.giftboxStats.forEach((g) => {
-      html += `<div class="demand-summary-card">
+      html += `<div class="demand-summary-card gj-pos-card">
                         <div class="card-label">${escapeHtml(g.size)}</div>
                         <div class="card-value">${g.count}</div>
                         <div class="card-label">盒</div>

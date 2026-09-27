@@ -165,7 +165,7 @@ export function showDepositModal(orderId, totalAmount, depositAmount) {
   state.currentDepositTotalAmount = totalAmount;
   state.currentDepositAmount = depositAmount;
   document.getElementById('depositOrderInfo').textContent =
-    `訂單編號：${orderId} - 總金額：NT$ ${totalAmount}`;
+    `訂單編號：${orderId}\n總金額：NT$ ${Number(totalAmount).toLocaleString('zh-TW')}`;
   document.getElementById('depositAmountInput').value = depositAmount || '';
   document.getElementById('paymentNotesInput').value = '';
   updateDepositCalculation();
@@ -184,11 +184,11 @@ export function updateDepositCalculation() {
   const newDepositAmount = parseFloat(depositInput.value) || 0;
   const calculationResult = document.getElementById('depositCalculationResult');
   if (newDepositAmount < 0 || newDepositAmount > state.currentDepositTotalAmount) {
-    depositInput.style.borderColor = '#e74c3c';
+    depositInput.style.borderColor = 'var(--gj-danger)';
     calculationResult.style.display = 'none';
     return;
   } else {
-    depositInput.style.borderColor = '#e5e7eb';
+    depositInput.style.borderColor = 'var(--gj-border)';
   }
   if (newDepositAmount > 0) {
     calculationResult.style.display = 'block';
@@ -196,14 +196,17 @@ export function updateDepositCalculation() {
       total: state.currentDepositTotalAmount,
       paid: newDepositAmount,
     });
-    const statusColor = newStatus === '已付訂金' ? '#99621a' : '#226b4e';
-    document.getElementById('currentDepositText').textContent = `NT$ ${newDepositAmount}`;
-    document.getElementById('remainingAmountText').textContent = `NT$ ${remainingAmount}`;
-    document.getElementById('remainingAmountText').style.color = remainingAmount > 0 ? '#e74c3c' : '#27ae60';
+    const statusColor = newStatus === '已付訂金' ? 'var(--gj-warning-soft)' : 'var(--gj-success-soft)';
+    document.getElementById('currentDepositText').textContent =
+      `NT$ ${newDepositAmount.toLocaleString('zh-TW')}`;
+    document.getElementById('remainingAmountText').textContent =
+      `NT$ ${remainingAmount.toLocaleString('zh-TW')}`;
+    document.getElementById('remainingAmountText').style.color =
+      remainingAmount > 0 ? 'var(--gj-danger)' : 'var(--gj-success)';
     const statusText = document.getElementById('newStatusText');
     statusText.textContent = newStatus;
     statusText.style.backgroundColor = statusColor;
-    statusText.style.color = 'white';
+    statusText.style.color = newStatus === '已付訂金' ? 'var(--gj-warning)' : 'var(--gj-success)';
   } else {
     calculationResult.style.display = 'none';
   }

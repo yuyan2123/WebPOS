@@ -12,10 +12,10 @@
 .product-category-control button {
   flex: 0 0 44px;
   min-height: 44px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gj-border);
   border-radius: 8px;
-  background: #f1f8f5;
-  color: #1f6f5f;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -29,9 +29,9 @@
   overscroll-behavior: contain;
   margin: 0;
   padding: 4px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gj-border);
   border-radius: 8px;
-  background: white;
+  background: var(--gj-surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
@@ -42,8 +42,8 @@
   padding: 10px 12px;
   border: 0;
   border-radius: 6px;
-  background: white;
-  color: #374151;
+  background: var(--gj-surface);
+  color: var(--gj-muted);
   font-size: 16px;
   text-align: left;
   overflow-wrap: anywhere;
@@ -53,19 +53,19 @@
 
 .product-category-options button:hover,
 .product-category-options button[aria-pressed="true"] {
-  background: #e4f2ed;
-  color: #17584c;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
 }
 
 .product-category-picker button:focus-visible,
 .product-category-options button:focus-visible {
-  outline: 2px solid #1f6f5f;
+  outline: 2px solid var(--gj-primary);
   outline-offset: -2px;
 }
 
 .product-category-options p {
   padding: 10px;
-  color: #6b7280;
+  color: var(--gj-muted);
   font-size: 14px;
 }
 
@@ -80,18 +80,18 @@
 }
 
 .cart-item-icon.gift {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #f59e0b;
+  background: linear-gradient(135deg, var(--gj-surface), var(--gj-warning-soft));
+  color: var(--gj-warning);
 }
 
 .cart-item-icon.cake {
-  background: linear-gradient(135deg, #fce7f3, #fbcfe8);
-  color: #ec4899;
+  background: linear-gradient(135deg, var(--gj-surface), var(--gj-bg));
+  color: var(--gj-on-secondary-soft);
 }
 
 .cart-item-icon.giftbox {
-  background: linear-gradient(135deg, #e4f2ed, #b8d8ce);
-  color: #1f6f5f;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
 }
 
 .cart-item-icon i {
@@ -106,7 +106,7 @@
 .cart-item-name {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1f2937;
+  color: var(--gj-text);
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -115,13 +115,13 @@
 
 .cart-item-price {
   font-size: 0.875rem;
-  color: #ef4444;
+  color: var(--gj-danger);
   font-weight: 500;
 }
 
 .cart-item-price .original {
   text-decoration: line-through;
-  color: #9ca3af;
+  color: var(--gj-muted);
   margin-right: 6px;
 }
 
@@ -129,7 +129,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f9fafb;
+  background: var(--gj-bg);
   border-radius: 8px;
   padding: 8px;
 }
@@ -144,33 +144,33 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
-  color: #6b7280;
+  border: 1px solid var(--gj-border);
+  background: var(--gj-surface);
+  color: var(--gj-muted);
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .cart-qty-btn:hover {
-  border-color: #1f6f5f;
-  color: #1f6f5f;
-  background: #f1f8f5;
+  border-color: var(--gj-primary);
+  color: var(--gj-primary);
+  background: var(--gj-primary-soft);
 }
 
 .cart-qty-value {
   min-width: 40px;
   height: 32px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-border);
   border-radius: 6px;
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gj-text);
   text-align: center;
   display: flex;
   align-items: center;
@@ -181,66 +181,66 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  color: #ef4444;
+  border: 1px solid var(--gj-surface);
+  background: var(--gj-surface);
+  color: var(--gj-danger);
   font-size: 1rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .cart-delete-btn:hover {
-  background: #fee2e2;
-  border-color: #ef4444;
+  background: var(--gj-surface);
+  border-color: var(--gj-danger);
 }
 
 .cart-edit-btn {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #a5b4fc;
-  background: #eef2ff;
-  color: #6366f1;
+  border: 1px solid var(--gj-primary-soft);
+  background: var(--gj-surface);
+  color: var(--gj-primary);
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .cart-edit-btn:hover {
-  background: #e0e7ff;
-  border-color: #6366f1;
+  background: var(--gj-surface);
+  border-color: var(--gj-primary);
 }
 
 .cart-giftbox-details {
   margin-top: 8px;
   padding: 8px 10px;
-  background: #f0f9ff;
+  background: var(--gj-surface);
   border-radius: 8px;
-  border-left: 3px solid #1f6f5f;
+  border-left: 3px solid var(--gj-primary);
   font-size: 0.8rem;
-  color: #17584c;
+  color: var(--gj-primary);
 }
 
 .cart-giftbox-notes {
   margin-top: 6px;
   padding: 8px 10px;
-  background: #f3f4f6;
+  background: var(--gj-bg);
   border-radius: 8px;
-  border-left: 3px solid #9ca3af;
+  border-left: 3px solid var(--gj-muted);
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--gj-muted);
 }
 
 /* Giftbox Step 3 - Confirmation Page */
 
 .giftbox-confirm-container {
-  background: white;
+  background: var(--gj-surface);
   border-radius: 20px;
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -252,45 +252,45 @@
   gap: 16px;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--gj-border);
 }
 
 .giftbox-confirm-icon {
   width: 60px;
   height: 60px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #e4f2ed, #b8d8ce);
+  background: var(--gj-primary-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1f6f5f;
+  color: var(--gj-primary);
   font-size: 1.5rem;
 }
 
 .giftbox-confirm-title h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gj-text);
   margin: 0;
 }
 
 .giftbox-confirm-title span {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--gj-muted);
 }
 
 .giftbox-summary-card {
-  background: #f8fafc;
+  background: var(--gj-bg);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--gj-border);
 }
 
 .giftbox-summary-card h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--gj-muted);
   margin-bottom: 16px;
   display: flex;
   align-items: center;
@@ -299,7 +299,7 @@
 
 .giftbox-summary-card h4 i {
   font-size: 1.1rem;
-  color: #1f6f5f;
+  color: var(--gj-primary);
 }
 
 .giftbox-summary-list {
@@ -312,10 +312,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
+  background: var(--gj-surface);
   padding: 12px 16px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gj-border);
 }
 
 .giftbox-summary-product .product-info {
@@ -327,27 +327,27 @@
 .giftbox-summary-product .product-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  background: linear-gradient(135deg, var(--gj-surface), var(--gj-warning-soft));
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f59e0b;
+  color: var(--gj-warning);
 }
 
 .giftbox-summary-product .product-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 .giftbox-summary-product .product-qty {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--gj-muted);
 }
 
 .giftbox-summary-product .product-price {
   font-weight: 700;
-  color: #059669;
+  color: var(--gj-success);
 }
 
 .giftbox-summary-total {
@@ -356,18 +356,18 @@
   align-items: center;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 2px dashed #e5e7eb;
+  border-top: 2px dashed var(--gj-border);
 }
 
 .giftbox-summary-total .total-label {
   font-weight: 600;
-  color: #374151;
+  color: var(--gj-muted);
   font-size: 1.1rem;
 }
 
 .giftbox-summary-total .total-price {
   font-weight: 700;
-  color: #1f6f5f;
+  color: var(--gj-primary);
   font-size: 1.4rem;
 }
 
@@ -385,7 +385,7 @@
 }
 
 .giftbox-form-group {
-  background: #f9fafb;
+  background: var(--gj-bg);
   border-radius: 12px;
   padding: 16px;
 }
@@ -394,32 +394,32 @@
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gj-muted);
   margin-bottom: 8px;
 }
 
 .giftbox-form-group input {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gj-border);
   border-radius: 10px;
   font-size: 1rem;
-  background: white;
-  transition: all 0.2s ease;
+  background: var(--gj-surface);
+  transition: transform 0.2s ease;
   outline: none;
 }
 
 .giftbox-form-group input:focus {
-  border-color: #1f6f5f;
-  box-shadow: 0 0 0 3px rgba(31, 111, 95, 0.1);
+  border-color: var(--gj-primary);
+  box-shadow: var(--gj-focus);
 }
 
 .giftbox-special-price-section {
-  background: linear-gradient(135deg, #f1f8f5, #e4f2ed);
+  background: var(--gj-primary-soft);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 20px;
-  border: 2px solid #b8d8ce;
+  border: 2px solid var(--gj-primary-soft);
 }
 
 .giftbox-special-price-section label {
@@ -428,12 +428,12 @@
   gap: 8px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #17584c;
+  color: var(--gj-primary);
   margin-bottom: 10px;
 }
 
 .giftbox-special-price-section label i {
-  color: #1f6f5f;
+  color: var(--gj-primary);
 }
 
 .giftbox-price-comparison {
@@ -442,17 +442,17 @@
   align-items: center;
   margin-top: 12px;
   padding: 10px 14px;
-  background: white;
+  background: var(--gj-surface);
   border-radius: 8px;
 }
 
 .giftbox-price-comparison .original {
-  color: #6b7280;
+  color: var(--gj-muted);
   text-decoration: line-through;
 }
 
 .giftbox-price-comparison .special {
-  color: #059669;
+  color: var(--gj-success);
   font-weight: 700;
   font-size: 1.1rem;
 }
@@ -465,30 +465,30 @@
 
 .giftbox-action-buttons .btn-back {
   padding: 14px 28px;
-  background: #f3f4f6;
-  border: 2px solid #e5e7eb;
+  background: var(--gj-bg);
+  border: 2px solid var(--gj-border);
   border-radius: 12px;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--gj-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .giftbox-action-buttons .btn-back:hover {
-  background: #e5e7eb;
+  background: var(--gj-border);
 }
 
 .giftbox-action-buttons .btn-add-cart {
   flex: 1;
   padding: 14px 28px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: var(--gj-success);
   border: none;
   border-radius: 12px;
   font-weight: 700;
   font-size: 1.1rem;
-  color: white;
+  color: var(--gj-on-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,7 +496,7 @@
 }
 
 .giftbox-action-buttons .btn-add-cart:hover {
-  background: linear-gradient(135deg, #059669, #047857);
+  background: var(--gj-success);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }

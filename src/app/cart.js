@@ -3,9 +3,9 @@ import { updateCartModalDisplay } from './cart-detail.js';
 import { setButtonLoading, showAlert } from './feedback.js';
 import { getEffectivePrice } from './pricing.js';
 import { updateProductSpecialPrice, closeProductModal } from './product-detail.js';
-import { initializeModalCloseHandlers } from './platform.js';
 import { scheduleDraftSave } from './drafts.js';
 import { escapeHtml } from './customers.js';
+import { updateCatalogQuantities } from './catalog.js';
 
 // 計算商品總金額
 export function updateOrderTotal() {
@@ -24,7 +24,7 @@ export function updateOrderTotal() {
   // 更新購物車顯示的總金額
   const cartTotalEl = document.getElementById('cartTotalAmount');
   if (cartTotalEl) {
-    cartTotalEl.textContent = totalAmount;
+    cartTotalEl.textContent = totalAmount.toLocaleString('zh-TW');
   }
   return {
     itemsTotal: itemsTotal,
@@ -88,7 +88,6 @@ export function toggleCartModal() {
   document.body.classList.toggle('cart-open', cartModal.classList.contains('active'));
   if (cartModal.classList.contains('active')) {
     updateCartModalDisplay();
-    setTimeout(() => initializeModalCloseHandlers(), 50);
   }
 }
 
@@ -113,7 +112,7 @@ export function updateCartDisplay() {
     cartCountEl.classList.remove('two-digits');
   }
   // 顯示總金額（包含運費）
-  document.getElementById('cartTotalAmount').textContent = orderTotals.totalAmount;
+  document.getElementById('cartTotalAmount').textContent = orderTotals.totalAmount.toLocaleString('zh-TW');
   // 更新建立訂單按鈕：不使用 disabled（disabled 不會觸發 click，無法提示缺少什麼），
   // 改用樣式 class 標記，點擊時由 submitOrder 顯示具體原因
   const checkoutBtn = document.getElementById('checkoutBtn');
@@ -131,6 +130,7 @@ export function updateCartDisplay() {
     checkoutBtn.textContent = '建立訂單';
   }
   updateCartModalDisplay();
+  updateCatalogQuantities();
   scheduleDraftSave();
 }
 
@@ -143,17 +143,18 @@ export function generateGiftboxDetailsHtml(giftboxItem) {
   for (const [productId, quantity] of Object.entries(giftboxItem.products)) {
     const product = state.allProducts.find((p) => p.productId === productId);
     if (product && quantity > 0) {
-      detailItems.push(`${escapeHtml(product.productName)} × ${quantity}`);
+      detailItems.push(
+        `<li><span>${escapeHtml(product.productName)}</span><span>每盒 ${quantity} 粒</span></li>`,
+      );
     }
   }
   if (detailItems.length === 0) {
     return '';
   }
   return `
-                <div class="giftbox-details">
-                    <div class="giftbox-details-content">
-                        ${detailItems.join(' | ')}
-                    </div>
+                <div class="cart-giftbox-details">
+                    <span class="cart-price-label">禮盒內容</span>
+                    <ul>${detailItems.join('')}</ul>
                 </div>
             `;
 }

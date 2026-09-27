@@ -133,8 +133,8 @@ export function resetOrderForm() {
     const confirmDateBtn = document.getElementById('btn-confirm-date');
     if (confirmDateBtn) {
       confirmDateBtn.disabled = true;
-      confirmDateBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'shadow-lg');
-      confirmDateBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
+      confirmDateBtn.classList.remove('bg-md-primary', 'hover:bg-md-primary', 'shadow-lg');
+      confirmDateBtn.classList.add('bg-md-surface-container', 'cursor-not-allowed');
       confirmDateBtn.innerHTML = '請先選擇日期';
     }
     // 禮盒暫存狀態
@@ -213,43 +213,43 @@ export function showCapacityWarningModal(capacityStatus, orderData) {
   const body = document.getElementById('capacityWarningBody');
   const cs = capacityStatus;
   body.innerHTML =
-    '<div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">' +
+    '<div style="background: var(--gj-surface); border: 1px solid var(--gj-warning-soft); border-radius: 12px; padding: 20px; margin-bottom: 16px;">' +
     '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">' +
     '<div style="display: flex; flex-direction: column;">' +
-    '<span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">交貨日期</span>' +
-    '<span style="font-size: 1rem; font-weight: 700; color: #1f2937;">' +
+    '<span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">交貨日期</span>' +
+    '<span style="font-size: 1rem; font-weight: 700; color: var(--gj-text);">' +
     escapeHtml(cs.date) +
     '</span>' +
     '</div>' +
     '<div style="display: flex; flex-direction: column;">' +
-    '<span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">每日上限</span>' +
-    '<span style="font-size: 1rem; font-weight: 700; color: #1f2937;">' +
+    '<span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">每日上限</span>' +
+    '<span style="font-size: 1rem; font-weight: 700; color: var(--gj-text);">' +
     cs.limit +
     ' 件</span>' +
     '</div>' +
     '<div style="display: flex; flex-direction: column;">' +
-    '<span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">目前已排定</span>' +
-    '<span style="font-size: 1rem; font-weight: 700; color: #1f2937;">' +
+    '<span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">目前已排定</span>' +
+    '<span style="font-size: 1rem; font-weight: 700; color: var(--gj-text);">' +
     cs.currentQuantity +
     ' 件</span>' +
     '</div>' +
     '<div style="display: flex; flex-direction: column;">' +
-    '<span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">本次訂單</span>' +
-    '<span style="font-size: 1rem; font-weight: 700; color: #1f6f5f;">' +
+    '<span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">本次訂單</span>' +
+    '<span style="font-size: 1rem; font-weight: 700; color: var(--gj-primary);">' +
     cs.newOrderQuantity +
     ' 件</span>' +
     '</div>' +
     '</div>' +
     '</div>' +
-    '<div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;">' +
-    '<i class="fas fa-exclamation-circle" style="color: #dc2626; margin-top: 2px; flex-shrink: 0;"></i>' +
+    '<div style="background: var(--gj-surface); border: 1px solid var(--gj-surface); border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;">' +
+    '<i class="fas fa-exclamation-circle" style="color: var(--gj-danger); margin-top: 2px; flex-shrink: 0;"></i>' +
     '<div>' +
-    '<div style="font-weight: 700; color: #991b1b; margin-bottom: 4px;">送出後預計總量: ' +
+    '<div style="font-weight: 700; color: var(--gj-danger); margin-bottom: 4px;">送出後預計總量: ' +
     cs.projectedQuantity +
     ' 件，超出上限 ' +
     cs.exceededQuantity +
     ' 件</div>' +
-    '<div style="font-size: 0.85rem; color: #7f1d1d;">此警告不會阻擋訂單建立，請確認是否繼續送出，或返回修改交貨日期。</div>' +
+    '<div style="font-size: 0.85rem; color: var(--gj-danger);">此警告不會阻擋訂單建立，請確認是否繼續送出，或返回修改交貨日期。</div>' +
     '</div>' +
     '</div>';
   document.getElementById('capacityWarningModal').classList.add('active');

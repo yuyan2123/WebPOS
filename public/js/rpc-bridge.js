@@ -22,73 +22,74 @@
             #firebaseAuthOverlay { position: fixed; inset: 0; z-index: 100000; display: none;
                 place-items: center; padding: 24px; background: rgba(15, 23, 42, .72); backdrop-filter: blur(8px); }
             #firebaseAuthOverlay.active { display: grid; }
-            .firebase-auth-card { width: min(420px, 100%); padding: 32px; border-radius: 22px; background: #fff;
+            .firebase-auth-card { width: min(420px, 100%); padding: 32px; border-radius: 22px; background: var(--gj-surface);
                 box-shadow: 0 24px 70px rgba(15, 23, 42, .3); text-align: center; font-family: inherit; }
-            .firebase-auth-card i { color: #1f6f5f; font-size: 2.4rem; margin-bottom: 16px; }
-            .firebase-auth-card h2 { margin: 0 0 10px; color: #1f2937; font-size: 1.5rem; }
-            .firebase-auth-card p { margin: 0 0 22px; color: #64748b; line-height: 1.6; }
-            #firebaseGoogleSignIn { width: 100%; border: 0; border-radius: 12px; padding: 14px 18px;
-                color: #fff; background: #1f6f5f; font-size: 1rem; font-weight: 700; cursor: pointer; }
+            .firebase-auth-card i { color: var(--gj-primary); font-size: 2.4rem; margin-bottom: 16px; }
+            .firebase-auth-card h2 { margin: 0 0 10px; color: var(--gj-text); font-size: 1.5rem; }
+            .firebase-auth-card p { margin: 0 0 22px; color: var(--gj-muted); line-height: 1.6; }
+            #firebaseGoogleSignIn { width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px;
+                border: 1px solid var(--gj-border); border-radius: var(--gj-input-radius, 8px); padding: 12px 24px;
+                color: var(--gj-text); background: var(--gj-input-surface); font-size: 14px; line-height: 20px; font-weight: 500; cursor: pointer; }
             #firebaseEmailAuth { display: grid; gap: 9px; margin-bottom: 14px; }
-            #firebaseEmailAuth input { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 11px;
-                padding: 12px 13px; color: #1f2937; background: #fff; font: 500 .95rem/1.2 inherit; }
+            #firebaseEmailAuth input { width: 100%; box-sizing: border-box; border: 1px solid var(--gj-border); border-radius: 11px;
+                padding: 12px 13px; color: var(--gj-text); background: var(--gj-surface); font: 500 .95rem/1.2 inherit; }
             .firebase-auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-            .firebase-auth-primary { border: 0; border-radius: 11px; padding: 12px 14px; color: #fff;
-                background: #1f6f5f; font-size: .94rem; font-weight: 700; cursor: pointer; }
-            .firebase-auth-primary.firebase-auth-create { color: #175448; background: #e4f1ec; }
-            #firebaseResetPassword { border: 0; padding: 2px; color: #64748b; background: transparent;
+            .firebase-auth-primary { border: 0; border-radius: 11px; padding: 12px 14px; color: var(--gj-on-primary);
+                background: var(--gj-primary); font-size: .94rem; font-weight: 700; cursor: pointer; }
+            .firebase-auth-primary.firebase-auth-create { color: var(--gj-primary); background: var(--gj-primary-soft); }
+            #firebaseResetPassword { border: 0; padding: 2px; color: var(--gj-muted); background: transparent;
                 font: 600 .82rem/1.2 inherit; cursor: pointer; }
-            .firebase-auth-divider { display: flex; align-items: center; gap: 10px; margin: 13px 0; color: #94a3b8; font-size: .8rem; }
-            .firebase-auth-divider::before, .firebase-auth-divider::after { content: ''; height: 1px; flex: 1; background: #e2e8f0; }
+            .firebase-auth-divider { display: flex; align-items: center; gap: 10px; margin: 13px 0; color: var(--gj-muted); font-size: .8rem; }
+            .firebase-auth-divider::before, .firebase-auth-divider::after { content: ''; height: 1px; flex: 1; background: var(--gj-border); }
             #firebaseVerificationActions { display: none; gap: 9px; }
             #firebaseVerificationActions.active { display: grid; }
             .firebase-auth-secondary { width: 100%; border: 0; border-radius: 12px; padding: 12px 16px;
-                color: #175448; background: #e4f1ec; font-size: .94rem; font-weight: 700; cursor: pointer; }
-            .firebase-auth-secondary.firebase-auth-muted { color: #475569; background: #f1f5f9; }
+                color: var(--gj-primary); background: var(--gj-primary-soft); font-size: .94rem; font-weight: 700; cursor: pointer; }
+            .firebase-auth-secondary.firebase-auth-muted { color: var(--gj-muted); background: var(--gj-bg); }
             .firebase-auth-card button:disabled { opacity: .58; cursor: wait; }
-            #firebaseAuthError { min-height: 22px; margin-top: 12px; color: #dc2626; font-size: .9rem; }
+            #firebaseAuthError { min-height: 22px; margin-top: 12px; color: var(--gj-danger); font-size: .9rem; }
             #firebaseAccountBadge { position: fixed; left: 12px; bottom: 12px; z-index: 90000; display: none;
                 align-items: center; gap: 8px; max-width: min(360px, calc(100vw - 24px)); padding: 7px 9px 7px 12px;
-                border: 1px solid #e2e8f0; border-radius: 999px; background: rgba(255,255,255,.94);
-                box-shadow: 0 6px 24px rgba(15,23,42,.12); color: #475569; font: 600 .75rem/1.2 inherit; }
+                border: 1px solid var(--gj-border); border-radius: 999px; background: rgba(255,255,255,.94);
+                box-shadow: 0 6px 24px rgba(15,23,42,.12); color: var(--gj-muted); font: 600 .75rem/1.2 inherit; }
             #firebaseAccountBadge.active { display: flex; }
             #firebaseAccountEmail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            #firebaseSignOut { border: 0; border-radius: 999px; padding: 6px 9px; color: #475569;
-                background: #f1f5f9; font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
-            #firebaseShopButton { border: 0; border-radius: 999px; padding: 6px 9px; color: #175448;
-                background: #e4f1ec; font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
+            #firebaseSignOut { border: 0; border-radius: 999px; padding: 6px 9px; color: var(--gj-muted);
+                background: var(--gj-bg); font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
+            #firebaseShopButton { border: 0; border-radius: 999px; padding: 6px 9px; color: var(--gj-primary);
+                background: var(--gj-primary-soft); font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
             #firebaseShopOverlay { position: fixed; inset: 0; z-index: 100001; display: none; place-items: center;
                 padding: 20px; background: rgba(15,23,42,.72); backdrop-filter: blur(8px); }
             #firebaseShopOverlay.active { display: grid; }
             .firebase-shop-card { width: min(680px, 100%); max-height: min(820px, calc(100vh - 40px)); overflow: auto;
-                padding: 26px; border-radius: 22px; background: #fff; box-shadow: 0 24px 70px rgba(15,23,42,.3); font-family: inherit; }
+                padding: 26px; border-radius: 22px; background: var(--gj-surface); box-shadow: 0 24px 70px rgba(15,23,42,.3); font-family: inherit; }
             .firebase-shop-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-            .firebase-shop-head h2 { margin: 0; color: #1f2937; font-size: 1.45rem; }
-            #firebaseShopClose { border: 0; background: #f1f5f9; color: #64748b; width: 36px; height: 36px;
+            .firebase-shop-head h2 { margin: 0; color: var(--gj-text); font-size: 1.45rem; }
+            #firebaseShopClose { border: 0; background: var(--gj-bg); color: var(--gj-muted); width: 36px; height: 36px;
                 border-radius: 50%; font-size: 1.2rem; cursor: pointer; }
             #firebaseShopClose:disabled { display: none; }
             #firebaseShopList { display: grid; gap: 9px; margin-bottom: 20px; }
             .firebase-shop-option { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-                padding: 13px 15px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #334155;
+                padding: 13px 15px; border: 1px solid var(--gj-border); border-radius: 12px; background: var(--gj-surface); color: var(--gj-muted);
                 text-align: left; cursor: pointer; }
-            .firebase-shop-option.active { border-color: #1f6f5f; background: #f1f8f5; color: #175448; }
-            .firebase-shop-role { flex: none; padding: 3px 8px; border-radius: 999px; background: #f1f5f9; font-size: .72rem; }
-            .firebase-shop-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
-            .firebase-shop-form input, .firebase-shop-form select { min-width: 0; padding: 10px 12px; border: 1px solid #cbd5e1;
-                border-radius: 9px; background: #fff; color: #334155; }
+            .firebase-shop-option.active { border-color: var(--gj-primary); background: var(--gj-primary-soft); color: var(--gj-primary); }
+            .firebase-shop-role { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--gj-bg); font-size: .72rem; }
+            .firebase-shop-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding-top: 16px; border-top: 1px solid var(--gj-border); }
+            .firebase-shop-form input, .firebase-shop-form select { min-width: 0; padding: 10px 12px; border: 1px solid var(--gj-border);
+                border-radius: 9px; background: var(--gj-surface); color: var(--gj-muted); }
             .firebase-shop-form button, .firebase-shop-action { border: 0; border-radius: 9px; padding: 10px 14px;
-                background: #1f6f5f; color: #fff; font-weight: 700; cursor: pointer; }
-            #firebaseShopAdmin { display: none; margin-top: 22px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                background: var(--gj-primary); color: var(--gj-on-primary); font-weight: 700; cursor: pointer; }
+            #firebaseShopAdmin { display: none; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--gj-border); }
             #firebaseShopAdmin.active { display: block; }
-            .firebase-shop-meta { margin: 4px 0 14px; color: #64748b; font-size: .78rem; word-break: break-all; }
+            .firebase-shop-meta { margin: 4px 0 14px; color: var(--gj-muted); font-size: .78rem; word-break: break-all; }
             .firebase-member-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px;
-                padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-            .firebase-member-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; font-size: .88rem; }
-            .firebase-member-row select { padding: 7px; border: 1px solid #cbd5e1; border-radius: 8px; }
-            .firebase-member-remove { border: 0; border-radius: 8px; padding: 8px; color: #dc2626; background: #fef2f2; cursor: pointer; }
-            #firebaseShopMessage { min-height: 22px; margin-top: 10px; color: #dc2626; font-size: .85rem; }
+                padding: 10px 0; border-bottom: 1px solid var(--gj-bg); }
+            .firebase-member-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gj-muted); font-size: .88rem; }
+            .firebase-member-row select { padding: 7px; border: 1px solid var(--gj-border); border-radius: 8px; }
+            .firebase-member-remove { border: 0; border-radius: 8px; padding: 8px; color: var(--gj-danger); background: var(--gj-surface); cursor: pointer; }
+            #firebaseShopMessage { min-height: 22px; margin-top: 10px; color: var(--gj-danger); font-size: .85rem; }
             #firebaseShopLoading { display: flex; align-items: center; justify-content: center; gap: 4px;
-                min-height: 76px; margin-bottom: 16px; border-radius: 12px; background: #f1f8f5; color: #25654d; font-size: .9rem; }
+                min-height: 76px; margin-bottom: 16px; border-radius: 12px; background: var(--gj-primary-soft); color: var(--gj-primary); font-size: .9rem; }
             #firebaseShopLoading[hidden] { display: none; }
             .firebase-loading-dots { display: inline-flex; font-size: 22px; font-weight: 700; line-height: 1; }
             .firebase-loading-dots span { animation: firebaseLoadingDot 1.2s ease-in-out infinite; }
@@ -111,16 +112,16 @@
                 <h2 id="firebaseAuthTitle">登入WebPOS</h2>
                 <p id="firebaseAuthDescription">請使用已授權的 Google 帳號登入，才能存取訂單與客戶資料。</p>
                 <div id="firebaseEmailAuth">
-                    <input id="firebaseAuthEmail" type="email" autocomplete="email" placeholder="Email" aria-label="Email">
-                    <input id="firebaseAuthPassword" type="password" minlength="6" autocomplete="current-password" placeholder="密碼（至少 6 個字元）" aria-label="密碼">
+                    <input id="firebaseAuthEmail" type="email" autocomplete="email" placeholder="Email" aria-label="Email" class="gj-input">
+                    <input id="firebaseAuthPassword" type="password" minlength="6" autocomplete="current-password" placeholder="密碼（至少 6 個字元）" aria-label="密碼" class="gj-input">
                     <div class="firebase-auth-row">
-                        <button id="firebaseEmailSignIn" class="firebase-auth-primary" type="button">Email 登入</button>
-                        <button id="firebaseEmailRegister" class="firebase-auth-primary firebase-auth-create" type="button">建立帳號</button>
+                        <button id="firebaseEmailSignIn" class="firebase-auth-primary gj-btn gj-btn--primary" type="button">Email 登入</button>
+                        <button id="firebaseEmailRegister" class="firebase-auth-primary firebase-auth-create gj-btn gj-btn--primary" type="button">建立帳號</button>
                     </div>
                     <button id="firebaseResetPassword" type="button">忘記密碼？寄送重設信</button>
                 </div>
                 <div id="firebaseAuthDivider" class="firebase-auth-divider">或</div>
-                <button id="firebaseGoogleSignIn" type="button">使用 Google 帳號登入</button>
+                <button id="firebaseGoogleSignIn" class="gj-social-button" type="button"><span class="gj-social-logo" aria-hidden="true"><img src="/icons/google-signin.svg" width="20" height="20" alt=""></span><span>使用 Google 帳號登入</span></button>
                 <div id="firebaseVerificationActions">
                     <button id="firebaseSendVerification" class="firebase-auth-secondary" type="button">重新寄送驗證信</button>
                     <button id="firebaseRefreshVerification" class="firebase-auth-secondary" type="button">我已驗證，重新檢查</button>
@@ -170,19 +171,19 @@
                 <div id="firebaseShopLoading" role="status" hidden>載入店鋪資料中<span class="firebase-loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></div>
                 <div id="firebaseShopList"></div>
                 <div class="firebase-shop-form">
-                    <input id="firebaseNewShopName" type="text" maxlength="60" placeholder="新店鋪名稱">
+                    <input id="firebaseNewShopName" type="text" maxlength="60" placeholder="新店鋪名稱" class="gj-input">
                     <button id="firebaseCreateShop" type="button">建立店鋪</button>
                 </div>
                 <div id="firebaseShopAdmin">
-                    <h3 style="margin:0;color:#334155;">店鋪與成員管理</h3>
+                    <h3 style="margin:0;color:var(--gj-muted);">店鋪與成員管理</h3>
                     <div id="firebaseShopMeta" class="firebase-shop-meta"></div>
                     <div class="firebase-shop-form" style="padding-top:0;border-top:0;margin-bottom:14px;">
-                        <input id="firebaseRenameShopName" type="text" maxlength="60" placeholder="店鋪名稱">
+                        <input id="firebaseRenameShopName" type="text" maxlength="60" placeholder="店鋪名稱" class="gj-input">
                         <button id="firebaseRenameShop" type="button">重新命名</button>
                     </div>
                     <div class="firebase-shop-form" style="grid-template-columns:minmax(0,1fr) auto auto;">
-                        <input id="firebaseMemberEmail" type="email" placeholder="成員帳號 Email">
-                        <select id="firebaseMemberRole"><option value="editor">可編輯</option><option value="viewer">僅檢視</option></select>
+                        <input id="firebaseMemberEmail" type="email" placeholder="成員帳號 Email" class="gj-input">
+                        <select id="firebaseMemberRole" class="gj-input"><option value="editor">可編輯</option><option value="viewer">僅檢視</option></select>
                         <button id="firebaseAddMember" type="button">新增成員</button>
                     </div>
                     <div id="firebaseMemberList" style="margin-top:12px;"></div>
@@ -209,7 +210,7 @@
         }
         if (emailAuth) emailAuth.style.display = verificationMode ? 'none' : 'grid';
         if (divider) divider.style.display = verificationMode ? 'none' : 'flex';
-        if (googleButton) googleButton.style.display = verificationMode ? 'none' : 'block';
+        if (googleButton) googleButton.style.display = verificationMode ? 'none' : 'flex';
         verificationActions?.classList.toggle('active', verificationMode);
         const error = document.getElementById('firebaseAuthError');
         if (error) error.textContent = message || '';
@@ -237,7 +238,7 @@
         const element = document.getElementById('firebaseShopMessage');
         if (!element) return;
         element.textContent = message || '';
-        element.style.color = success ? '#047857' : '#dc2626';
+        element.style.color = success ? 'var(--gj-success)' : 'var(--gj-danger)';
     }
 
     function shopStorageKey() {
@@ -338,7 +339,7 @@
         const list = document.getElementById('firebaseShopList');
         if (!list) return;
         if (availableShops.length === 0) {
-            list.innerHTML = '<div style="padding:18px;border-radius:12px;background:#f8fafc;color:#64748b;text-align:center;">尚未建立店鋪，請先建立第一間店鋪。</div>';
+            list.innerHTML = '<div style="padding:18px;border-radius:12px;background:var(--gj-bg);color:var(--gj-muted);text-align:center;">尚未建立店鋪，請先建立第一間店鋪。</div>';
             return;
         }
         list.innerHTML = availableShops.map((shop) => `
@@ -395,8 +396,8 @@
                 <div class="firebase-member-email"><strong>${escapeMarkup(member.email || member.name || member.uid)}</strong></div>
                 ${owner
                     ? '<span class="firebase-shop-role">擁有者</span>'
-                    : `<select class="firebase-member-role"><option value="editor" ${member.role === 'editor' ? 'selected' : ''}>可編輯</option><option value="viewer" ${member.role === 'viewer' ? 'selected' : ''}>僅檢視</option></select>
-                       <button type="button" class="firebase-member-remove" aria-label="移除成員"><i class="fas fa-trash"></i></button>`}
+                    : `<select class="firebase-member-role gj-input"><option value="editor" ${member.role === 'editor' ? 'selected' : ''}>可編輯</option><option value="viewer" ${member.role === 'viewer' ? 'selected' : ''}>僅檢視</option></select>
+                       <button type="button" class="firebase-member-remove gj-btn gj-btn--danger" aria-label="移除成員"><i class="fas fa-trash"></i></button>`}
             </div>`;
         }).join('');
         list.querySelectorAll('.firebase-member-role').forEach((select) => {

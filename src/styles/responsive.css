@@ -36,7 +36,7 @@
 
   .content-section h2,
   .search-header h2 {
-    font-size: 1.25rem !important;
+    font-size: 1.25rem;
   }
 
   .name-title-row {
@@ -76,19 +76,19 @@
 
   #giftProducts > div:not(.company-mode-banner) > div:first-child > div:first-child i,
   #cakeProducts > div:not(.company-mode-banner) > div:first-child > div:first-child i {
-    font-size: 2.1rem !important;
+    font-size: 2.1rem;
   }
 
   #giftProducts > div:not(.company-mode-banner) h3,
   #cakeProducts > div:not(.company-mode-banner) h3 {
     height: auto !important;
     min-height: 44px;
-    font-size: 0.95rem !important;
+    font-size: 0.95rem;
   }
 
   #giftProducts > div:not(.company-mode-banner) .text-xl,
   #cakeProducts > div:not(.company-mode-banner) .text-xl {
-    font-size: 1rem !important;
+    font-size: 1rem;
   }
 
   #giftboxStep1 {
@@ -106,10 +106,10 @@
   }
 
   #giftboxStep1 > div > button i {
-    font-size: 2rem !important;
+    font-size: 2rem;
   }
   #giftboxStep1 > div > button span {
-    font-size: 1.35rem !important;
+    font-size: 1.35rem;
   }
 
   .giftbox-product-grid {

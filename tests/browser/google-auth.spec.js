@@ -1,34 +1,64 @@
 const { test, expect } = require('@playwright/test');
 
-async function loginPage(page, { mode = 'browser', result = 'none', host = 'webpos-14776.firebaseapp.com', failure = '' } = {}) {
-  await page.addInitScript(({ mode, result, failure }) => {
-    window.__authScenario = { result, failure };
-    window.__authCalls = [];
-    Object.defineProperty(navigator, 'standalone', { value: mode === 'ios' });
-    const matchMedia = window.matchMedia.bind(window);
-    window.matchMedia = query => query === '(display-mode: standalone)'
-      ? { matches: mode === 'standalone' } : matchMedia(query);
-  }, { mode, result, failure });
-  await page.route(`https://${host}/**`, async route => {
+async function loginPage(
+  page,
+  {
+    mode = 'browser',
+    result = 'none',
+    host = 'webpos-14776.firebaseapp.com',
+    failure = '',
+    styled = false,
+  } = {},
+) {
+  await page.addInitScript(
+    ({ mode, result, failure }) => {
+      window.__authScenario = { result, failure };
+      window.__authCalls = [];
+      Object.defineProperty(navigator, 'standalone', { value: mode === 'ios' });
+      const matchMedia = window.matchMedia.bind(window);
+      window.matchMedia = (query) =>
+        query === '(display-mode: standalone)' ? { matches: mode === 'standalone' } : matchMedia(query);
+    },
+    { mode, result, failure },
+  );
+  await page.route(`https://${host}/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/__/firebase/init.json') return route.fulfill({ json: {
-      projectId: 'webpos-14776', authDomain: 'webpos-14776.firebaseapp.com',
-    } });
-    if (path === '/') return route.fulfill({ contentType: 'text/html', body:
-      '<html><body><script src="/js/runtime-config.js"></script><script src="/js/rpc-bridge.js"></script></body></html>' });
+    if (path === '/__/firebase/init.json')
+      return route.fulfill({
+        json: {
+          projectId: 'webpos-14776',
+          authDomain: 'webpos-14776.firebaseapp.com',
+        },
+      });
+    if (path === '/')
+      return route.fulfill({
+        contentType: 'text/html',
+        body: `<html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${styled ? '<link rel="stylesheet" href="/css/app.css">' : ''}</head><body${styled ? ' class="gj-ui"' : ''}><script src="/js/runtime-config.js"></script><script src="/js/rpc-bridge.js"></script></body></html>`,
+      });
     return route.fulfill({ path: `public${path}` });
   });
-  await page.route('https://www.gstatic.com/firebasejs/*/firebase-app.js', route => route.fulfill({
-    contentType: 'text/javascript', body: 'export const initializeApp = config => (window.__authConfig = config);',
-  }));
-  await page.route('https://www.gstatic.com/firebasejs/*/firebase-app-check.js', route => route.fulfill({
-    contentType: 'text/javascript', body: 'export class ReCaptchaEnterpriseProvider {} export const initializeAppCheck = () => {};',
-  }));
-  await page.route('https://www.gstatic.com/firebasejs/*/firebase-functions.js', route => route.fulfill({
-    contentType: 'text/javascript', body: 'export const getFunctions = () => ({});',
-  }));
-  await page.route('https://www.gstatic.com/firebasejs/*/firebase-auth.js', route => route.fulfill({
-    contentType: 'text/javascript', body: `
+  await page.route('https://www.gstatic.com/firebasejs/*/firebase-app.js', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: 'export const initializeApp = config => (window.__authConfig = config);',
+    }),
+  );
+  await page.route('https://www.gstatic.com/firebasejs/*/firebase-app-check.js', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: 'export class ReCaptchaEnterpriseProvider {} export const initializeAppCheck = () => {};',
+    }),
+  );
+  await page.route('https://www.gstatic.com/firebasejs/*/firebase-functions.js', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: 'export const getFunctions = () => ({});',
+    }),
+  );
+  await page.route('https://www.gstatic.com/firebasejs/*/firebase-auth.js', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: `
       const user = { uid: 'google-account', email: 'test@example.test', emailVerified: true };
       const auth = { currentUser: null };
       let listener;
@@ -65,9 +95,33 @@ async function loginPage(page, { mode = 'browser', result = 'none', host = 'webp
         callback(auth.currentUser);
       };
     `,
-  }));
+    }),
+  );
   await page.goto(`https://${host}/?source=pwa`);
 }
+
+test('labeled Google button loads its local logo and stays readable in both themes', async ({
+  page,
+}, testInfo) => {
+  await loginPage(page, { styled: true });
+  const button = page.getByRole('button', { name: '使用 Google 帳號登入', exact: true });
+  await expect(button).toBeVisible();
+  const logo = button.locator('img');
+  await expect.poll(() => logo.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    await expect(button).toHaveCSS('display', 'flex');
+    await expect(button).toHaveCSS('border-radius', '8px');
+    const result = await new (require('@axe-core/playwright').default)({ page })
+      .include('#firebaseGoogleSignIn')
+      .withRules(['color-contrast'])
+      .analyze();
+    expect(result.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`google-${theme}.png`) });
+  }
+});
 
 for (const mode of ['ios', 'standalone']) {
   test(`${mode} Google redirect restores the account after returning and reloading`, async ({ page }) => {
@@ -83,7 +137,12 @@ for (const mode of ['ios', 'standalone']) {
 test('browser tab uses popup even when opened with the PWA start query', async ({ page }) => {
   await loginPage(page);
   await page.locator('#firebaseGoogleSignIn').click();
-  expect(await page.evaluate(() => window.__authCalls)).toEqual(['persistence', 'result', 'observer', 'popup']);
+  expect(await page.evaluate(() => window.__authCalls)).toEqual([
+    'persistence',
+    'result',
+    'observer',
+    'popup',
+  ]);
   await expect(page.locator('body')).toHaveAttribute('data-user-id', 'google-account');
 });
 
@@ -100,7 +159,9 @@ test('web.app uses same-origin auth and waits for the redirect result', async ({
 test('redirect return errors remain visible when startup requests authentication', async ({ page }) => {
   await loginPage(page, { result: 'error' });
   await expect(page.locator('#firebaseAuthError')).toHaveText('Google return failed');
-  await page.evaluate(() => { void window.posApi.call('getProducts', []); });
+  await page.evaluate(() => {
+    void window.posApi.call('getProducts', []);
+  });
   await expect(page.locator('#firebaseAuthError')).toHaveText('Google return failed');
   await expect(page.locator('#firebaseGoogleSignIn')).toBeEnabled();
 });
@@ -110,7 +171,9 @@ test('failed redirect launch allows retry without reopening the PWA', async ({ p
   await page.locator('#firebaseGoogleSignIn').click();
   await expect(page.locator('#firebaseAuthError')).toHaveText('Network unavailable');
   await expect(page.locator('#firebaseGoogleSignIn')).toBeEnabled();
-  await page.evaluate(() => { window.__authScenario.failure = ''; });
+  await page.evaluate(() => {
+    window.__authScenario.failure = '';
+  });
   await page.locator('#firebaseGoogleSignIn').click();
   await expect(page.locator('body')).toHaveAttribute('data-user-id', 'google-account');
 });

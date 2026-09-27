@@ -75,7 +75,14 @@ export function initializeAccessibility() {
       document.querySelector('header').inert = blocked;
       document.querySelector('.fab-cart').inert = blocked;
       if (top) {
-        returns.set(top, document.activeElement);
+        // A resumed dialog keeps its original opener. A replacement inherits
+        // the removed dialog's opener instead of a now-detached control/body.
+        if (!returns.has(top)) {
+          returns.set(
+            top,
+            previous && !dialogs.includes(previous) ? returns.get(previous) : document.activeElement,
+          );
+        }
         top.setAttribute('role', 'dialog');
         top.setAttribute('aria-modal', 'true');
         if (!top.hasAttribute('aria-label') && !top.hasAttribute('aria-labelledby')) {
@@ -86,12 +93,17 @@ export function initializeAccessibility() {
           } else top.setAttribute('aria-label', '操作視窗');
         }
         const first = [...top.querySelectorAll(focusable)].find(visible);
+        const restored = previous && returns.get(previous);
         top.tabIndex = -1;
-        (first || top).focus({ preventScroll: true });
+        (restored?.isConnected && top.contains(restored) && visible(restored)
+          ? restored
+          : first || top
+        ).focus({ preventScroll: true });
       } else if (previous) {
         const target = returns.get(previous);
         if (target?.isConnected && visible(target)) target.focus({ preventScroll: true });
       }
+      if (previous && !dialogs.includes(previous)) returns.delete(previous);
     }
   }
   let pending = false;
@@ -126,7 +138,8 @@ export function initializeAccessibility() {
           document.getElementById('productCategoryToggle').focus();
           return;
         }
-        if (active.id === 'printer-preview') active.remove();
+        if (active.id === 'printer-preview' || active.classList.contains('order-detail-modal'))
+          active.remove();
         else if (close[active.id]) close[active.id]();
         else if (!['firebaseAuthOverlay', 'firebaseShopOverlay'].includes(active.id))
           active.classList.remove('active');

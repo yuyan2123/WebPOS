@@ -384,6 +384,7 @@ export function toggleShippingField() {
     document.getElementById('customerAddress').parentElement;
   const shippingFeeGroup = document.getElementById('shippingFeeGroup');
   const recipientInfoGroup = document.getElementById('recipientInfoGroup');
+  document.getElementById('recipientDetails').hidden = isPickup;
   if (isPickup) {
     addressGroup.style.display = 'none';
     shippingFeeGroup.style.display = 'none';

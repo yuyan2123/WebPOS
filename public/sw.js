@@ -1,7 +1,8 @@
-const CACHE_VERSION = "gin-jia-pos-c46cb23812bd";
+const CACHE_VERSION = "gin-jia-pos-62d7349b8037";
 const APP_SHELL = [
   "/",
   "/index.html",
+  "/js/theme.js",
   "/manifest.webmanifest",
   "/css/tailwind.generated.css",
   "/css/app.css",
@@ -20,6 +21,7 @@ const APP_SHELL = [
   "/vendor/fontawesome/webfonts/fa-regular-400.woff2",
   "/vendor/fontawesome/webfonts/fa-brands-400.woff2",
   "/icons/icon-192.png",
+  "/icons/google-signin.svg",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png"
 ];

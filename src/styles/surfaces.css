@@ -21,12 +21,12 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid rgba(31, 111, 95, 0.34) !important;
+  outline: 3px solid var(--gj-primary) !important;
   outline-offset: 2px;
 }
 
 ::selection {
-  color: #fff;
+  color: var(--gj-on-primary);
   background: var(--pos-primary);
 }
 
@@ -57,12 +57,12 @@ textarea:focus-visible,
 #date > div,
 .search-container,
 .giftbox-confirm-container,
-#giftboxStep2 > .bg-white,
+#giftboxStep2 > .bg-md-content,
 .giftbox-product-list {
-  border: 1px solid rgba(203, 212, 207, 0.78) !important;
-  border-radius: var(--pos-radius-lg) !important;
-  background: rgba(255, 255, 255, 0.96) !important;
-  box-shadow: var(--pos-shadow-sm) !important;
+  border: 1px solid rgba(203, 212, 207, 0.78);
+  border-radius: var(--pos-radius-lg);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--pos-shadow-sm);
 }
 
 #customer {
@@ -72,7 +72,7 @@ textarea:focus-visible,
 .content-section h2,
 .search-header h2,
 .settings-panel-title {
-  color: var(--pos-ink) !important;
+  color: var(--pos-ink);
   letter-spacing: -0.025em;
 }
 
@@ -84,48 +84,46 @@ textarea:focus-visible,
 .settings-panel-title i,
 .search-form-group label i,
 .report-form label i {
-  color: var(--pos-primary) !important;
+  color: var(--pos-primary);
 }
 
 label {
-  color: var(--pos-ink-soft) !important;
-  font-weight: 650 !important;
+  color: var(--pos-ink-soft);
+  font-weight: 650;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select,
 textarea {
   min-height: 48px;
-  border: 1px solid var(--pos-line-strong) !important;
-  border-radius: 12px !important;
-  color: var(--pos-ink) !important;
-  background: var(--pos-surface) !important;
+  border: 1px solid var(--pos-line-strong);
+  border-radius: 12px;
+  color: var(--pos-ink);
+  background: var(--pos-surface);
   box-shadow: 0 1px 2px rgba(20, 36, 30, 0.025);
   transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    background 0.16s ease;
+    box-shadow 0.16s ease;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
 select:focus,
 textarea:focus {
-  border-color: var(--pos-primary) !important;
-  box-shadow: var(--pos-ring) !important;
+  border-color: var(--pos-primary);
+  box-shadow: var(--pos-ring);
   outline: 0 !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #9aa39f !important;
+  color: var(--gj-muted);
 }
 
 input:disabled,
 select:disabled,
 textarea:disabled,
 input[readonly] {
-  color: var(--pos-muted) !important;
-  background: var(--pos-surface-muted) !important;
+  color: var(--pos-muted);
+  background: var(--pos-surface-muted);
 }
 
 .grove-btn-group {
@@ -133,7 +131,7 @@ input[readonly] {
   padding: 5px;
   border: 1px solid var(--pos-line);
   border-radius: 14px;
-  background: #eef1ee;
+  background: var(--gj-subtle);
 }
 
 .grove-btn-group button {
@@ -144,8 +142,8 @@ input[readonly] {
 }
 
 .grove-btn-group button.active {
-  color: var(--pos-primary) !important;
-  background: #fff !important;
+  color: var(--pos-primary);
+  background: var(--gj-surface);
   box-shadow: 0 3px 10px rgba(20, 36, 30, 0.09);
 }
 
@@ -158,7 +156,7 @@ input[readonly] {
 }
 
 .name-title-btn.active {
-  color: #fff;
+  color: var(--gj-on-primary);
   border-color: var(--pos-primary);
   background: var(--pos-primary);
 }
@@ -179,109 +177,18 @@ input[readonly] {
   background: var(--pos-primary-soft);
 }
 
-/* Normalize the existing action palette */
-body .bg-blue-600,
-.btn-search,
-.btn-generate-report,
-.giftbox-action-buttons .btn-add-cart,
-#proceedStep3,
-#checkoutBtn:not(.checkout-not-ready),
-#btn-confirm-date:not(:disabled) {
-  color: #fff !important;
-  border-color: var(--pos-primary) !important;
-  background: var(--pos-primary) !important;
-  box-shadow: 0 8px 18px rgba(31, 111, 95, 0.18) !important;
-}
-
-body .bg-blue-600:hover,
-.btn-search:hover,
-.btn-generate-report:hover,
-.giftbox-action-buttons .btn-add-cart:hover,
-#proceedStep3:hover,
-#checkoutBtn:not(.checkout-not-ready):hover,
-#btn-confirm-date:not(:disabled):hover {
-  background: var(--pos-primary-dark) !important;
-  transform: translateY(-1px);
-}
-
-body .text-blue-300,
-body .text-blue-400,
-body .text-blue-500,
-body .text-blue-600,
-body .text-blue-700 {
-  color: var(--pos-primary) !important;
-}
-
-body .bg-blue-50,
-body .bg-blue-100,
-body .from-blue-50 {
-  background-color: var(--pos-primary-soft) !important;
-}
-
-body .border-blue-100,
-body .border-blue-200,
-body .border-blue-500 {
-  border-color: #b8d8ce !important;
-}
-
-body .from-blue-50 {
-  --tw-gradient-from: var(--pos-primary-soft) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgb(228 242 237 / 0) var(--tw-gradient-to-position) !important;
-}
-
-body .to-indigo-50 {
-  --tw-gradient-to: #f7faf8 var(--tw-gradient-to-position) !important;
-}
-
-body .from-blue-600 {
-  --tw-gradient-from: var(--pos-primary) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgb(31 111 95 / 0) var(--tw-gradient-to-position) !important;
-}
-
-body .to-blue-700 {
-  --tw-gradient-to: var(--pos-primary-dark) var(--tw-gradient-to-position) !important;
-}
-
-body .hover\:text-blue-600:hover,
-body .group:hover .group-hover\:text-blue-600 {
-  color: var(--pos-primary) !important;
-}
-
-body .hover\:border-blue-500:hover {
-  border-color: var(--pos-primary) !important;
-}
-
-body .hover\:bg-blue-50:hover,
-body .hover\:bg-blue-100:hover {
-  background-color: var(--pos-primary-soft) !important;
-}
-
-body .hover\:bg-blue-600:hover {
-  color: #fff !important;
-  background-color: var(--pos-primary) !important;
-}
-
-body .focus\:ring-blue-500:focus,
-body .peer:focus ~ .peer-focus\:ring-blue-300 {
-  --tw-ring-color: rgba(31, 111, 95, 0.24) !important;
-}
-
-body .peer:checked ~ .peer-checked\:bg-blue-600 {
-  background-color: var(--pos-primary) !important;
-}
-
 #giftboxSpecialPriceInput {
-  border-color: #b8d8ce !important;
+  border-color: var(--gj-primary-soft);
 }
 
-#capacityWarningBody [style*="#2563eb"] {
-  color: var(--pos-primary) !important;
+#capacityWarningBody [style*="var(--gj-primary)"] {
+  color: var(--pos-primary);
 }
 
 .giftbox-summary-card h4 i,
 .giftbox-special-price-section label i,
 .device-info-item label i {
-  color: var(--pos-primary) !important;
+  color: var(--pos-primary);
 }
 
 /* Calendar */
@@ -290,8 +197,8 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 #calendar-month-year {
-  color: var(--pos-ink) !important;
-  font-size: clamp(1.2rem, 2.2vw, 1.55rem) !important;
+  color: var(--pos-ink);
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
 }
 
 /* Keep the original compact month chevrons independent of global button styles. */
@@ -304,17 +211,16 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
   padding: 12px;
   border: 0;
   border-radius: 8px;
-  color: #4b5563;
+  color: var(--gj-muted);
   background: transparent;
   box-shadow: none;
   transition:
-    background-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .calendar-month-nav:hover {
-    background: #fff;
+    background: var(--gj-surface);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 }
@@ -331,7 +237,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 .calendar-day.selected {
-  color: #fff;
+  color: var(--gj-on-primary);
   border-color: var(--pos-primary);
   background: var(--pos-primary);
   box-shadow: 0 8px 18px rgba(31, 111, 95, 0.22);
@@ -340,7 +246,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 @media (hover: hover) and (pointer: fine) {
   .calendar-day:hover:not(.disabled):not(.selected) {
     color: var(--pos-primary);
-    border-color: #bdd8cf;
+    border-color: var(--gj-primary-soft);
     background: var(--pos-primary-soft);
   }
 }
@@ -353,43 +259,36 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 
 #giftProducts > div:not(.company-mode-banner),
 #cakeProducts > div:not(.company-mode-banner) {
-  border: 1px solid var(--pos-line) !important;
-  border-radius: 18px !important;
-  box-shadow: var(--pos-shadow-sm) !important;
+  border: 1px solid var(--pos-line);
+  border-radius: 18px;
+  box-shadow: var(--pos-shadow-sm);
   transform: translateZ(0);
   transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease !important;
+    box-shadow 0.16s ease, transform 0.16s ease !important;
 }
 
 #giftProducts > div:not(.company-mode-banner) > div:first-child > div:first-child,
 #cakeProducts > div:not(.company-mode-banner) > div:first-child > div:first-child {
-  background: linear-gradient(145deg, #faf4e8, #f4e8d1) !important;
-  color: #b87725 !important;
+  background: linear-gradient(145deg, var(--gj-bg), var(--gj-bg));
+  color: var(--gj-warning);
 }
 
 #cakeProducts > div:not(.company-mode-banner) > div:first-child > div:first-child {
-  background: linear-gradient(145deg, #f8eeee, #f2dfdf) !important;
-  color: #b66060 !important;
+  background: linear-gradient(145deg, var(--gj-bg), var(--gj-subtle));
+  color: var(--gj-danger);
 }
 
 #giftProducts > div:not(.company-mode-banner) h3,
 #cakeProducts > div:not(.company-mode-banner) h3 {
-  color: var(--pos-ink) !important;
+  color: var(--pos-ink);
   letter-spacing: -0.015em;
-}
-
-#giftProducts > div:not(.company-mode-banner) .text-red-500,
-#cakeProducts > div:not(.company-mode-banner) .text-red-500 {
-  color: var(--pos-primary) !important;
 }
 
 #giftProducts > div:not(.company-mode-banner) > div:last-child > div,
 #cakeProducts > div:not(.company-mode-banner) > div:last-child > div {
-  border-color: var(--pos-line) !important;
-  border-radius: 12px !important;
-  background: var(--pos-surface-muted) !important;
+  border-color: var(--pos-line);
+  border-radius: 12px;
+  background: var(--pos-surface-muted);
 }
 
 #giftProducts .add-to-cart-btn,
@@ -398,28 +297,28 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 #cakeProducts button:last-child {
   min-width: 44px;
   min-height: 44px;
-  color: var(--pos-primary) !important;
-  border-color: #b7d3ca !important;
-  border-radius: 11px !important;
+  color: var(--pos-primary);
+  border-color: var(--gj-primary-soft);
+  border-radius: 11px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   #giftProducts > div:not(.company-mode-banner):hover,
   #cakeProducts > div:not(.company-mode-banner):hover {
-    border-color: #9fc7ba !important;
-    box-shadow: 0 16px 34px rgba(20, 36, 30, 0.1) !important;
+    border-color: var(--gj-primary-soft);
+    box-shadow: 0 16px 34px rgba(20, 36, 30, 0.1);
     transform: translateY(-3px);
   }
   #giftProducts button:last-child:hover,
   #cakeProducts button:last-child:hover {
-    color: #fff !important;
-    background: var(--pos-primary) !important;
+    color: var(--gj-on-primary);
+    background: var(--pos-primary);
   }
 }
 
 .company-mode-banner {
-  color: #5c4930;
-  border-color: #ead3aa;
+  color: var(--gj-warning);
+  border-color: var(--gj-subtle);
   background: var(--pos-accent-soft);
 }
 
@@ -430,20 +329,20 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 
 #giftboxStep1 > div > button {
   min-height: 178px;
-  border-color: var(--pos-line) !important;
-  border-radius: 20px !important;
-  box-shadow: var(--pos-shadow-sm) !important;
+  border-color: var(--pos-line);
+  border-radius: 20px;
+  box-shadow: var(--pos-shadow-sm);
 }
 
 #giftboxStep1 > div > button i,
 #giftboxStep1 > div > button span {
-  color: var(--pos-primary) !important;
+  color: var(--pos-primary);
 }
 
 .giftbox-progress {
-  color: var(--pos-primary) !important;
-  border-left-color: var(--pos-primary) !important;
-  background: var(--pos-primary-soft) !important;
+  color: var(--pos-primary);
+  border-left-color: var(--pos-primary);
+  background: var(--pos-primary-soft);
 }
 
 .giftbox-product-list {
@@ -463,7 +362,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 
 .giftbox-product-card.has-quantity {
   border-color: var(--pos-primary);
-  background: linear-gradient(to bottom, var(--pos-primary-soft), #fff);
+  background: linear-gradient(to bottom, var(--pos-primary-soft), var(--gj-surface));
   box-shadow: 0 0 0 2px rgba(31, 111, 95, 0.08);
 }
 
@@ -502,8 +401,8 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 .giftbox-summary-card,
 .giftbox-form-section,
 .giftbox-special-price-section {
-  border-color: var(--pos-line) !important;
-  background: var(--pos-surface-muted) !important;
+  border-color: var(--pos-line);
+  background: var(--pos-surface-muted);
 }
 
 /* Cart */
@@ -522,7 +421,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
   right: -5px;
   width: 25px;
   height: 25px;
-  border: 2px solid #fff;
+  border: 2px solid var(--gj-surface);
   background: var(--pos-danger);
 }
 
@@ -534,18 +433,18 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 .cart-sidebar {
   max-width: 450px;
   border-left: 1px solid rgba(255, 255, 255, 0.5);
-  background: #f8faf8;
+  background: var(--gj-bg);
   box-shadow: -28px 0 70px rgba(15, 28, 23, 0.22);
 }
 
 .cart-sidebar > div:first-child,
 .cart-sidebar > div:last-child {
   background: rgba(255, 255, 255, 0.96);
-  border-color: var(--pos-line) !important;
+  border-color: var(--pos-line);
 }
 
 .cart-sidebar > div:first-child h2 {
-  color: var(--pos-ink) !important;
+  color: var(--pos-ink);
   letter-spacing: -0.03em;
 }
 
@@ -569,8 +468,8 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 .cart-item-icon.cake {
-  color: #b66060;
-  background: #f8eaea;
+  color: var(--gj-danger);
+  background: var(--gj-bg);
 }
 
 .cart-item-name {
@@ -620,7 +519,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
   width: 46px;
   height: 46px;
   border-radius: 13px;
-  color: #fff;
+  color: var(--gj-on-primary);
   background: var(--pos-primary);
   box-shadow: 0 7px 16px rgba(31, 111, 95, 0.2);
 }
@@ -633,7 +532,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 .search-form-group input {
-  border-width: 1px !important;
+  border-width: 1px;
 }
 
 .search-actions button,
@@ -647,18 +546,18 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 .giftbox-action-buttons .btn-back {
   color: var(--pos-ink-soft);
   border: 1px solid var(--pos-line-strong);
-  background: #fff;
+  background: var(--gj-surface);
 }
 
 .btn-overdue {
   color: var(--pos-danger);
-  border: 1px solid #edc3c3;
+  border: 1px solid var(--gj-subtle);
   background: var(--pos-danger-soft);
   box-shadow: none;
 }
 
 .btn-add-product {
-  color: #fff;
+  color: var(--gj-on-primary);
   background: var(--pos-primary);
   box-shadow: 0 8px 18px rgba(31, 111, 95, 0.16);
 }
@@ -684,7 +583,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 }
 
 .products-filter-tabs button.active {
-  color: #fff;
+  color: var(--gj-on-primary);
   border-color: var(--pos-primary);
   background: var(--pos-primary);
 }
@@ -722,16 +621,16 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 
 .report-summary-card,
 .demand-summary-card {
-  border: 1px solid var(--pos-line) !important;
-  border-left: 4px solid var(--pos-primary) !important;
+  border: 1px solid var(--pos-line);
+  border-left: 4px solid var(--pos-primary);
   border-radius: 14px;
-  background: #fff !important;
+  background: var(--gj-surface);
   box-shadow: var(--pos-shadow-sm);
 }
 
 .report-summary-card .card-value,
 .demand-summary-card .card-value {
-  color: var(--pos-ink) !important;
+  color: var(--pos-ink);
 }
 
 .demand-stats-table,
@@ -747,14 +646,14 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 #searchResults .table th,
 .order-items-table th {
   color: var(--pos-muted);
-  background: #edf1ee;
+  background: var(--gj-subtle);
 }
 
 .demand-stats-table td,
 .capacity-override-table td,
 #searchResults .table td,
 .order-items-table td {
-  border-color: #e9eeeb;
+  border-color: var(--gj-subtle);
 }
 
 #searchResults .table-responsive {
@@ -828,7 +727,7 @@ body .peer:checked ~ .peer-checked\:bg-blue-600 {
 .payment-value.primary,
 .order-total .total-amount,
 .btn-deposit {
-  color: var(--pos-primary) !important;
+  color: var(--pos-primary);
 }
 
 .alert-container {
@@ -862,37 +761,36 @@ body.account-badge-visible .alert-container {
    stylesheet define the same visual language without changing JavaScript. */
 body #firebaseAuthOverlay,
 body #firebaseShopOverlay {
-  background: rgba(15, 28, 23, 0.68) !important;
+  background: rgba(15, 28, 23, 0.68);
   backdrop-filter: blur(10px) !important;
 }
 
 body .firebase-auth-card,
 body .firebase-shop-card {
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
-  border-radius: 24px !important;
-  background: #fff !important;
-  box-shadow: 0 30px 90px rgba(15, 28, 23, 0.32) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  background: var(--gj-surface);
+  box-shadow: 0 30px 90px rgba(15, 28, 23, 0.32);
 }
 
 body .firebase-auth-card i,
 body .firebase-shop-head h2 {
-  color: var(--pos-primary) !important;
+  color: var(--pos-primary);
 }
 
-body #firebaseGoogleSignIn,
 body .firebase-auth-primary,
 body .firebase-shop-form button,
 body .firebase-shop-action {
   min-height: 46px !important;
-  border-radius: 12px !important;
-  color: #fff !important;
-  background: var(--pos-primary) !important;
+  border-radius: 12px;
+  color: var(--gj-on-primary);
+  background: var(--pos-primary);
 }
 
 body .firebase-auth-primary.firebase-auth-create,
 body .firebase-auth-secondary {
-  color: var(--pos-primary) !important;
-  background: var(--pos-primary-soft) !important;
+  color: var(--pos-primary);
+  background: var(--pos-primary-soft);
 }
 
 body #firebaseAccountBadge {
@@ -902,15 +800,13 @@ body #firebaseAccountBadge {
   left: auto !important;
   z-index: 850 !important;
   min-height: 42px;
-  border-color: var(--pos-line) !important;
-  background: rgba(255, 255, 255, 0.94) !important;
-  box-shadow: var(--pos-shadow-sm) !important;
+  border-color: var(--pos-line);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--pos-shadow-sm);
   backdrop-filter: blur(10px);
   pointer-events: none;
   transition:
-    opacity 0.18s ease,
-    visibility 0.18s ease,
-    transform 0.18s ease;
+    opacity 0.18s ease, visibility 0.18s ease, transform 0.18s ease;
 }
 
 body #firebaseAccountBadge button {
@@ -942,14 +838,14 @@ body.cart-open #firebaseAccountBadge {
 }
 
 body #firebaseShopButton {
-  color: var(--pos-primary) !important;
-  background: var(--pos-primary-soft) !important;
+  color: var(--pos-primary);
+  background: var(--pos-primary-soft);
 }
 
 body .firebase-shop-option.active {
-  color: var(--pos-primary) !important;
-  border-color: var(--pos-primary) !important;
-  background: var(--pos-primary-soft) !important;
+  color: var(--pos-primary);
+  border-color: var(--pos-primary);
+  background: var(--pos-primary-soft);
 }
 
 /* Footer */
@@ -961,6 +857,6 @@ body .firebase-shop-option.active {
 }
 
 .footer p {
-  color: #86908b;
+  color: var(--gj-muted);
   font-size: 0.75rem;
 }

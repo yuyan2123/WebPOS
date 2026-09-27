@@ -16,6 +16,13 @@
     let movingUntil = 0;
     let hovered = null;
     let drag = null;
+    const touchDevice = window.matchMedia("(any-pointer: coarse)");
+    function syncDevice() {
+      layer.classList.toggle("is-touch-device", touchDevice.matches);
+      schedule();
+    }
+    touchDevice.addEventListener("change", syncDevice);
+    syncDevice();
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const isRoot = (target) => target === document.scrollingElement;
     const resize = new ResizeObserver(() => schedule());
@@ -237,7 +244,7 @@
           track.classList.toggle(
             "is-visible",
             Boolean(
-              visible && (entry.activeUntil > now || target.contains(hovered) || !isRoot(target) && target.contains(document.activeElement) || drag?.entry === entry)
+              visible && (entry.activeUntil > now || !touchDevice.matches && (target.contains(hovered) || !isRoot(target) && target.contains(document.activeElement)) || drag?.entry === entry)
             )
           );
         }

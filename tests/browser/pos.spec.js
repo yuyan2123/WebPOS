@@ -2,6 +2,269 @@ const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const jsQR = require('jsqr');
 
+async function openThemeControls(page) {
+  if (!(await page.locator('#settingsSystem').isVisible())) await openManagementPanel(page, 'device');
+  await page.locator('#themeToggle').scrollIntoViewIfNeeded();
+}
+
+test('theme toggle defaults to auto, follows the device and persists manual choices', async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  const errors = await openWorkspace(page);
+  await openThemeControls(page);
+  const root = page.locator('html');
+  const toggle = page.locator('#themeToggle');
+  await expect(root).toHaveAttribute('data-theme-preference', 'auto');
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await expect(toggle).toHaveAccessibleName('切換至淺色模式');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(root).toHaveAttribute('data-theme', 'light');
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-theme-preference', 'light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(root).toHaveAttribute('data-theme', 'light');
+  await page.keyboard.press('Space');
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await expect(toggle).toHaveAccessibleName('切換至跟隨系統');
+  await expect(toggle).toBeFocused();
+  await page.reload();
+  await expect(root).toHaveAttribute('data-theme-preference', 'dark');
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('#startupStatus')).toBeHidden();
+  await openThemeControls(page);
+  await expect(toggle).toHaveAccessibleName('切換至跟隨系統');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await openThemeControls(page);
+  await toggle.click();
+  await expect(root).toHaveAttribute('data-theme-preference', 'auto');
+  await expect(root).toHaveAttribute('data-theme', 'light');
+  await page.reload();
+  await expect(root).toHaveAttribute('data-theme-preference', 'auto');
+  await expect(page.locator('#startupStatus')).toBeHidden();
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expect(root).toHaveAttribute('data-theme', scheme);
+    await expect(toggle).toHaveCSS('color', scheme === 'dark' ? 'rgb(210, 229, 245)' : 'rgb(34, 79, 85)');
+    for (const size of [
+      { width: 375, height: 812 },
+      { width: 667, height: 375 },
+    ]) {
+      await page.setViewportSize(size);
+      await openThemeControls(page);
+      await expect(toggle).toBeInViewport();
+      const box = await toggle.boundingBox();
+      expect(box.width).toBeGreaterThanOrEqual(48);
+      expect(box.height).toBeGreaterThanOrEqual(48);
+      await page.screenshot({ path: testInfo.outputPath(`theme-${scheme}-${size.width}.png`) });
+    }
+    const scan = await new AxeBuilder({ page }).include('.theme-settings').analyze();
+    expect(scan.violations).toEqual([]);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('theme toggle still works when browser storage is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    for (const name of ['getItem', 'setItem']) {
+      const original = Storage.prototype[name];
+      Storage.prototype[name] = function (key, ...args) {
+        if (key === 'ginJiaPos.theme') throw new DOMException('Storage blocked', 'SecurityError');
+        return original.call(this, key, ...args);
+      };
+    }
+  });
+  const errors = await openWorkspace(page);
+  await openThemeControls(page);
+  await page.locator('#themeToggle').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.locator('#themeToggle').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(errors).toEqual([]);
+});
+
+test('closing nested print preview restores both levels of dialog focus', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await page.locator('#nav-search').focus();
+  await page.evaluate(() => {
+    window.__orderDetails = {
+      orderId: 'O-focus',
+      customerName: '測試客戶',
+      status: '未付款',
+      totalAmount: 100,
+      depositAmount: 0,
+      items: [],
+    };
+    window.viewOrderDetails('O-focus');
+  });
+  const detail = page.locator('.order-detail-modal');
+  const print = detail.getByRole('button', { name: '列印訂單', exact: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await print.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#printer-preview')).toBeVisible();
+    await expect(detail).toHaveAttribute('inert', '');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#printer-preview')).toHaveCount(0);
+    await expect(print).toBeFocused();
+  }
+  await page.keyboard.press('Escape');
+  await expect(detail).toHaveCount(0);
+  await expect(page.locator('#nav-search')).toBeFocused();
+});
+
+test('closing replacement order dialogs restores focus to the original trigger', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  for (const action of ['設定訂金', '標記完成']) {
+    await page.locator('#nav-search').focus();
+    await page.evaluate(() => {
+      window.__orderDetails = {
+        orderId: 'O-focus',
+        customerName: '測試客戶',
+        status: '未付款',
+        totalAmount: 100,
+        depositAmount: 0,
+        items: [],
+      };
+      window.viewOrderDetails('O-focus');
+    });
+    const detail = page.locator('.order-detail-modal');
+    await expect(detail).toBeVisible();
+    await detail.getByRole('button', { name: action, exact: true }).click();
+    await expect(detail).toHaveCount(0);
+    const replacement = page.locator(action === '設定訂金' ? '#depositModal' : '#statusConfirmModal');
+    await expect(replacement).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(replacement).not.toHaveClass(/active/);
+    await expect(page.locator('#nav-search')).toBeFocused();
+  }
+});
+
+test('M3 screens and dialogs stay readable in both themes at narrow and wide sizes', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await openWorkspace(page);
+  const dismiss = page.locator('#pwaDismiss');
+  if (await dismiss.isVisible()) await dismiss.click();
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const panel of [
+      'customer',
+      'date',
+      'gift',
+      'giftbox',
+      'search',
+      'products',
+      'capacity',
+      'demand',
+      'reports',
+      'printer',
+      'device',
+    ]) {
+      if (['customer', 'date', 'gift', 'giftbox', 'search'].includes(panel))
+        await page.locator('#nav-' + panel).click();
+      else await openManagementPanel(page, panel);
+      await page.evaluate(() =>
+        Promise.all(
+          document
+            .getAnimations()
+            .filter((animation) => animation.effect.getComputedTiming().iterations !== Infinity)
+            .map((animation) => animation.finished.catch(() => {})),
+        ),
+      );
+      const result = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+        .disableRules(['meta-viewport'])
+        .analyze();
+      expect(
+        result.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
+        `${theme}: ${panel}`,
+      ).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`${theme}-${panel}.png`) });
+    }
+    await openManagementPanel(page, 'products');
+    await page.getByRole('button', { name: '新增商品', exact: true }).click();
+    await settleUI(page);
+    const editor = await new AxeBuilder({ page })
+      .include('#productEditModal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+    expect(
+      editor.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
+      `${theme}: product editor`,
+    ).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-product-editor.png`) });
+    await page.keyboard.press('Escape');
+    await page.locator('#nav-gift').click();
+    await page.locator('#giftProducts button').first().click();
+    await settleUI(page);
+    const product = await new AxeBuilder({ page })
+      .include('#productModal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+    expect(
+      product.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
+      `${theme}: product detail`,
+    ).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-product-detail.png`) });
+    await page.keyboard.press('Escape');
+  }
+});
+
+async function settleUI(page) {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => {})),
+    ),
+  );
+}
+
+test('UI Kit keeps outlined fields, editable steppers and readable checkout states', async ({ page }) => {
+  await openWorkspace(page);
+  await expect(page.locator('#customerName')).toHaveCSS('min-height', '56px');
+  await expect(page.locator('#customerName')).toHaveCSS('border-radius', '8px');
+  await page.locator('#nav-gift').click();
+  // Decorative selection marks must not change the existing accessible names.
+  await expect(page.getByRole('button', { name: '全部類別 (2)', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.locator('#giftProducts button').first().click();
+  await expect(page.locator('#modalQuantity')).toHaveCSS('border-top-width', '0px');
+  await expect(page.locator('#modalQuantity')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await page.locator('#modalQuantity').fill('3');
+  await page.locator('#modalQuantity').press('Tab');
+  await expect(page.locator('#modalQuantity')).toHaveValue('3');
+  await settleUI(page);
+  const plus = page.locator('.product-quantity-control button').last();
+  expect((await plus.boundingBox()).width).toBeGreaterThanOrEqual(47.99);
+  expect((await plus.boundingBox()).height).toBeGreaterThanOrEqual(47.99);
+  await page.keyboard.press('Escape');
+  await page.locator('#giftProducts button').last().click();
+  await page.locator('#workspaceCart').click();
+  await settleUI(page);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    const results = await new AxeBuilder({ page })
+      .include('#cartModal')
+      .withRules(['color-contrast'])
+      .analyze();
+    expect(results.violations).toEqual([]);
+  }
+});
+
 function decodePrintedQr(bytes) {
   const rows = [];
   let offset = 5;
@@ -102,6 +365,162 @@ async function openManagementPanel(page, panel) {
   await page.locator('#nav-' + panel).click();
   if (panel === 'printer') await page.locator('#printer-tab-device').click();
 }
+
+test('order details reflow, disclose gift contents and keep actions accessible', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  const errors = await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await page.evaluate(() => {
+    window.__orderDetails = {
+      orderId: 'O0123456789abcdef0123456789abcdef',
+      customerName: '王小明',
+      customerContactType: 'line',
+      customerLineId: 'wang_bakery',
+      isCompanyCustomer: true,
+      recipientName: '陳小姐',
+      recipientPhone: '0912345678',
+      customerAddress: '新北市板橋區文化路二段 123 號 10 樓',
+      shippingNotes: '請先電話聯絡\n交給一樓管理室',
+      deliveryDate: '2026-10-02',
+      deliveryType: '外送',
+      status: '已付訂金',
+      totalAmount: 13600,
+      depositAmount: 10000,
+      remainingAmount: 3600,
+      shippingFee: 100,
+      items: [
+        {
+          productName: '經典綜合禮盒',
+          quantity: 2,
+          unitPrice: 500,
+          originalPrice: 600,
+          isSpecialPrice: true,
+          subtotal: 1000,
+          isGiftBox: true,
+          giftBoxDetails: { products: { P1: 3, P2: 2 }, notes: '不要花生 <img src=x onerror=alert(1)>' },
+        },
+        { productName: '原味餅', quantity: 100, unitPrice: 50, subtotal: 5000 },
+        { productName: '手工喜餅禮盒・婚禮限定款（附提袋）', quantity: 25, unitPrice: 300, subtotal: 7500 },
+      ],
+    };
+  });
+  const originalSize = page.viewportSize();
+  for (const size of [originalSize, { width: 375, height: 812 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(size);
+    for (const theme of ['light', 'dark']) {
+      await page.locator('#nav-search').focus();
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+        window.viewOrderDetails(window.__orderDetails.orderId);
+      }, theme);
+      const modal = page.getByRole('dialog', { name: /^訂單詳情 / });
+      await expect(modal).toBeVisible();
+      await settleUI(page);
+      await expect(modal.locator('.order-detail-overview')).toContainText('NT$ 3,600');
+      await expect(modal.locator('.order-detail-facts').first()).toContainText('wang_bakery');
+      await expect(modal.locator('.order-detail-note').last()).toContainText('交給一樓管理室');
+      await expect(modal.locator('.order-detail-table tbody > tr')).toHaveCount(3);
+      const gift = modal.locator('.order-detail-gift');
+      await expect(gift).not.toHaveAttribute('open');
+      await gift.locator('summary').focus();
+      await page.keyboard.press('Enter');
+      await expect(gift).toHaveAttribute('open', '');
+      await expect(gift).toContainText('共 6 個');
+      await expect(gift).toContainText('共 4 個');
+      await expect(gift).toContainText('<img src=x onerror=alert(1)>');
+      await expect(gift.locator('img')).toHaveCount(0);
+      await page.keyboard.press('Enter');
+      await modal.locator('.modal-body').evaluate((body) => {
+        body.scrollTop = 0;
+      });
+      const scan = await new AxeBuilder({ page })
+        .include('.order-detail-modal')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+        .analyze();
+      expect(
+        scan.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
+        `${theme}, ${size.width}px`,
+      ).toEqual([]);
+      expect(
+        await modal.evaluate((element) =>
+          [...element.querySelectorAll('.modal-content, .modal-body, .order-detail-table')].every(
+            (node) => node.scrollWidth <= node.clientWidth + 1,
+          ),
+        ),
+      ).toBe(true);
+      for (const button of await modal.locator('.modal-footer button').all()) {
+        const bounds = await button.boundingBox();
+        expect(bounds.height).toBeGreaterThanOrEqual(48);
+        expect(bounds.y + bounds.height).toBeLessThanOrEqual(size.height);
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`order-detail-${theme}-${size.width}.png`),
+        animations: 'disabled',
+      });
+      await modal.getByRole('button', { name: '標記完成', exact: true }).focus();
+      await page.keyboard.press('Tab');
+      await expect(modal.getByRole('button', { name: '關閉訂單詳情', exact: true })).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(modal).toHaveCount(0);
+      await expect(page.locator('#nav-search')).toBeFocused();
+    }
+  }
+  await page.setViewportSize(originalSize);
+  await page.evaluate(() => window.viewOrderDetails(window.__orderDetails.orderId));
+  let modal = page.getByRole('dialog', { name: /^訂單詳情 / });
+  await modal.getByRole('button', { name: '設定訂金', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.locator('#depositModal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.viewOrderDetails(window.__orderDetails.orderId));
+  await modal.getByRole('button', { name: '標記完成', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.locator('#statusConfirmModal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.viewOrderDetails(window.__orderDetails.orderId));
+  await modal.getByRole('button', { name: '編輯訂單', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(page.locator('#customerName')).toHaveValue('王小明');
+  await expect(page.locator('#deliveryDate')).toHaveValue('2026-10-02');
+  await expect(page.locator('#shippingFee')).toHaveValue('100');
+  await page.locator('#nav-search').click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => {
+    window.__orderDetails.items = Array(30).fill(window.__orderDetails.items[0]);
+    window.viewOrderDetails(window.__orderDetails.orderId);
+  });
+  await expect(modal).toBeVisible();
+  const footerTop = (await modal.locator('.modal-footer').boundingBox()).y;
+  await modal.locator('.modal-body').evaluate((body) => {
+    body.scrollTop = body.scrollHeight;
+  });
+  expect(await modal.locator('.modal-body').evaluate((body) => body.scrollTop)).toBeGreaterThan(0);
+  expect((await modal.locator('.modal-footer').boundingBox()).y).toBe(footerTop);
+  await modal.getByRole('button', { name: '關閉', exact: true }).click();
+  await page.evaluate(() => {
+    document.body.dataset.shopRole = 'viewer';
+    window.__orderDetails.status = '完成';
+    window.__orderDetails.remainingAmount = 0;
+    window.__orderDetails.deliveryType = '自取';
+    window.viewOrderDetails(window.__orderDetails.orderId);
+  });
+  modal = page.getByRole('dialog', { name: /^訂單詳情 / });
+  await expect(modal.locator('.order-detail-overview')).toContainText('NT$ 0');
+  await expect(modal.getByRole('button', { name: /編輯訂單|標記完成|設定訂金|列印訂單/ })).toHaveCount(0);
+  await expect(modal.locator('.order-detail-facts').first()).not.toContainText('收件人');
+  await modal.getByRole('button', { name: '關閉', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await page.evaluate(() => {
+    window.__orderDetails.items = [];
+    window.viewOrderDetails(window.__orderDetails.orderId);
+  });
+  await expect(modal).toContainText('此訂單沒有商品明細');
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
 
 test('standalone shell stays within the viewport across tablet rotations', async ({ page }) => {
   await page.addInitScript(() => {
@@ -440,24 +859,37 @@ for (const enabled of [true, false]) {
     await mockPrinter(page);
     const bridge = require('node:fs').readFileSync('public/js/rpc-bridge.js', 'utf8');
     const markup = bridge.match(/badge.innerHTML = `([\s\S]*?)`;/)[1];
-    await page.addInitScript(({ enabled, markup }) => {
-      localStorage.setItem('ginJiaPos.printer.test-user:test-shop', JSON.stringify({
-        enabled, remember: true, token: 'test-secret', url: 'wss://xprinter.local/ws',
-      }));
-      document.addEventListener('DOMContentLoaded', () => {
-        const badge = document.createElement('div');
-        badge.id = 'firebaseAccountBadge';
-        badge.className = 'active';
-        badge.innerHTML = markup;
-        document.body.append(badge);
-      });
-    }, { enabled, markup });
+    await page.addInitScript(
+      ({ enabled, markup }) => {
+        localStorage.setItem(
+          'ginJiaPos.printer.test-user:test-shop',
+          JSON.stringify({
+            enabled,
+            remember: true,
+            token: 'test-secret',
+            url: 'wss://xprinter.local/ws',
+          }),
+        );
+        document.addEventListener('DOMContentLoaded', () => {
+          const badge = document.createElement('div');
+          badge.id = 'firebaseAccountBadge';
+          badge.className = 'active';
+          badge.innerHTML = markup;
+          document.body.append(badge);
+        });
+      },
+      { enabled, markup },
+    );
     await openWorkspace(page);
     const indicator = page.locator('#firebasePrinterStatus');
     if (enabled) {
       await expect(indicator).toHaveAttribute('data-state', 'online');
       expect(await page.evaluate(() => window.__printerConnections)).toBe(1);
-      expect(await page.evaluate(() => window.__printerFrames.some(frame => frame.type === 'begin' || frame.bytes))).toBe(false);
+      expect(
+        await page.evaluate(() =>
+          window.__printerFrames.some((frame) => frame.type === 'begin' || frame.bytes),
+        ),
+      ).toBe(false);
     } else {
       await expect(indicator).toBeHidden();
       expect(await page.evaluate(() => window.__printerConnections)).toBe(0);
@@ -1102,7 +1534,7 @@ test('cart slides out and backdrop fades before hiding, including quick reopen',
     for (const element of [cart, overlay]) {
       for (const animation of element.getAnimations()) {
         animation.pause();
-        animation.currentTime = 150;
+        animation.currentTime = Number(animation.effect.getComputedTiming().duration) / 2;
       }
     }
     return {
@@ -1144,6 +1576,112 @@ test('cart closes without a delayed exit when reduced motion is requested', asyn
       .evaluate((element) => getComputedStyle(element).transitionDelay);
     expect(delays.split(',').every((delay) => parseFloat(delay) === 0)).toBe(true);
   }
+});
+
+test('catalog quantity feedback retains its accessible name and layout across repeated clicks', async ({
+  page,
+}) => {
+  const errors = await openWorkspace(page);
+  await page.locator('#nav-gift').click();
+  await page.clock.install();
+  const button = page.locator('#giftProducts .catalog-add-btn').first();
+  const originalClass = await button.getAttribute('class');
+  const originalBounds = await button.boundingBox();
+  await button.click();
+  await expect(button).toHaveAccessibleName('加入 原味餅 到購物車');
+  await expect(button.locator('i')).toHaveClass(/fa-check/);
+  await expect(button).toHaveAttribute('class', originalClass);
+  await button.click();
+  await button.click();
+  await expect(page.locator('#workspaceQuantity')).toHaveText('3 件商品');
+  await expect(button).toHaveAccessibleName('加入 原味餅 到購物車');
+  await page.clock.fastForward(601);
+  await expect(button.locator('i')).toHaveClass(/fa-plus/);
+  await expect(button.locator('i')).toHaveAttribute('aria-hidden', 'true');
+  await expect(button).toHaveAccessibleName('加入 原味餅 到購物車');
+  await expect(button).toHaveAttribute('class', originalClass);
+  const bounds = await button.boundingBox();
+  expect(bounds.width).toBe(originalBounds.width);
+  expect(bounds.height).toBe(originalBounds.height);
+  await button.focus();
+  await page.keyboard.press('Enter');
+  await page.clock.fastForward(601);
+  await expect(button).toHaveAccessibleName('加入 原味餅 到購物車');
+  await expect(page.locator('#workspaceQuantity')).toHaveText('4 件商品');
+  expect(errors).toEqual([]);
+});
+
+test('catalog uses gift-box cards with details and quantities synchronized to the cart', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  await page.locator('#nav-gift').click();
+  const card = page.locator('[data-catalog-product="P1"]');
+  const quantity = card.getByRole('spinbutton', { name: '原味餅 購物車數量', exact: true });
+  const minus = card.getByRole('button', { name: '減少 原味餅 數量', exact: true });
+  const plus = card.getByRole('button', { name: '加入 原味餅 到購物車', exact: true });
+  await expect(card).toHaveClass(/giftbox-product-card gj-pos-card/);
+  await expect(card.locator('.giftbox-product-quantity > button')).toHaveText('詳情');
+  await expect(quantity).toHaveValue('0');
+  await expect(minus).toBeDisabled();
+  await quantity.fill('3');
+  await quantity.press('Tab');
+  await expect(page.locator('#workspaceQuantity')).toHaveText('3 件商品');
+  await expect(card.locator('.giftbox-product-selection')).toContainText('已加入 3 件');
+  const filters = page.locator('#catalogFilterTabs');
+  await filters.getByRole('button', { name: '喜餅 (1)', exact: true }).click();
+  await filters.getByRole('button', { name: '全部類別 (2)', exact: true }).click();
+  await expect(quantity).toHaveValue('3');
+  await card.getByRole('button', { name: '原味餅 商品詳情', exact: true }).click();
+  await page.locator('#modalQuantity').fill('2');
+  await page.getByText('使用自訂單價', { exact: true }).click();
+  await page.locator('#specialPriceInput').fill('25');
+  await page.locator('#productModal').getByRole('button', { name: '加入購物車', exact: true }).click();
+  await expect(quantity).toHaveValue('5');
+  await plus.click();
+  await expect(quantity).toHaveValue('6');
+  await minus.click();
+  await expect(quantity).toHaveValue('5');
+  await quantity.fill('2');
+  await quantity.press('Tab');
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#cartModalBody .cart-item-price')).toContainText(/特價\s*NT\$ 25/);
+  await expect(page.locator('#cartModalBody .cart-qty-value')).toHaveText('2');
+  await expect(page.locator('#cartTotalAmount')).toHaveText('50');
+  await page.locator('#cartModalBody .cart-qty-btn').last().click();
+  await expect(quantity).toHaveValue('3');
+  await page.locator('#cartModalBody .cart-delete-btn').click();
+  await expect(quantity).toHaveValue('0');
+  await expect(minus).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(card.locator('.giftbox-product-selection')).toBeHidden();
+  await plus.click();
+  await quantity.fill('0');
+  await quantity.press('Tab');
+  await expect(page.locator('#workspaceQuantity')).toHaveText('0 件商品');
+  expect(errors).toEqual([]);
+});
+
+test('reopening an unchanged cart preserves its items and quantity changes stay current', async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await page.locator('#nav-gift').click();
+  await page.locator('#giftProducts button').last().click();
+  await page.locator('#workspaceCart').click();
+  await settleUI(page);
+  await page.locator('#cartModalBody .cart-item-card').evaluate((card) => {
+    window.__cartCard = card;
+  });
+  await page.keyboard.press('Escape');
+  await page.locator('#workspaceCart').click();
+  await settleUI(page);
+  expect(
+    await page.locator('#cartModalBody .cart-item-card').evaluate((card) => card === window.__cartCard),
+  ).toBe(true);
+  await page.locator('#cartModalBody .cart-qty-btn').last().click();
+  await expect(page.locator('#cartModalBody .cart-qty-value')).toHaveText('2');
+  await page.keyboard.press('Escape');
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#cartModalBody .cart-qty-value')).toHaveText('2');
 });
 
 test('capacity cancel releases submit lock and confirmed submission keeps request identity', async ({
@@ -1539,6 +2077,263 @@ test('customer autocomplete and product filtering preserve selection and recover
   ).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#catalogFilterTabs').getByRole('button', { name: '全部類別 (2)', exact: true }).click();
   await expect(page.locator('#giftProducts')).toContainText('喜餅');
+  expect(errors).toEqual([]);
+});
+
+test('related product screens reflow long content and retain pricing and actions', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const longName = '手工限定喜餅「烏龍茶與黑芝麻」・獨立包裝・完整長品名';
+  await page.addInitScript((name) => {
+    sessionStorage.setItem(
+      'test-product-order',
+      JSON.stringify([
+        {
+          productId: 'P1',
+          productName: name,
+          category: '季節限定伴手禮',
+          price: 1250,
+          companyPrice: 1000,
+          specialPrice: 900,
+          description: '使用台灣茶葉，請於開封後儘速食用。\n'.repeat(12),
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+        {
+          productId: 'P2',
+          productName: '喜餅',
+          category: '喜餅',
+          price: 100,
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+      ]),
+    );
+  }, longName);
+  const errors = await openWorkspace(page);
+  const originalSize = page.viewportSize();
+  async function review(selector, label, footerSelector) {
+    for (const close of await page.locator('.alert-close').all()) await close.click();
+    for (const size of [originalSize, { width: 375, height: 812 }, { width: 667, height: 375 }]) {
+      await page.setViewportSize(size);
+      for (const theme of ['light', 'dark']) {
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.theme = theme;
+        }, theme);
+        await settleUI(page);
+        const scan = await new AxeBuilder({ page })
+          .include(selector)
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+          .analyze();
+        expect(
+          scan.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
+          `${label}, ${theme}, ${size.width}px`,
+        ).toEqual([]);
+        expect(
+          await page
+            .locator(selector)
+            .evaluate((element) =>
+              [
+                element,
+                ...element.querySelectorAll(
+                  '.cart-item-card, .product-card, .giftbox-summary-product, .catalog-product-card',
+                ),
+              ].every((node) => node.scrollWidth <= node.clientWidth + 1),
+            ),
+          label,
+        ).toBe(true);
+        if (footerSelector) {
+          const footer = await page.locator(footerSelector).boundingBox();
+          expect(footer.y).toBeGreaterThanOrEqual(0);
+          expect(footer.y + footer.height).toBeLessThanOrEqual(size.height + 1);
+        }
+        await page.screenshot({
+          path: testInfo.outputPath(`${label}-${theme}-${size.width}.png`),
+          animations: 'disabled',
+        });
+      }
+    }
+    await page.setViewportSize(originalSize);
+  }
+  await page.locator('#customerCompany').click();
+  await page.locator('#nav-gift').click();
+  await expect(page.locator('#giftProducts h3').first()).toHaveText(longName);
+  await review('#giftProducts', 'catalog');
+  await page.getByRole('button', { name: `${longName} 商品詳情`, exact: true }).click();
+  await expect(page.locator('#modalProductPrice')).toContainText('NT$ 1,000');
+  await expect(page.locator('#specialPriceSection')).toBeHidden();
+  await page.locator('#modalQuantity').fill('3');
+  await page.locator('#modalQuantity').press('Tab');
+  await expect(page.locator('#modalProductTotal')).toHaveText('合計 NT$ 3,000');
+  await page.getByText('使用自訂單價', { exact: true }).click();
+  await page.locator('#specialPriceInput').fill('800');
+  await expect(page.locator('#modalProductTotal')).toHaveText('合計 NT$ 2,400');
+  await page.getByText('使用自訂單價', { exact: true }).click();
+  await expect(page.locator('#modalProductPrice')).toContainText('NT$ 1,000');
+  await expect(page.locator('#specialPriceSection')).toBeHidden();
+  await page.getByText('使用自訂單價', { exact: true }).click();
+  await review('#productModal', 'product-detail', '#productModal .product-detail-footer');
+  await page.locator('#productModal').getByRole('button', { name: '加入購物車', exact: true }).click();
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#cartModalBody .cart-item-name')).toHaveText(longName);
+  await expect(page.locator('#cartModalBody .cart-item-subtotal')).toContainText('NT$ 2,400');
+  await page.locator('#cartModalBody .cart-qty-btn').last().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#cartModalBody .cart-qty-value')).toHaveText('4');
+  await expect(page.locator('#cartModalBody .cart-qty-btn').last()).toBeFocused();
+  await expect(page.locator('#cartModalBody .cart-item-subtotal')).toContainText('NT$ 3,200');
+  await page.keyboard.press('Escape');
+  await page.locator('#nav-giftbox').click();
+  await page.getByRole('button', { name: '6入', exact: true }).click();
+  await page.locator('#display_P1').fill('2');
+  await page.locator('#display_P1').press('Tab');
+  await page.locator('#display_P2').fill('4');
+  await page.locator('#display_P2').press('Tab');
+  await page.locator('#proceedStep3').click();
+  await expect(page.locator('#giftboxSummary')).toContainText('2 粒 · 單價 NT$ 1,000');
+  await review('#giftboxStep3', 'giftbox-confirmation');
+  await page.locator('#giftboxNotes').fill('請分開包裝');
+  await page.locator('.btn-add-cart').click();
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#cartModalBody .cart-giftbox-details li')).toHaveCount(2);
+  await expect(page.locator('#cartModalBody')).toContainText('請分開包裝');
+  await review('#cartModal', 'cart', '#cartModal > div:last-child');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.showDepositModal('O0123456789abcdef0123456789abcdef', 10000, 4000));
+  await review('#depositModal', 'deposit', '#depositModal .deposit-dialog-footer');
+  await page.keyboard.press('Escape');
+  await openManagementPanel(page, 'products');
+  await expect(page.locator('#productsCardGrid .product-name').first()).toHaveText(longName);
+  await expect(page.locator('#productsCardGrid .price-none').first()).toHaveText('未設定');
+  await review('#productsCardGrid', 'product-management');
+  expect(errors).toEqual([]);
+});
+
+test('gift-box product cards keep readable prices, named controls and stable selection', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      'test-product-order',
+      JSON.stringify([
+        {
+          productId: 'P1',
+          productName: '原味餅',
+          category: '伴手禮',
+          price: 50,
+          companyPrice: 40,
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+        {
+          productId: 'P2',
+          productName: '手工喜餅・婚禮限定款（附獨立包裝）',
+          category: '喜餅',
+          price: 1099.5,
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+        {
+          productId: 'P3',
+          productName: '季節限定綜合口味・低糖配方・無添加人工色素・長品名完整顯示',
+          category: '季節限定',
+          price: 90,
+          status: '啟用',
+          giftBoxEnabled: '是',
+        },
+      ]),
+    );
+  });
+  const errors = await openWorkspace(page);
+  await page.locator('#customerCompany').click();
+  await page.locator('#nav-giftbox').click();
+  await page.getByRole('button', { name: '6入', exact: true }).click();
+  const card = page.locator('#card_P1');
+  const minus = card.getByRole('button', { name: '減少 原味餅 數量', exact: true });
+  const plus = card.getByRole('button', { name: '增加 原味餅 數量', exact: true });
+  await expect(card.getByRole('heading', { name: '原味餅', exact: true })).toBeVisible();
+  await expect(card.locator('.price')).toHaveText('NT$ 40');
+  await expect(card.locator('.company-original-price')).toHaveText('原價 NT$ 50');
+  await expect(card.locator('.company-price-tag')).toBeVisible();
+  await expect(page.locator('#card_P2 .price')).toHaveText('NT$ 1,099.5');
+  await expect(page.locator('#giftboxProducts .giftbox-product-icon')).toHaveCount(0);
+  await expect(minus).toBeDisabled();
+  const originalHeight = (await card.boundingBox()).height;
+  await plus.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('spinbutton', { name: '原味餅 數量（粒）', exact: true })).toHaveValue('1');
+  await expect(card.locator('.giftbox-product-selection')).toContainText('已選 1 粒');
+  expect((await card.boundingBox()).height).toBe(originalHeight);
+  await expect(minus).toBeEnabled();
+  await minus.click();
+  await expect(minus).toBeDisabled();
+  await expect(card.locator('.giftbox-product-selection')).toBeHidden();
+  await page.locator('#display_P1').fill('2');
+  await page.locator('#display_P1').press('Tab');
+  await page.locator('#display_P2').fill('99');
+  await page.locator('#display_P2').press('Tab');
+  await expect(page.locator('#display_P2')).toHaveValue('4');
+  await expect(page.locator('#selectedCount')).toHaveText('6');
+  await expect(page.locator('#card_P2 .giftbox-product-selection')).toContainText('已選 4 粒');
+  await plus.click();
+  await expect(page.locator('#display_P1')).toHaveValue('2');
+  await expect(page.locator('.giftbox-progress')).toHaveAttribute('aria-atomic', 'true');
+  await expect(page.locator('.giftbox-progress')).toHaveAttribute('role', 'status');
+  // Clear the deliberately triggered limit warnings before visual review.
+  for (const close of await page.locator('.alert-close').all()) await close.click();
+  const originalSize = page.viewportSize();
+  for (const size of [originalSize, { width: 375, height: 812 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(size);
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+      }, theme);
+      await settleUI(page);
+      const scan = await new AxeBuilder({ page })
+        .include('#giftboxProducts')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+        .analyze();
+      expect(
+        scan.violations.map((item) => ({ id: item.id, nodes: item.nodes.map((node) => node.target) })),
+        `${theme}, ${size.width}px`,
+      ).toEqual([]);
+      expect(
+        await page
+          .locator('#giftboxProducts')
+          .evaluate((element) =>
+            [
+              ...element.querySelectorAll(
+                '.giftbox-product-card, .giftbox-product-info, .giftbox-quantity-control',
+              ),
+            ].every((node) => node.scrollWidth <= node.clientWidth + 1),
+          ),
+      ).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      for (const button of await card.getByRole('button').all()) {
+        const bounds = await button.boundingBox();
+        expect(bounds.width).toBeGreaterThanOrEqual(48);
+        expect(bounds.height).toBeGreaterThanOrEqual(48);
+      }
+      await card.scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: testInfo.outputPath(`giftbox-cards-${theme}-${size.width}.png`),
+        animations: 'disabled',
+      });
+    }
+  }
+  await page.setViewportSize(originalSize);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.locator('#proceedStep3').click();
+  await expect(page.locator('#giftboxSummary')).toContainText('原味餅');
+  await page.locator('.btn-add-cart').click();
+  await page.evaluate(() => window.editGiftboxItem(0));
+  await expect(page.locator('#display_P1')).toHaveValue('2');
+  await expect(card.locator('.giftbox-product-selection')).toContainText('已選 2 粒');
+  await expect(minus).toBeEnabled();
+  await expect(page.locator('#card_P3 .giftbox-product-selection')).toBeHidden();
+  await expect(page.locator('#card_P3 .giftbox-qty-btn').first()).toBeDisabled();
   expect(errors).toEqual([]);
 });
 

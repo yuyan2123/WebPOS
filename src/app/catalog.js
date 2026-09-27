@@ -6,7 +6,7 @@ import { updateCartDisplay } from './cart.js';
 import { showSectionById } from './platform.js';
 import { catalogStorageKey, localDbPut, localDbGet, restoreOrderDraftOnce } from './drafts.js';
 import { formatDisplayDate } from './search.js';
-import { escapeHtml } from './customers.js';
+import { escapeHtml, escapeAttr } from './customers.js';
 import { renderCalendar } from './calendar.js';
 import { renderProductCards } from './products.js';
 import { getEffectivePrice } from './pricing.js';
@@ -107,13 +107,7 @@ export function updateProductDisplays() {
   const tabs = document.getElementById('catalogFilterTabs');
   const previous = tabs.dataset.category || '';
   const activeProducts = state.allProducts.filter((p) => p.status === '啟用');
-  const categories = [
-    ...new Set(
-      activeProducts
-        .map((p) => p.category)
-        .filter(Boolean),
-    ),
-  ];
+  const categories = [...new Set(activeProducts.map((p) => p.category).filter(Boolean))];
   const selected = categories.includes(previous) ? previous : '';
   tabs.dataset.category = selected;
   tabs.replaceChildren(
@@ -147,49 +141,43 @@ export function loadProductsByCategory(category, containerId) {
   const container = document.getElementById(containerId + 'Products');
   container.classList.remove('loading');
   if (products.length === 0) {
-    container.innerHTML = '<div class="col-span-full workspace-empty" role="status"><h3>目前沒有啟用的商品</h3><p>可在「管理」的「商品管理」新增或啟用商品。</p></div>';
+    container.innerHTML =
+      '<div class="col-span-full workspace-empty" role="status"><h3>目前沒有啟用的商品</h3><p>可在「管理」的「商品管理」新增或啟用商品。</p></div>';
     return;
   }
   // 企業客戶模式提示 banner
   const companyBanner = state.isCompanyCustomer
-    ? '<div class="company-mode-banner col-span-full"><i class="fas fa-building"></i>目前為企業客戶模式，商品已套用企業價格</div>'
+    ? '<div class="company-mode-banner col-span-full">企業價已啟用；未設定的品項採一般售價。</div>'
     : '';
-  const iconClass = 'fa-box-open';
-  const bgClass = 'bg-orange-50 text-orange-300';
-  const hoverBorderClass = 'hover:border-orange-300';
   container.innerHTML =
     companyBanner +
     products
       .map((p) => {
         const effectivePrice = getEffectivePrice(p);
+        const quantity = getCatalogQuantity(p.productId);
         const isCompanyPriceActive =
           state.isCompanyCustomer &&
           p.companyPrice &&
           parseFloat(p.companyPrice) > 0 &&
           parseFloat(p.companyPrice) !== parseFloat(p.price);
         return `
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col border ${hoverBorderClass} transition group relative h-full">
-                    <!-- 上半部：點擊查看詳情/特價 -->
-                    <div class="cursor-pointer flex-1 flex flex-col" onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')">
-                        <div class="h-32 ${bgClass} flex items-center justify-center relative overflow-hidden">
-                            <i class="fas ${iconClass} text-5xl transform group-hover:scale-110 transition-transform duration-300"></i>
-                            ${isCompanyPriceActive ? '<div class="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">企業價</div>' : ''}
-                        </div>
-                        <div class="p-4 pb-2 flex-1">
-                            <h3 class="font-bold text-lg mb-1 text-gray-800 line-clamp-2 h-14">${escapeHtml(p.productName)}</h3>
-                            <p class="text-red-500 font-bold text-xl">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + '</span>' : ''}NT$ ${effectivePrice}${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</p>
-                        </div>
+                <div class="giftbox-product-card gj-pos-card catalog-product-card ${quantity > 0 ? 'has-quantity' : ''}" data-catalog-product="${escapeAttr(p.productId)}">
+                    <div class="giftbox-product-meta">
+                        <span class="giftbox-product-category">${escapeHtml(p.category || '未分類')}</span>
+                        <span class="giftbox-product-selection"><i class="fas fa-check" aria-hidden="true"></i> 已加入 <span class="giftbox-selected-quantity">${quantity}</span> 件</span>
                     </div>
-
-                    <!-- 下半部：操作按鈕 -->
-                    <div class="p-4 pt-0 mt-auto">
-                        <div class="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <button onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')" class="flex-1 py-2 px-2 text-gray-600 text-sm font-medium hover:text-blue-600 transition flex items-center justify-center gap-1">
-                                <i class="fas fa-edit"></i> 詳情
-                            </button>
-                            <div class="w-px h-6 bg-gray-300"></div>
-                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
-                                <i class="fas fa-plus"></i>
+                    <div class="giftbox-product-info">
+                        <h3>${escapeHtml(p.productName)}</h3>
+                        <div class="giftbox-product-pricing"><span class="price">NT$ ${effectivePrice.toLocaleString('zh-TW')}</span><span class="giftbox-price-unit">／件</span>${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</div>
+                        ${isCompanyPriceActive ? `<span class="company-original-price">原價 NT$ ${Number(p.price).toLocaleString('zh-TW')}</span>` : ''}
+                    </div>
+                    <div class="giftbox-product-quantity">
+                        <button type="button" aria-label="${escapeAttr(p.productName)} 商品詳情" onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')" class="catalog-details-btn gj-btn gj-btn--quiet">詳情</button>
+                        <div class="giftbox-quantity-control catalog-quantity-control">
+                            <button type="button" class="giftbox-qty-btn catalog-remove-btn" aria-label="減少 ${escapeAttr(p.productName)} 數量" ${quantity === 0 ? 'disabled' : ''} onclick="adjustCatalogQuantity('${escapeHandlerArgument(p.productId)}', -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
+                            <input type="number" inputmode="numeric" min="0" step="1" class="giftbox-qty-display gj-input catalog-quantity" aria-label="${escapeAttr(p.productName)} 購物車數量" value="${quantity}" onfocus="this.select()" onchange="setCatalogQuantity('${escapeHandlerArgument(p.productId)}', this.value)">
+                            <button type="button" aria-label="加入 ${escapeAttr(p.productName)} 到購物車" onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="giftbox-qty-btn catalog-add-btn">
+                                <i class="fas fa-plus" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
@@ -198,43 +186,51 @@ export function loadProductsByCategory(category, containerId) {
       .join('');
 }
 
-export function addToCartDirectly(productId) {
-  // 防止事件冒泡觸發卡片點擊
-  event.stopPropagation();
-  const btn = window.event?.currentTarget || window.event?.target;
-  // 防止快速重複點擊導致狀態錯亂
-  if (btn.dataset.animating === 'true') {
-    // 仍然加入購物車，但不重複動畫
-    const product = state.allProducts.find((p) => p.productId === productId);
-    if (!product) return;
-    const cart = state.giftCart;
-    const existingItem = cart.find(
-      (item) =>
-        item.productId === productId &&
-        !item.isSpecialPrice &&
-        !item.isCompanyPrice === !state.isCompanyCustomer &&
-        (!item.notes || item.notes === ''),
-    );
-    if (existingItem) {
-      existingItem.quantity += 1;
-    } else {
-      cart.push({
-        productId: product.productId,
-        productName: product.productName,
-        price: getEffectivePrice(product),
-        quantity: 1,
-        category: product.category,
-        isSpecialPrice: false,
-        isCompanyPrice: state.isCompanyCustomer,
-        notes: '',
-      });
+function getCatalogQuantity(productId) {
+  return state.giftCart
+    .filter((item) => item.productId === productId)
+    .reduce((total, item) => total + Number(item.quantity || 0), 0);
+}
+
+export function updateCatalogQuantities() {
+  document.querySelectorAll('[data-catalog-product]').forEach((card) => {
+    const quantity = getCatalogQuantity(card.dataset.catalogProduct);
+    card.querySelector('.catalog-quantity').value = quantity;
+    card.querySelector('.giftbox-selected-quantity').textContent = quantity;
+    card.querySelector('.catalog-remove-btn').disabled = quantity === 0;
+    card.classList.toggle('has-quantity', quantity > 0);
+  });
+}
+
+export function adjustCatalogQuantity(productId, change) {
+  setCatalogQuantity(productId, getCatalogQuantity(productId) + change);
+}
+
+export function setCatalogQuantity(productId, rawQuantity) {
+  const product = state.allProducts.find((p) => p.productId === productId);
+  if (!product) return;
+  const quantity = Math.max(0, parseInt(rawQuantity, 10) || 0);
+  const currentQuantity = getCatalogQuantity(productId);
+  const cart = state.giftCart;
+  if (quantity < currentQuantity) {
+    // Reduce the most recently added lines first while preserving their prices and notes.
+    let remaining = currentQuantity - quantity;
+    for (let index = cart.length - 1; index >= 0 && remaining > 0; index--) {
+      const item = cart[index];
+      if (item.productId !== productId) continue;
+      const removed = Math.min(remaining, item.quantity);
+      item.quantity -= removed;
+      remaining -= removed;
+      if (item.quantity === 0) cart.splice(index, 1);
     }
     updateCartDisplay();
     return;
   }
-  const product = state.allProducts.find((p) => p.productId === productId);
-  if (!product) return;
-  const cart = state.giftCart;
+  const additionalQuantity = quantity - currentQuantity;
+  if (additionalQuantity === 0) {
+    updateCatalogQuantities();
+    return;
+  }
   // 尋找購物車中是否已有該商品（且非特價、無備註的標準品項）
   const existingItem = cart.find(
     (item) =>
@@ -244,13 +240,13 @@ export function addToCartDirectly(productId) {
       (!item.notes || item.notes === ''),
   );
   if (existingItem) {
-    existingItem.quantity += 1;
+    existingItem.quantity += additionalQuantity;
   } else {
     cart.push({
       productId: product.productId,
       productName: product.productName,
       price: getEffectivePrice(product),
-      quantity: 1,
+      quantity: additionalQuantity,
       category: product.category,
       isSpecialPrice: false,
       isCompanyPrice: state.isCompanyCustomer,
@@ -258,17 +254,21 @@ export function addToCartDirectly(productId) {
     });
   }
   updateCartDisplay();
-  // 按鈕回饋動畫 - 使用 data 屬性保存原始狀態
-  const originalContent = '<i class="fas fa-plus"></i>';
-  const originalClasses =
-    'w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition add-to-cart-btn';
+}
+
+export function addToCartDirectly(productId) {
+  window.event?.stopPropagation();
+  const btn = window.event?.currentTarget || window.event?.target?.closest('button');
+  adjustCatalogQuantity(productId, 1);
+  // Count every click, including clicks while the icon is showing feedback.
+  if (!btn || btn.dataset.animating === 'true') return;
+  // Only change the decorative icon; keep the label and current button layout.
+  const icon = btn.querySelector('i');
+  const originalIconClasses = icon?.className;
   btn.dataset.animating = 'true';
-  btn.innerHTML = '<i class="fas fa-check"></i>';
-  btn.className =
-    'w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center shadow-md transition add-to-cart-btn';
+  icon?.classList.replace('fa-plus', 'fa-check');
   setTimeout(() => {
-    btn.innerHTML = originalContent;
-    btn.className = originalClasses;
+    if (icon) icon.className = originalIconClasses;
     btn.dataset.animating = 'false';
   }, 600);
 }

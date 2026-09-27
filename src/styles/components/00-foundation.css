@@ -73,7 +73,7 @@ main {
 
 .grove-btn-group {
   display: flex;
-  background-color: #e5e7eb;
+  background-color: var(--gj-border);
   border-radius: 0.5rem;
   padding: 0.25rem;
 }
@@ -82,16 +82,16 @@ main {
   flex: 1;
   padding: 0.75rem;
   border-radius: 0.375rem;
-  transition: all 0.2s;
+  transition: transform 0.2s;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--gj-muted);
   border: none;
   cursor: pointer;
 }
 
 .grove-btn-group button.active {
-  background-color: white;
-  color: #1f6f5f;
+  background-color: var(--gj-surface);
+  color: var(--gj-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -104,8 +104,8 @@ main {
   width: 4.5rem;
   height: 4.5rem;
   border-radius: 50%;
-  background-color: #f97316;
-  color: white;
+  background-color: var(--gj-warning);
+  color: var(--gj-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,8 +123,8 @@ main {
   position: absolute;
   top: -2px;
   right: -2px;
-  background-color: #ef4444;
-  color: white;
+  background-color: var(--gj-danger);
+  color: var(--gj-on-primary);
   border-radius: 9999px;
   width: 1.6rem;
   height: 1.6rem;
@@ -147,7 +147,7 @@ main {
   border-radius: 12px;
   font-size: 1.1rem;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: transform 0.2s;
   cursor: pointer;
   padding: 4px 2px;
   min-height: 52px;
@@ -159,20 +159,20 @@ main {
 
 @media (hover: hover) and (pointer: fine) {
   .calendar-day:hover:not(.disabled):not(.selected) {
-    background-color: #e4f2ed;
-    color: #17584c;
+    background-color: var(--gj-primary-soft);
+    color: var(--gj-primary);
   }
 }
 
 .calendar-day.selected {
-  background-color: #1f6f5f;
-  color: white;
+  background-color: var(--gj-primary);
+  color: var(--gj-on-primary);
   border: none;
   box-shadow: 0 2px 5px rgba(31, 111, 95, 0.4);
 }
 
 .calendar-day.disabled {
-  color: #d1d5db;
+  color: var(--gj-border);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -192,45 +192,41 @@ main {
 }
 
 .cap-green {
-  color: #16a34a;
+  color: var(--gj-success);
 }
 
 .cap-yellow {
-  color: #ca8a04;
+  color: var(--gj-warning);
 }
 
 .cap-orange {
-  color: #ea580c;
+  color: var(--gj-warning);
 }
 
 .cap-red {
-  color: #dc2626;
+  color: var(--gj-danger);
   font-weight: 700;
 }
 
 .cap-gray {
-  color: #9ca3af;
+  color: var(--gj-muted);
 }
 
 /* 產能設定頁面 */
 
 .capacity-weekday-strip {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
   padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
 }
 
 .capacity-day-col {
   flex: 1 0 0;
   min-width: 72px;
-  background: white;
-  border: 1.5px solid #e5e7eb;
+  background: var(--gj-surface);
+  border: 1.5px solid var(--gj-border);
   border-radius: 10px;
   padding: 10px 6px;
   text-align: center;
-  transition: all 0.2s;
+  transition: transform 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -238,14 +234,14 @@ main {
 }
 
 .capacity-day-col.active {
-  border-color: #1f6f5f;
-  background: #f1f8f5;
+  border-color: var(--gj-primary);
+  background: var(--gj-primary-soft);
 }
 
 .capacity-day-col .day-name {
   font-weight: 700;
   font-size: 0.8rem;
-  color: #1f2937;
+  color: var(--gj-text);
   letter-spacing: 0.5px;
 }
 
@@ -253,7 +249,7 @@ main {
   width: 100%;
   max-width: 64px;
   padding: 5px 2px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--gj-border);
   border-radius: 6px;
   text-align: center;
   font-size: 0.85rem;
@@ -269,7 +265,7 @@ main {
 
 .capacity-day-col input[type="number"]:focus {
   outline: none;
-  border-color: #1f6f5f;
+  border-color: var(--gj-primary);
   box-shadow: 0 0 0 2px rgba(31, 111, 95, 0.15);
 }
 
@@ -290,9 +286,9 @@ main {
 .capacity-day-col .day-toggle .slider {
   position: absolute;
   inset: 0;
-  background: #d1d5db;
+  background: var(--gj-border);
   border-radius: 9px;
-  transition: background 0.2s;
+  transition: none;
 }
 
 .capacity-day-col .day-toggle .slider::after {
@@ -300,7 +296,7 @@ main {
   position: absolute;
   width: 14px;
   height: 14px;
-  background: white;
+  background: var(--gj-surface);
   border-radius: 50%;
   top: 2px;
   left: 2px;
@@ -308,7 +304,7 @@ main {
 }
 
 .capacity-day-col .day-toggle input:checked + .slider {
-  background: #1f6f5f;
+  background: var(--gj-primary);
 }
 
 .capacity-day-col .day-toggle input:checked + .slider::after {
@@ -327,7 +323,7 @@ main {
 
 .capacity-section-divider {
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--gj-border);
   margin: 20px 0;
 }
 
@@ -338,21 +334,21 @@ main {
 }
 
 .capacity-override-table th {
-  background: #f1f5f9;
+  background: var(--gj-bg);
   padding: 10px 12px;
   text-align: left;
   font-weight: 600;
-  color: #475569;
+  color: var(--gj-muted);
 }
 
 .capacity-override-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #374151;
+  border-bottom: 1px solid var(--gj-bg);
+  color: var(--gj-muted);
 }
 
 .capacity-override-table tbody tr:hover {
-  background: #fafafa;
+  background: var(--gj-bg);
 }
 
 /* 內容不足時由目前頁面撐開剩餘空間，讓 footer 置底；
@@ -385,7 +381,7 @@ main {
 /* 產品卡片 */
 
 .product-card {
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease;
   cursor: pointer;
 }
 
@@ -410,7 +406,7 @@ main {
 }
 
 .modal-content {
-  background: white;
+  background: var(--gj-surface);
   border-radius: 16px;
   width: 100%;
   max-width: 700px;
@@ -436,8 +432,8 @@ main {
 /* Modal Header */
 
 .modal-header {
-  background: linear-gradient(135deg, #1f6f5f, #1f6f5f);
-  color: white;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
   padding: 20px 24px;
   display: flex;
   justify-content: space-between;
@@ -453,7 +449,7 @@ main {
 .modal-header .close-btn {
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  color: white;
+  color: var(--gj-on-primary);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -462,7 +458,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .modal-header .close-btn:hover {
@@ -480,24 +476,24 @@ main {
 
 .modal-body p {
   margin: 0 0 12px 0;
-  color: #374151;
+  color: var(--gj-muted);
   font-size: 0.95rem;
   display: flex;
   gap: 8px;
 }
 
 .modal-body p strong {
-  color: #1f2937;
+  color: var(--gj-text);
   min-width: 80px;
 }
 
 .modal-body h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gj-text);
   margin: 20px 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--gj-border);
 }
 
 /* Modal Table */
@@ -505,7 +501,7 @@ main {
 .modal-body .table-responsive {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gj-border);
   margin-bottom: 20px;
 }
 
@@ -516,22 +512,22 @@ main {
 }
 
 .modal-body .table thead tr {
-  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  background: linear-gradient(135deg, var(--gj-bg), var(--gj-border));
 }
 
 .modal-body .table th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: #475569;
+  color: var(--gj-muted);
   font-size: 0.8rem;
   text-transform: uppercase;
 }
 
 .modal-body .table td {
   padding: 12px;
-  color: #374151;
-  border-bottom: 1px solid #f1f5f9;
+  color: var(--gj-muted);
+  border-bottom: 1px solid var(--gj-bg);
 }
 
 .modal-body .table tbody tr:last-child td {
@@ -539,31 +535,31 @@ main {
 }
 
 .modal-body .table tbody tr:hover {
-  background: #fafafa;
+  background: var(--gj-bg);
 }
 
 /* Payment Status Section */
 
-.modal-body > div[style*="background-color: #f8f9fa"] {
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
-  border-radius: 12px !important;
-  border: 1px solid #e2e8f0 !important;
-  border-left: 4px solid #1f6f5f !important;
+.modal-body > div[style*="background-color: var(--gj-bg)"] {
+  background: var(--gj-bg);
+  border-radius: 12px;
+  border: 1px solid var(--gj-border);
+  border-left: 4px solid var(--gj-primary);
   padding: 20px !important;
 }
 
-.modal-body > div[style*="background-color: #f8f9fa"] h4 {
+.modal-body > div[style*="background-color: var(--gj-bg)"] h4 {
   margin: 0 0 16px 0 !important;
-  border-bottom: none !important;
-  color: #1f6f5f !important;
+  border-bottom: none;
+  color: var(--gj-primary);
 }
 
 /* Modal Footer */
 
 .modal-footer {
   padding: 16px 24px;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
+  background: var(--gj-bg);
+  border-top: 1px solid var(--gj-border);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -575,25 +571,25 @@ main {
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
   border: none;
 }
 
 .modal-footer .btn:first-child {
-  background: linear-gradient(135deg, #1f6f5f, #1f6f5f);
-  color: white;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
 }
 
 .modal-footer .btn:first-child:hover {
-  background: linear-gradient(135deg, #1f6f5f, #17584c);
+  background: var(--gj-primary);
   transform: translateY(-1px);
 }
 
 .modal-footer .btn-success {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  color: white !important;
+  background: var(--gj-success);
+  color: var(--gj-on-primary);
 }
 
 .modal-footer .btn-success:hover {
-  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  background: var(--gj-success);
 }

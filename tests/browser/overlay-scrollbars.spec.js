@@ -26,6 +26,7 @@ test('overlay scrollbars drag both axes without reserving layout space', async (
     el.style.height = '1400px';
   });
   await target.hover();
+  await target.evaluate((el) => el.scrollTop = 1);
   const y = page.locator('.overlay-scrollbar-y[data-scroll-target="scrollFixture"]');
   const x = page.locator('.overlay-scrollbar-x[data-scroll-target="scrollFixture"]');
   await expect(y).toBeVisible();
@@ -106,6 +107,7 @@ test('floating scrollbar dragging does not trigger outside-click handlers', asyn
     el.style.height = '1400px';
   });
   await page.locator('#scrollFixture').hover();
+  await page.locator('#scrollFixture').evaluate((el) => el.scrollTop = 1);
   await page.evaluate(() => {
     window.outsideClicks = 0;
     document.addEventListener(
@@ -138,4 +140,39 @@ test('touch scrolling remains native with floating controls', async ({ page }, t
   await expect.poll(() => page.locator('#scrollFixture').evaluate((el) => el.scrollTop)).toBeGreaterThan(50);
   await touch.detach();
   expect(errors).toEqual([]);
+});
+
+test.describe('touch scrollbar visibility', () => {
+  test.use({ hasTouch: true });
+
+  test('fades after scrolling even with focus and hover, then quickly reappears', async ({ page }) => {
+    await fixture(page);
+    const target = page.locator('#scrollFixture');
+    await page.locator('#scrollContent').evaluate((el) => {
+      el.style.height = '1400px';
+      el.style.width = '1200px';
+    });
+    await expect(target).toHaveAttribute('tabindex', '0');
+    await target.hover();
+    await target.focus();
+    const tracks = page.locator('.overlay-scrollbar[data-scroll-target="scrollFixture"]');
+    for (const track of await tracks.all()) await expect(track).toHaveCSS('opacity', '0');
+    await target.evaluate((el) => el.scrollTo(100, 100));
+    for (const track of await tracks.all()) {
+      await expect(track).toHaveClass(/is-visible/);
+      await expect(track).toHaveCSS('transition-duration', '0.08s');
+      await expect(track).toHaveCSS('opacity', '1');
+    }
+    for (const track of await tracks.all()) {
+      await expect(track).not.toHaveClass(/is-visible/);
+      await expect(track).toHaveCSS('opacity', '0');
+      await expect(track).toHaveCSS('pointer-events', 'none');
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await target.evaluate((el) => el.scrollTo(200, 200));
+    for (const track of await tracks.all()) {
+      await expect(track).toHaveClass(/is-visible/);
+      await expect(track).toHaveCSS('transition-duration', '0s');
+    }
+  });
 });

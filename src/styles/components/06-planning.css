@@ -2,8 +2,8 @@
   width: 100%;
   min-width: 460px;
   border-collapse: collapse;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -11,15 +11,15 @@
 .order-items-table th,
 .order-items-table td {
   padding: 9px 10px;
-  border-bottom: 1px solid #eef2f7;
-  color: #475569;
+  border-bottom: 1px solid var(--gj-bg);
+  color: var(--gj-muted);
   font-size: 0.8rem;
   text-align: left;
 }
 
 .order-items-table th {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -30,30 +30,30 @@
 
 .order-items-table .giftbox-row td,
 .order-items-table .giftbox-subtotal-row td {
-  background: #f0f8ff;
+  background: var(--gj-surface);
 }
 
 .order-items-table .giftbox-subitem-row td {
-  color: #64748b;
+  color: var(--gj-muted);
   font-size: 0.78rem;
 }
 
 .order-items-table .giftbox-note-row td {
-  color: #94a3b8;
+  color: var(--gj-muted);
   font-size: 0.78rem;
   font-style: italic;
 }
 
 .order-items-empty {
   padding: 12px;
-  color: #64748b;
+  color: var(--gj-muted);
   font-size: 0.82rem;
   text-align: center;
 }
 
 #searchResults .table td {
   padding: 12px 10px;
-  color: #374151;
+  color: var(--gj-muted);
   vertical-align: middle;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -84,7 +84,7 @@
 
 #searchResults .table td:first-child {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 /* 搜尋結果標題與提示橫幅 */
@@ -92,7 +92,7 @@
 .result-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gj-text);
   margin: 4px 0 12px;
 }
 
@@ -112,21 +112,21 @@
 }
 
 .result-banner.danger {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-surface);
+  color: var(--gj-danger);
 }
 
 .result-banner.success {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #047857;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-bg);
+  color: var(--gj-success);
 }
 
 .result-banner.neutral {
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  color: #64748b;
+  background: var(--gj-bg);
+  border: 1px solid var(--gj-border);
+  color: var(--gj-muted);
 }
 
 /* 表格操作按鈕 */
@@ -137,32 +137,32 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .btn-table-view {
-  background: #f1f8f5;
-  color: #17584c;
-  border: 1px solid #b8d8ce;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
+  border: 1px solid var(--gj-primary-soft);
   margin-right: 8px;
 }
 
 .btn-table-view:hover {
-  background: #1f6f5f;
-  color: white;
-  border-color: #1f6f5f;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
+  border-color: var(--gj-primary);
 }
 
 .btn-table-delete {
-  background: white;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: var(--gj-surface);
+  color: var(--gj-danger);
+  border: 1px solid var(--gj-surface);
 }
 
 .btn-table-delete:hover {
-  background: #ef4444;
-  color: white;
-  border-color: #ef4444;
+  background: var(--gj-danger);
+  color: var(--gj-on-primary);
+  border-color: var(--gj-danger);
 }
 
 /* 逾期標記與列底色 */
@@ -176,21 +176,21 @@
 }
 
 .overdue-badge.mild {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--gj-surface);
+  color: var(--gj-warning);
 }
 
 .overdue-badge.severe {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--gj-surface);
+  color: var(--gj-danger);
 }
 
 #searchResults tr.row-overdue-mild {
-  background: #fffbeb;
+  background: var(--gj-surface);
 }
 
 #searchResults tr.row-overdue-severe {
-  background: #fef2f2;
+  background: var(--gj-surface);
 }
 
 /* 金額欄位 */
@@ -200,30 +200,30 @@
 }
 
 #searchResults .td-fee {
-  color: #94a3b8;
+  color: var(--gj-muted);
 }
 
 #searchResults .td-fee.has-fee {
-  color: #1f6f5f;
+  color: var(--gj-primary);
   font-weight: 600;
 }
 
 #searchResults .td-deposit {
-  color: #64748b;
+  color: var(--gj-muted);
 }
 
 #searchResults .td-deposit.paid {
-  color: #047857;
+  color: var(--gj-success);
   font-weight: 600;
 }
 
 #searchResults .td-remaining.due {
-  color: #dc2626;
+  color: var(--gj-danger);
   font-weight: 700;
 }
 
 #searchResults .td-remaining.clear {
-  color: #047857;
+  color: var(--gj-success);
   font-weight: 700;
 }
 
@@ -243,8 +243,8 @@
 
 .company-price-tag {
   display: inline-block;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  color: white;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
   font-size: 0.65rem;
   padding: 2px 6px;
   border-radius: 4px;
@@ -255,21 +255,21 @@
 
 .company-original-price {
   text-decoration: line-through;
-  color: #9ca3af;
+  color: var(--gj-muted);
   font-size: 0.85em;
   margin-right: 4px;
 }
 
 .company-mode-banner {
-  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
-  border: 1px solid #c7d2fe;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-surface);
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #4338ca;
+  color: var(--gj-primary);
   font-weight: 600;
   font-size: 0.9rem;
 }

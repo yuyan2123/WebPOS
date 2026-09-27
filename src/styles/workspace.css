@@ -1,29 +1,30 @@
 :root {
   --vp-top: 0px;
   --vp-bottom: 0px;
-  --pos-bg: #f5f5f2;
-  --pos-surface: #fff;
-  --pos-surface-muted: #f5f6f3;
-  --pos-ink: #202a26;
-  --pos-ink-soft: #48534d;
-  --pos-muted: #626f67;
-  --pos-line: #dce2dc;
-  --pos-line-strong: #bdc9c0;
-  --pos-primary: #25654d;
-  --pos-primary-dark: #184b38;
-  --pos-primary-soft: #e8f1e9;
-  --pos-accent: #966222;
-  --pos-accent-soft: #fff4df;
-  --pos-danger: #b53838;
-  --pos-danger-soft: #fff0f0;
-  --pos-success: #226b4e;
+  --pos-bg: var(--gj-bg);
+  --pos-surface: var(--gj-surface);
+  --pos-surface-muted: var(--gj-bg);
+  --pos-ink: var(--gj-text);
+  --pos-ink-soft: var(--gj-muted);
+  --pos-muted: var(--gj-muted);
+  --pos-line: var(--gj-border);
+  --pos-line-strong: var(--gj-border);
+  --pos-primary: var(--gj-primary);
+  --pos-primary-dark: var(--gj-primary);
+  --pos-primary-soft: var(--gj-primary-soft);
+  --pos-accent: var(--gj-warning);
+  --pos-accent-soft: var(--gj-surface);
+  --pos-danger: var(--gj-danger);
+  --pos-danger-soft: var(--gj-surface);
+  --pos-success: var(--gj-success);
   --pos-radius-sm: 8px;
   --pos-radius: 12px;
   --pos-radius-lg: 18px;
-  --pos-shadow-sm: 0 2px 6px #192a2005;
-  --pos-shadow: 0 20px 70px #192a2026;
-  --pos-ring: 0 0 0 3px #25654d26;
+  --pos-shadow-sm: 0 2px 6px #171d1e0c;
+  --pos-shadow: var(--gj-shadow);
+  --pos-ring: var(--gj-focus);
   --pos-nav-size: 220px;
+  --pos-cart-button-size: 56px;
   color-scheme: light;
 }
 html {
@@ -43,8 +44,7 @@ body {
   overflow: hidden;
   color: var(--pos-ink);
   background: var(--pos-bg);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-family: var(--gj-font);
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -80,7 +80,7 @@ button {
   -webkit-appearance: none;
 }
 .grove-btn-group button:not(.active) {
-  background: transparent !important;
+  background: transparent;
 }
 button:disabled {
   cursor: not-allowed;
@@ -89,7 +89,7 @@ button:disabled {
   display: none !important;
 }
 :focus-visible {
-  outline: 3px solid #25654d !important;
+  outline: 3px solid var(--gj-primary) !important;
   outline-offset: 3px;
 }
 .skip-link {
@@ -98,7 +98,7 @@ button:disabled {
   left: 12px;
   z-index: 200000;
   padding: 12px 20px;
-  background: #fff;
+  background: var(--gj-surface);
   color: var(--pos-primary);
   border-radius: 8px;
 }
@@ -111,7 +111,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   padding: 26px 16px;
-  background: #fcfcfa;
+  background: var(--gj-bg);
   border-right: 1px solid var(--pos-line);
   overflow-y: auto;
   z-index: 20;
@@ -186,8 +186,7 @@ button:disabled {
   font-size: 14px;
   font-weight: 500;
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    none;
 }
 .app-navigation .nav-item i {
   width: 20px;
@@ -195,7 +194,7 @@ button:disabled {
   font-size: 16px;
 }
 .app-navigation .nav-item:hover {
-  background: #edf0e9;
+  background: var(--gj-subtle);
 }
 .app-navigation .nav-item[aria-current="page"] {
   background: var(--pos-primary-soft);
@@ -253,7 +252,7 @@ button:disabled {
   padding: 12px 18px;
   border: 1px solid var(--pos-line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--gj-surface);
 }
 .context-mode {
   padding: 5px 9px;
@@ -322,7 +321,7 @@ button:disabled {
   padding: clamp(22px, 3vw, 38px) !important;
 }
 .content-section h2 {
-  font-size: 20px !important;
+  font-size: 20px;
   line-height: 1.4;
 }
 #customer h2 i,
@@ -332,17 +331,17 @@ button:disabled {
 #customer input,
 #customer select,
 #customer textarea {
-  border-radius: 9px !important;
-  background: #fafbf8 !important;
+  border-radius: 9px;
+  background: var(--gj-bg);
   min-height: 48px;
-  font-size: 15px !important;
+  font-size: 15px;
   padding: 12px 14px !important;
 }
 #customer label,
 .field-label {
   display: block;
   margin-bottom: 8px;
-  font-size: 13px !important;
+  font-size: 13px;
   font-weight: 600;
   color: var(--pos-ink-soft);
 }
@@ -371,9 +370,9 @@ button:disabled {
   min-height: 44px;
 }
 .search-header {
-  background: white !important;
+  background: var(--gj-surface);
   padding: 24px 28px 12px !important;
-  border-bottom: 0 !important;
+  border-bottom: 0;
 }
 .search-quick-actions {
   display: flex;
@@ -416,7 +415,7 @@ button:disabled {
 }
 .calendar-day {
   font: inherit;
-  background: white;
+  background: var(--gj-surface);
   min-height: 54px;
   border: 1px solid var(--pos-line);
 }
@@ -424,14 +423,14 @@ button:disabled {
   opacity: 0.55;
 }
 .calendar-day:not(:disabled) {
-  color: var(--pos-ink) !important;
+  color: var(--pos-ink);
 }
 #selected-date-display {
-  color: var(--pos-muted) !important;
+  color: var(--pos-muted);
 }
 .calendar-day.selected {
-  color: white !important;
-  background: var(--pos-primary) !important;
+  color: var(--gj-on-primary);
+  background: var(--pos-primary);
 }
 .calendar-day .cap-indicator {
   font-size: 10px;
@@ -440,8 +439,8 @@ button:disabled {
   border: 0;
   right: 24px !important;
   bottom: 24px !important;
-  width: 56px !important;
-  height: 56px !important;
+  width: var(--pos-cart-button-size) !important;
+  height: var(--pos-cart-button-size) !important;
 }
 body[data-section="search"] .fab-cart,
 body[data-section="settings"] .fab-cart {
@@ -484,12 +483,28 @@ body[data-section="settings"] .fab-cart {
     display: none;
   }
 }
+/* A quiet end to the content on phones and tablets, matching the cart button. */
+@media (max-width: 899px), (any-pointer: coarse) {
+  body .workspace-main > .footer {
+    display: block !important;
+    flex: 0 0 var(--pos-cart-button-size);
+    height: var(--pos-cart-button-size);
+    min-height: var(--pos-cart-button-size);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--pos-bg);
+  }
+  .workspace-main > .footer > * {
+    display: none;
+  }
+}
 body #firebaseAccountBadge {
   top: calc(22px + var(--vp-top)) !important;
   right: 24px !important;
   max-width: 260px !important;
-  border: 1px solid var(--pos-line) !important;
-  box-shadow: none !important;
+  border: 1px solid var(--pos-line);
+  box-shadow: none;
 }
 body #firebasePrinterStatus:not([hidden]) {
   display: inline-flex;
@@ -514,7 +529,7 @@ body #firebasePrinterStatus:not([hidden]) {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: white;
+  background: var(--gj-surface);
 }
 #firebasePrinterStatus[data-state='offline'] .printer-connection-mark {
   display: grid;
@@ -544,7 +559,7 @@ body #firebasePrinterStatus:not([hidden]) {
 }
 body #firebasePrinterStatus[data-state='online'] { color: var(--pos-success); }
 body #firebasePrinterStatus[data-state='offline'] { color: var(--pos-danger); }
-body #firebasePrinterStatus[data-state='checking'] { color: #ca8a04; cursor: progress; }
+body #firebasePrinterStatus[data-state='checking'] { color: var(--gj-warning); cursor: progress; }
 body #firebaseAccountEmail {
   display: block;
   min-width: 0;
@@ -581,7 +596,7 @@ body #firebaseAccountMenu {
   padding: 16px;
   border: 1px solid var(--pos-line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--gj-surface);
   box-shadow: var(--pos-shadow-sm);
   pointer-events: auto;
 }
@@ -661,7 +676,7 @@ body #firebaseSignOut { flex-shrink: 0; }
     inset: auto 0 var(--vp-bottom);
     height: calc(74px + env(safe-area-inset-bottom));
     padding: 6px 6px env(safe-area-inset-bottom);
-    background: #fff;
+    background: var(--gj-surface);
     border: 0;
     border-top: 1px solid var(--pos-line);
     z-index: 900;

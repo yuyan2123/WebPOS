@@ -19,7 +19,7 @@
 
 .delete-order-info .customer-name {
   font-size: 1.1rem;
-  color: #1f2937;
+  color: var(--gj-text);
   font-weight: 600;
   margin-top: 4px;
 }
@@ -35,8 +35,8 @@
 .slider-track {
   width: 100%;
   height: 56px;
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
-  border: 2px solid #fca5a5;
+  background: var(--gj-surface);
+  border: 2px solid var(--gj-danger-soft);
   border-radius: 28px;
   position: relative;
   overflow: hidden;
@@ -48,7 +48,7 @@
   right: 20px;
   top: 50%;
   transform: translateY(-50%);
-  color: #dc2626;
+  color: var(--gj-danger);
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 1px;
@@ -60,7 +60,7 @@
   left: 0;
   top: 0;
   height: 100%;
-  background: linear-gradient(135deg, #fca5a5, #f87171);
+  background: linear-gradient(135deg, var(--gj-danger-soft), var(--gj-danger));
   border-radius: 28px;
   width: 0;
 }
@@ -69,9 +69,7 @@
 
 .slider-thumb.snapping {
   transition:
-    left 0.25s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    left 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .slider-progress.snapping {
@@ -81,7 +79,7 @@
 .slider-thumb {
   width: 52px;
   height: 52px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: var(--gj-danger);
   border-radius: 50%;
   position: absolute;
   top: 2px;
@@ -90,14 +88,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--gj-on-primary);
   font-weight: bold;
   font-size: 20px;
   user-select: none;
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    transform 0.2s ease, box-shadow 0.2s ease;
   z-index: 2;
 }
 
@@ -117,7 +114,7 @@
 }
 
 .slider-thumb.completed {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+  background: var(--gj-success);
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
 }
 
@@ -125,11 +122,11 @@
   text-align: center;
   margin-top: 12px;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--gj-muted);
 }
 
 .slider-hint.completed {
-  color: #16a34a;
+  color: var(--gj-success);
   font-weight: 600;
 }
 
@@ -147,15 +144,15 @@
 }
 
 .delete-status.success {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
+  background: var(--gj-surface);
+  color: var(--gj-success);
+  border: 1px solid var(--gj-success-soft);
 }
 
 .delete-confirm-footer {
   padding: 16px 24px;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
+  background: var(--gj-bg);
+  border-top: 1px solid var(--gj-border);
   display: flex;
   gap: 12px;
 }
@@ -163,18 +160,18 @@
 .delete-confirm-footer .btn-cancel {
   flex: 1;
   padding: 14px 24px;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
+  border: 1px solid var(--gj-border);
   border-radius: 10px;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .delete-confirm-footer .btn-cancel:hover {
-  background: #e2e8f0;
+  background: var(--gj-border);
 }
 
 /* Status Confirm Modal */
@@ -187,8 +184,8 @@
 }
 
 .status-confirm-header {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  background: var(--gj-success);
+  color: var(--gj-on-primary);
   padding: 20px 24px;
   display: flex;
   align-items: center;
@@ -224,13 +221,13 @@
   background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 8px;
-  color: white;
+  color: var(--gj-on-primary);
   font-size: 1.25rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: none;
 }
 
 .status-confirm-header .close-btn:hover {
@@ -239,12 +236,12 @@
 
 .status-confirm-body {
   padding: 24px;
-  background: white;
+  background: var(--gj-surface);
 }
 
 .status-order-info {
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border: 1px solid #a7f3d0;
+  background: linear-gradient(135deg, var(--gj-surface), var(--gj-bg));
+  border: 1px solid var(--gj-bg);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 20px;
@@ -253,14 +250,14 @@
 
 .status-order-info .order-id {
   font-size: 0.85rem;
-  color: #059669;
+  color: var(--gj-success);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
 .status-order-info .status-change {
   font-size: 1rem;
-  color: #065f46;
+  color: var(--gj-success);
   font-weight: 500;
 }
 
@@ -272,13 +269,13 @@
 }
 
 .status-update-status.success {
-  color: #059669;
+  color: var(--gj-success);
 }
 
 .status-confirm-footer {
   padding: 16px 24px;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
+  background: var(--gj-bg);
+  border-top: 1px solid var(--gj-border);
   display: flex;
   gap: 12px;
 }
@@ -286,57 +283,57 @@
 .status-confirm-footer .btn-cancel {
   flex: 1;
   padding: 14px 24px;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
+  border: 1px solid var(--gj-border);
   border-radius: 10px;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .status-confirm-footer .btn-cancel:hover {
-  background: #e2e8f0;
+  background: var(--gj-border);
 }
 
 /* Status Confirm Slider (for status update - green theme) */
 
 .status-slider .slider-track {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  border-color: #6ee7b7;
+  background: var(--gj-bg);
+  border-color: var(--gj-success);
 }
 
 .status-slider .slider-track::before {
   content: "向右滑到底即完成訂單";
-  color: #059669;
+  color: var(--gj-success);
 }
 
 .status-slider .slider-progress {
-  background: linear-gradient(135deg, #6ee7b7, #34d399);
+  background: var(--gj-success);
 }
 
 .status-slider .slider-thumb {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: var(--gj-success);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
 .status-slider .slider-thumb.completed {
-  background: linear-gradient(135deg, #059669, #047857);
+  background: var(--gj-success);
 }
 
 /* Shared order action dialogs */
 .order-action-modal {
-  --action-color: #286653;
-  --action-soft: #edf5f0;
-  --action-border: #cbded3;
+  --action-color: var(--gj-primary);
+  --action-soft: var(--gj-primary-soft);
+  --action-border: var(--gj-primary-soft);
   padding: 16px;
 }
 
 .delete-confirm-modal.order-action-modal {
-  --action-color: #ad3935;
-  --action-soft: #fcf0ee;
-  --action-border: #ebceca;
+  --action-color: var(--gj-danger);
+  --action-soft: var(--gj-surface);
+  --action-border: var(--gj-subtle);
 }
 
 .order-action-modal .modal-content {
@@ -344,9 +341,9 @@
   max-width: 440px;
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
-  border: 1px solid #e1e7e2;
+  border: 1px solid var(--gj-subtle);
   border-radius: 24px;
-  background: #fff;
+  background: var(--gj-surface);
   box-shadow: 0 24px 80px #172c2430;
 }
 
@@ -355,8 +352,8 @@
   align-items: center;
   gap: 14px;
   padding: 28px 60px 0 28px;
-  background: #fff;
-  color: #253c32;
+  background: var(--gj-surface);
+  color: var(--gj-text);
   position: relative;
 }
 
@@ -373,7 +370,7 @@
 .order-action-eyebrow {
   display: block;
   margin-bottom: 4px;
-  color: #64736b;
+  color: var(--gj-muted);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -394,22 +391,22 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  color: #65736b;
-  background: #f3f5f3;
+  color: var(--gj-muted);
+  background: var(--gj-bg);
 }
 
 .order-action-modal .close-btn:hover {
-  background: #e7ece8;
+  background: var(--gj-subtle);
 }
 
 .order-action-modal :is(.status-confirm-body, .delete-confirm-body) {
   padding: 20px 28px 0;
-  background: #fff;
+  background: var(--gj-surface);
 }
 
 .order-action-description {
   margin: 0 0 20px;
-  color: #65736b;
+  color: var(--gj-muted);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -417,16 +414,16 @@
 .order-action-modal :is(.status-order-info, .delete-order-info) {
   margin: 0 0 24px;
   padding: 16px 18px;
-  border: 1px solid #e3e8e4;
+  border: 1px solid var(--gj-subtle);
   border-radius: 14px;
-  background: #f7f9f7;
+  background: var(--gj-bg);
   text-align: left;
   overflow-wrap: anywhere;
 }
 
 .order-action-modal .order-id {
   margin: 0 0 8px;
-  color: #58675e;
+  color: var(--gj-muted);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.6;
@@ -434,7 +431,7 @@
 
 .order-action-modal :is(.status-change, .customer-name) {
   margin: 0;
-  color: #253c32;
+  color: var(--gj-text);
   font-size: 16px;
   font-weight: 600;
   line-height: 1.6;
@@ -498,7 +495,7 @@
 .order-action-modal :is(.status-confirm-footer, .delete-confirm-footer) {
   padding: 12px 28px 24px;
   border: 0;
-  background: #fff;
+  background: var(--gj-surface);
 }
 
 .order-action-modal .btn-cancel {
@@ -506,13 +503,13 @@
   padding: 10px 16px;
   border: 0;
   border-radius: 12px;
-  background: #fff;
-  color: #58675e;
+  background: var(--gj-surface);
+  color: var(--gj-muted);
   font-size: 14px;
 }
 
 .order-action-modal .btn-cancel:hover {
-  background: #f3f5f3;
+  background: var(--gj-bg);
 }
 
 .order-action-modal :is(button, .slider-thumb):focus-visible {
@@ -522,7 +519,7 @@
 
 .order-action-modal .slider-thumb:focus-visible {
   outline-offset: -4px;
-  outline-color: #fff;
+  outline-color: var(--gj-surface);
 }
 
 @media (max-width: 380px) {
@@ -546,15 +543,15 @@
 .giftbox-details {
   margin-top: 10px;
   padding-left: 15px;
-  border-left: 3px solid #1f6f5f;
-  background: #f3f4f6;
+  border-left: 3px solid var(--gj-primary);
+  background: var(--gj-bg);
   border-radius: 0 6px 6px 0;
 }
 
 .giftbox-details-content {
   padding: 8px 12px;
   font-size: 0.9em;
-  color: #666;
+  color: var(--gj-muted);
   line-height: 1.4;
 }
 
@@ -562,12 +559,12 @@
 
 .original-price {
   text-decoration: line-through;
-  color: #999;
+  color: var(--gj-muted);
   margin-right: 10px;
 }
 
 .special-price-text {
-  color: #e74c3c;
+  color: var(--gj-danger);
   font-weight: bold;
 }
 
@@ -576,15 +573,15 @@
 /* 頁尾：置於 main 內部，跟隨內容捲動；負邊距抵銷 main 的 padding 以貼齊邊緣 */
 
 .footer {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, var(--gj-bg) 0%, var(--gj-subtle) 100%);
   padding: 1.5rem;
   text-align: center;
-  border-top: 3px solid #1f6f5f;
+  border-top: 3px solid var(--gj-primary);
   margin: 2rem -1rem -1rem;
 }
 
 .footer p {
-  color: #6b7280;
+  color: var(--gj-muted);
   font-size: 0.875rem;
   margin: 0.25rem 0;
 }
@@ -609,28 +606,28 @@
 }
 
 .giftbox-product-card {
-  background: white;
+  background: var(--gj-surface);
   border-radius: 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--gj-border);
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
   display: flex;
   flex-direction: column;
 }
 
 .giftbox-product-card:hover {
-  border-color: #1f6f5f;
+  border-color: var(--gj-primary);
   box-shadow: 0 4px 12px rgba(31, 111, 95, 0.15);
 }
 
 .giftbox-product-card.has-quantity {
-  border-color: #1f6f5f;
-  background: linear-gradient(to bottom, #f1f8f5, white);
+  border-color: var(--gj-primary);
+  background: linear-gradient(to bottom, var(--gj-primary-soft), white);
 }
 
 .giftbox-product-icon {
   height: 80px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  background: linear-gradient(135deg, var(--gj-surface) 0%, var(--gj-warning-soft) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -638,7 +635,7 @@
 
 .giftbox-product-icon i {
   font-size: 2.5rem;
-  color: #f59e0b;
+  color: var(--gj-warning);
 }
 
 .giftbox-product-info {
@@ -649,13 +646,13 @@
 .giftbox-product-info h4 {
   font-weight: 600;
   font-size: 1rem;
-  color: #1f2937;
+  color: var(--gj-text);
   margin-bottom: 4px;
 }
 
 .giftbox-product-info .price {
   font-size: 0.875rem;
-  color: #ef4444;
+  color: var(--gj-danger);
   font-weight: 600;
 }
 
@@ -665,30 +662,30 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background: var(--gj-bg);
+  border-top: 1px solid var(--gj-border);
 }
 
 .giftbox-qty-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 2px solid #d1d5db;
-  background: white;
-  color: #6b7280;
+  border: 2px solid var(--gj-border);
+  background: var(--gj-surface);
+  color: var(--gj-muted);
   font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .giftbox-qty-btn:hover {
-  border-color: #1f6f5f;
-  color: #1f6f5f;
-  background: #f1f8f5;
+  border-color: var(--gj-primary);
+  color: var(--gj-primary);
+  background: var(--gj-primary-soft);
 }
 
 .giftbox-qty-btn:active {
@@ -699,12 +696,12 @@
   width: 56px;
   min-width: 48px;
   height: 36px;
-  background: white;
-  border: 2px solid #e5e7eb;
+  background: var(--gj-surface);
+  border: 2px solid var(--gj-border);
   border-radius: 8px;
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--gj-text);
   text-align: center;
   outline: none;
   padding: 0;
@@ -716,13 +713,13 @@
 }
 
 .giftbox-qty-display.has-value {
-  border-color: #1f6f5f;
-  color: #1f6f5f;
-  background: #f1f8f5;
+  border-color: var(--gj-primary);
+  color: var(--gj-primary);
+  background: var(--gj-primary-soft);
 }
 
 .giftbox-qty-display:focus {
-  border-color: #1f6f5f;
+  border-color: var(--gj-primary);
 }
 
 .giftbox-qty-display::-webkit-outer-spin-button,
@@ -734,12 +731,12 @@
 /* Cart Item - Modern Card Style */
 
 .cart-item-card {
-  background: white;
+  background: var(--gj-surface);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gj-border);
   padding: 12px;
   margin-bottom: 12px;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .cart-item-card:hover {

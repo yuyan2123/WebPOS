@@ -26,13 +26,13 @@ export function showSection(sectionName, navElement, panel) {
   const mainScroller = document.querySelector('main');
   if (mainScroller) mainScroller.scrollTop = 0;
   document.querySelectorAll('.nav-item').forEach((item) => {
-    item.classList.remove('bg-blue-100', 'text-blue-700');
-    item.classList.add('text-gray-600');
+    item.classList.remove('bg-md-primary-container', 'text-md-primary');
+    item.classList.add('text-md-on-surface-variant');
     item.removeAttribute('aria-current');
   });
   if (navElement) {
-    navElement.classList.remove('text-gray-600');
-    navElement.classList.add('bg-blue-100', 'text-blue-700');
+    navElement.classList.remove('text-md-on-surface-variant');
+    navElement.classList.add('bg-md-primary-container', 'text-md-primary');
     navElement.setAttribute('aria-current', 'page');
   }
   const floatingCart = document.querySelector('.floating-cart');

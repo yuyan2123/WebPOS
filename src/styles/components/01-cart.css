@@ -1,11 +1,11 @@
 .modal-footer .btn:last-child {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
+  border: 1px solid var(--gj-border);
 }
 
 .modal-footer .btn:last-child:hover {
-  background: #e2e8f0;
+  background: var(--gj-border);
 }
 
 /* Order Info Grid */
@@ -16,9 +16,9 @@
   gap: 12px;
   margin-bottom: 20px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--gj-bg);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gj-border);
 }
 
 .order-info-item {
@@ -30,22 +30,22 @@
 .order-info-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--gj-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .order-info-value {
   font-size: 0.95rem;
-  color: #1f2937;
+  color: var(--gj-text);
   font-weight: 500;
 }
 
 .order-info-value.delivery-badge {
   display: inline-block;
   padding: 4px 12px;
-  background: #e4f2ed;
-  color: #17584c;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -69,51 +69,51 @@
 }
 
 .status-pill.pill-blue {
-  background: #e4f2ed;
-  color: #17584c;
+  background: var(--gj-primary-soft);
+  color: var(--gj-primary);
 }
 
 .status-pill.pill-amber {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--gj-surface);
+  color: var(--gj-warning);
 }
 
 .status-pill.pill-green {
-  background: #d1fae5;
-  color: #047857;
+  background: var(--gj-bg);
+  color: var(--gj-success);
 }
 
 .status-pill.pill-deep-green {
-  background: #a7f3d0;
-  color: #065f46;
+  background: var(--gj-bg);
+  color: var(--gj-success);
 }
 
 .status-pill.pill-red {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--gj-surface);
+  color: var(--gj-danger);
 }
 
 .status-pill.pill-gray {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
 }
 
 /* Payment Status Box */
 
 .payment-status-box {
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  background: var(--gj-bg);
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid #e2e8f0;
-  border-left: 4px solid #1f6f5f;
+  border: 1px solid var(--gj-border);
+  border-left: 4px solid var(--gj-primary);
   margin: 20px 0;
 }
 
 .payment-status-box h4 {
   margin: 0 0 16px 0 !important;
   padding: 0 !important;
-  border: none !important;
-  color: #1f6f5f !important;
+  border: none;
+  color: var(--gj-primary);
   font-size: 1rem;
 }
 
@@ -132,29 +132,29 @@
 .payment-label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--gj-muted);
 }
 
 .payment-value {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 .payment-value.primary {
-  color: #1f6f5f;
+  color: var(--gj-primary);
 }
 
 .payment-value.success {
-  color: #22c55e;
+  color: var(--gj-success);
 }
 
 .payment-value.danger {
-  color: #ef4444;
+  color: var(--gj-danger);
 }
 
 .payment-value.info {
-  color: #1f6f5f;
+  color: var(--gj-primary);
 }
 
 .deposit-action {
@@ -163,19 +163,19 @@
 }
 
 .btn-deposit {
-  background: white !important;
-  color: #1f6f5f !important;
+  background: var(--gj-surface);
+  color: var(--gj-primary);
   padding: 10px 24px !important;
-  border-radius: 8px !important;
-  border: 1px solid #b8d8ce !important;
-  font-weight: 600 !important;
+  border-radius: 8px;
+  border: 1px solid var(--gj-primary-soft);
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .btn-deposit:hover {
-  background: #f1f8f5 !important;
-  border-color: #1f6f5f !important;
+  background: var(--gj-primary-soft);
+  border-color: var(--gj-primary);
 }
 
 /* Order Total */
@@ -186,50 +186,50 @@
   align-items: center;
   gap: 16px;
   padding: 16px 0;
-  border-top: 2px solid #e5e7eb;
+  border-top: 2px solid var(--gj-border);
   margin-top: 16px;
 }
 
 .order-total span:first-child {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--gj-muted);
   font-weight: 500;
 }
 
 .order-total .total-amount {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f6f5f;
+  color: var(--gj-primary);
 }
 
 /* Modal Footer Buttons */
 
 .modal-footer .btn-edit {
-  background: linear-gradient(135deg, #1f6f5f, #1f6f5f) !important;
-  color: white !important;
+  background: var(--gj-primary);
+  color: var(--gj-on-primary);
 }
 
 .modal-footer .btn-edit:hover {
-  background: linear-gradient(135deg, #1f6f5f, #17584c) !important;
+  background: var(--gj-primary);
 }
 
 .modal-footer .btn-success {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  color: white !important;
+  background: var(--gj-success);
+  color: var(--gj-on-primary);
 }
 
 .modal-footer .btn-success:hover {
-  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  background: var(--gj-success);
 }
 
 .modal-footer .btn-close-modal {
-  background: #f1f5f9 !important;
-  color: #64748b !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--gj-bg);
+  color: var(--gj-muted);
+  border: 1px solid var(--gj-border);
 }
 
 .modal-footer .btn-close-modal:hover {
-  background: #e2e8f0 !important;
+  background: var(--gj-border);
 }
 
 /* 側邊購物車 */
@@ -241,14 +241,13 @@
   right: 0;
   width: 100%;
   max-width: 28rem;
-  background: white;
+  background: var(--gj-surface);
   box-shadow: -4px 0 15px rgba(0, 0, 0, 0.2);
   transform: translateX(100%);
   visibility: hidden;
   pointer-events: none;
   transition:
-    transform 0.3s ease,
-    visibility 0s linear 0.3s;
+    transform 0.3s ease, visibility 0s linear 0.3s;
   z-index: 1002;
   display: flex;
   flex-direction: column;
@@ -266,8 +265,7 @@
   visibility: hidden;
   pointer-events: none;
   transition:
-    opacity 0.3s ease,
-    visibility 0s linear 0.3s;
+    opacity 0.3s ease, visibility 0s linear 0.3s;
   position: fixed;
   top: var(--vp-top);
   bottom: var(--vp-bottom);
@@ -319,7 +317,7 @@
 }
 
 .submit-overlay-box {
-  background: #ffffff;
+  background: var(--gj-surface);
   border-radius: 16px;
   padding: 28px 36px;
   text-align: center;
@@ -331,8 +329,8 @@
   width: 44px;
   height: 44px;
   margin: 0 auto 16px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #1f6f5f;
+  border: 4px solid var(--gj-border);
+  border-top-color: var(--gj-primary);
   border-radius: 50%;
   animation: submitSpin 0.8s linear infinite;
 }
@@ -346,13 +344,13 @@
 .submit-overlay-text {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--gj-text);
 }
 
 .submit-overlay-sub {
   margin-top: 6px;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--gj-muted);
 }
 
 .alert {
@@ -361,19 +359,18 @@
   gap: 12px;
   padding: 14px 16px;
   border-radius: 12px;
-  background: white;
-  color: #1f2937;
+  background: var(--gj-surface);
+  color: var(--gj-text);
   min-width: 300px;
   max-width: 100%;
   box-shadow:
     0 10px 25px -5px rgba(0, 0, 0, 0.15),
     0 4px 10px -6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gj-border);
   animation: slideInRight 0.35s cubic-bezier(0.21, 1.02, 0.73, 1);
   cursor: pointer;
   transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
+    opacity 0.3s ease, transform 0.3s ease;
 }
 
 .alert-icon {
@@ -385,7 +382,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
-  color: white;
+  color: var(--gj-on-primary);
 }
 
 .alert-message {
@@ -400,42 +397,42 @@
 
 .alert-close {
   flex-shrink: 0;
-  color: #9ca3af;
+  color: var(--gj-muted);
   font-size: 0.85rem;
   padding: 6px 2px;
   line-height: 1;
 }
 
 .alert-success {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid var(--gj-success);
 }
 
 .alert-error {
-  border-left: 4px solid #ef4444;
+  border-left: 4px solid var(--gj-danger);
 }
 
 .alert-warning {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--gj-warning);
 }
 
 .alert-info {
-  border-left: 4px solid #1f6f5f;
+  border-left: 4px solid var(--gj-primary);
 }
 
 .alert-success .alert-icon {
-  background: #10b981;
+  background: var(--gj-success);
 }
 
 .alert-error .alert-icon {
-  background: #ef4444;
+  background: var(--gj-danger);
 }
 
 .alert-warning .alert-icon {
-  background: #f59e0b;
+  background: var(--gj-warning);
 }
 
 .alert-info .alert-icon {
-  background: #1f6f5f;
+  background: var(--gj-primary);
 }
 
 @keyframes slideInRight {
@@ -452,7 +449,7 @@
 /* 建立訂單按鈕未就緒狀態（仍可點擊，點擊時提示缺少的條件） */
 
 #checkoutBtn.checkout-not-ready {
-  background-color: #d1d5db !important;
+  background-color: var(--gj-border);
   box-shadow: none;
 }
 
@@ -470,7 +467,7 @@
   width: 16px;
   height: 16px;
   border: 2px solid transparent;
-  border-top-color: white;
+  border-top-color: var(--gj-surface);
   border-radius: 50%;
   left: 50%;
   top: 50%;
@@ -509,7 +506,7 @@ button.loading::after {
   background: inherit;
   border-radius: inherit;
   font-size: 0.9em;
-  color: #1f6f5f;
+  color: var(--gj-primary);
   font-weight: 500;
 }
 
@@ -521,7 +518,7 @@ button.loading::after {
   width: 24px;
   height: 24px;
   border: 3px solid rgba(31, 111, 95, 0.2);
-  border-top-color: #1f6f5f;
+  border-top-color: var(--gj-primary);
   border-radius: 50%;
   left: 50%;
   top: 50%;
@@ -540,8 +537,8 @@ button.loading::after {
 }
 
 .delete-confirm-header {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
+  background: var(--gj-danger);
+  color: var(--gj-on-primary);
   padding: 20px 24px;
   display: flex;
   align-items: center;
@@ -569,7 +566,7 @@ button.loading::after {
   margin-left: auto;
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  color: white;
+  color: var(--gj-on-primary);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -585,8 +582,8 @@ button.loading::after {
 }
 
 .delete-order-info {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--gj-surface);
+  border: 1px solid var(--gj-surface);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 24px;
@@ -594,7 +591,7 @@ button.loading::after {
 
 .delete-order-info .order-id {
   font-size: 0.8rem;
-  color: #991b1b;
+  color: var(--gj-danger);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;

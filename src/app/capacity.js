@@ -57,7 +57,7 @@ export function renderCapacitySettingsUI() {
       i +
       '" id="capDay' +
       i +
-      '">' +
+      '" class="gj-input">' +
       '<label class="day-toggle" for="capDayEnabled' +
       i +
       '">' +
@@ -95,7 +95,7 @@ export function renderOverrideTable() {
   if (!tbody) return;
   if (!state.capacitySettings.dateOverrides || state.capacitySettings.dateOverrides.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 24px;">尚無日期覆寫設定</td></tr>';
+      '<tr><td colspan="5" style="text-align: center; color: var(--gj-muted); padding: 24px;">尚無日期覆寫設定</td></tr>';
     return;
   }
   var todayStr = new Date().toISOString().slice(0, 10);
@@ -124,11 +124,11 @@ export function renderOverrideTable() {
         o.maxQuantity === '' || o.maxQuantity === null || o.maxQuantity === 0 ? '不限制' : o.maxQuantity;
       var statusBadge;
       if (isExpired) {
-        statusBadge = '<span style="color: #9ca3af;">已過期</span>';
+        statusBadge = '<span style="color: var(--gj-muted);">已過期</span>';
       } else if (o.enabled) {
-        statusBadge = '<span style="color: #16a34a; font-weight: 600;">啟用</span>';
+        statusBadge = '<span style="color: var(--gj-success); font-weight: 600;">啟用</span>';
       } else {
-        statusBadge = '<span style="color: #9ca3af;">停用</span>';
+        statusBadge = '<span style="color: var(--gj-muted);">停用</span>';
       }
       var rowStyle = isExpired ? ' style="opacity: 0.5;"' : '';
       var deleteButton =
@@ -138,7 +138,7 @@ export function renderOverrideTable() {
             escapeAttr(o.date) +
             ' 日期覆寫" onclick="deleteDateOverrideById(\'' +
             escapeAttr(o.id) +
-            '\')" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
+            '\')" style="padding: 4px 10px; background: var(--gj-surface); color: var(--gj-danger); border: 1px solid var(--gj-surface); border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
             '<i class="fas fa-trash-alt" aria-hidden="true"></i>' +
             '</button>';
       return (
@@ -205,12 +205,12 @@ export function saveWeekdayCapacitySettings() {
       })
       .withFailureHandler(function (error) {
         if (statusEl) {
-          statusEl.style.color = '#dc2626';
+          statusEl.style.color = 'var(--gj-danger)';
           statusEl.textContent = '儲存失敗: ' + error.message;
         }
         setTimeout(function () {
           if (statusEl) {
-            statusEl.style.color = '#9ca3af';
+            statusEl.style.color = 'var(--gj-muted)';
             statusEl.textContent = '';
           }
         }, 3000);
@@ -218,7 +218,7 @@ export function saveWeekdayCapacitySettings() {
       .saveWeekdayCapacity(settings);
   } else {
     if (statusEl) {
-      statusEl.style.color = '#dc2626';
+      statusEl.style.color = 'var(--gj-danger)';
       statusEl.textContent = '尚未連接 Firebase，未儲存';
     }
   }

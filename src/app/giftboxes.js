@@ -7,6 +7,48 @@ import { updateCartDisplay, closeCartModal } from './cart.js';
 import { showSectionById } from './platform.js';
 
 // === 禮盒功能函數 ===
+function renderGiftboxProductCard(product, selectedQuantity = 0) {
+  const quantity = Math.max(0, parseInt(selectedQuantity, 10) || 0);
+  const productId = escapeAttr(product.productId);
+  const handlerId = escapeHandlerArgument(product.productId);
+  const productName = escapeHtml(product.productName);
+  const accessibleName = escapeAttr(product.productName);
+  const price = (value) => `NT$ ${Number(value || 0).toLocaleString('zh-TW')}`;
+  const effectivePrice = getEffectivePrice(product);
+  const companyPriceActive =
+    state.isCompanyCustomer &&
+    Number(product.companyPrice) > 0 &&
+    Number(product.companyPrice) !== Number(product.price);
+  return `<div class="giftbox-product-card gj-pos-card ${quantity > 0 ? 'has-quantity' : ''}" id="card_${productId}">
+    <div class="giftbox-product-meta">
+      <span class="giftbox-product-category">${escapeHtml(product.category || '禮盒商品')}</span>
+      <span class="giftbox-product-selection"><i class="fas fa-check" aria-hidden="true"></i> 已選 <span class="giftbox-selected-quantity">${quantity}</span> 粒</span>
+    </div>
+    <div class="giftbox-product-info">
+      <h3>${productName}</h3>
+      <div class="giftbox-product-pricing"><span class="price">${price(effectivePrice)}</span><span class="giftbox-price-unit">／粒</span>${companyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</div>
+      ${companyPriceActive ? `<span class="company-original-price">原價 ${price(product.price)}</span>` : ''}
+    </div>
+    <div class="giftbox-product-quantity">
+      <label for="display_${productId}">數量（粒）</label>
+      <div class="giftbox-quantity-control">
+        <button type="button" class="giftbox-qty-btn" aria-label="減少 ${accessibleName} 數量" ${quantity === 0 ? 'disabled' : ''} onclick="adjustGiftboxQty('${handlerId}', -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
+        <input type="number" inputmode="numeric" min="0" step="1" class="giftbox-qty-display ${quantity > 0 ? 'has-value' : ''} gj-input" id="display_${productId}" aria-label="${accessibleName} 數量（粒）" value="${quantity}" onfocus="this.select()" onchange="setGiftboxQty('${handlerId}', this.value)">
+        <button type="button" class="giftbox-qty-btn" aria-label="增加 ${accessibleName} 數量" onclick="adjustGiftboxQty('${handlerId}', 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <input type="hidden" class="giftbox-product-input" id="qty_${productId}" value="${quantity}">
+  </div>`;
+}
+
+function updateGiftboxCard(productId, quantity) {
+  const card = document.getElementById('card_' + productId);
+  document.getElementById('display_' + productId).classList.toggle('has-value', quantity > 0);
+  card.classList.toggle('has-quantity', quantity > 0);
+  card.querySelector('.giftbox-selected-quantity').textContent = quantity;
+  card.querySelector('.giftbox-qty-btn').disabled = quantity === 0;
+}
+
 function renderGiftboxFilterTabs(products) {
   const tabs = document.getElementById('giftboxFilterTabs');
   const categories = [...new Set(products.map((product) => product.category).filter(Boolean))];
@@ -71,38 +113,11 @@ export function loadGiftboxProducts() {
   if (giftboxProducts.length === 0) {
     renderGiftboxFilterTabs(giftboxProducts);
     container.innerHTML =
-      '<p style="text-align: center; padding: 20px; color: #6b7280;">目前沒有可用於禮盒的商品</p>';
+      '<p style="text-align: center; padding: 20px; color: var(--gj-muted);">目前沒有可用於禮盒的商品</p>';
     return;
   }
   container.innerHTML = `<div class="giftbox-product-grid">${giftboxProducts
-    .map((p) => {
-      const eprice = getEffectivePrice(p);
-      const isCompanyPriceActive =
-        state.isCompanyCustomer &&
-        p.companyPrice &&
-        parseFloat(p.companyPrice) > 0 &&
-        parseFloat(p.companyPrice) !== parseFloat(p.price);
-      return `
-                <div class="giftbox-product-card" id="card_${escapeAttr(p.productId)}">
-                    <div class="giftbox-product-icon">
-                        <i class="fas fa-cookie-bite"></i>
-                    </div>
-                    <div class="giftbox-product-info">
-                        <h4>${escapeHtml(p.productName)}</h4>
-                        <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + '</span>' : ''}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</span>
-                    </div>
-                    <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display" id="display_${escapeAttr(p.productId)}" value="0" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <input type="hidden" class="giftbox-product-input" id="qty_${escapeAttr(p.productId)}" value="0">
-                </div>`;
-    })
+    .map((product) => renderGiftboxProductCard(product))
     .join('')}</div>`;
   updateGiftboxProgress();
   renderGiftboxFilterTabs(giftboxProducts);
@@ -111,7 +126,6 @@ export function loadGiftboxProducts() {
 export function adjustGiftboxQty(productId, change) {
   const input = document.getElementById('qty_' + productId);
   const display = document.getElementById('display_' + productId);
-  const card = document.getElementById('card_' + productId);
   let currentVal = parseInt(input.value) || 0;
   // 計算目前已選總數
   const currentTotal = Object.values(state.giftboxSelection).reduce((sum, qty) => sum + qty, 0);
@@ -125,13 +139,7 @@ export function adjustGiftboxQty(productId, change) {
   input.value = newVal;
   display.value = newVal;
   // 更新視覺狀態
-  if (newVal > 0) {
-    display.classList.add('has-value');
-    card.classList.add('has-quantity');
-  } else {
-    display.classList.remove('has-value');
-    card.classList.remove('has-quantity');
-  }
+  updateGiftboxCard(productId, newVal);
   updateGiftboxSelection(productId, newVal);
 }
 
@@ -139,7 +147,6 @@ export function adjustGiftboxQty(productId, change) {
 export function setGiftboxQty(productId, rawValue) {
   const input = document.getElementById('qty_' + productId);
   const display = document.getElementById('display_' + productId);
-  const card = document.getElementById('card_' + productId);
   let newVal = Math.max(0, parseInt(rawValue, 10) || 0);
   // 其他商品已選的總數
   const otherTotal = Object.entries(state.giftboxSelection)
@@ -151,8 +158,7 @@ export function setGiftboxQty(productId, rawValue) {
   }
   input.value = newVal;
   display.value = newVal;
-  display.classList.toggle('has-value', newVal > 0);
-  card.classList.toggle('has-quantity', newVal > 0);
+  updateGiftboxCard(productId, newVal);
   updateGiftboxSelection(productId, newVal);
 }
 
@@ -171,14 +177,14 @@ export function updateGiftboxProgress() {
   document.getElementById('selectedCount').textContent = totalSelected;
   // 移除按鈕鎖定，改為顏色提示
   if (totalSelected > state.currentGiftboxSize) {
-    document.querySelector('.giftbox-progress').style.color = '#c66b6b';
-    document.querySelector('.giftbox-progress').style.borderLeftColor = '#c66b6b';
+    document.querySelector('.giftbox-progress').style.color = 'var(--gj-danger)';
+    document.querySelector('.giftbox-progress').style.borderLeftColor = 'var(--gj-danger)';
   } else if (totalSelected === state.currentGiftboxSize) {
-    document.querySelector('.giftbox-progress').style.color = '#2ecc71';
-    document.querySelector('.giftbox-progress').style.borderLeftColor = '#2ecc71';
+    document.querySelector('.giftbox-progress').style.color = 'var(--gj-success)';
+    document.querySelector('.giftbox-progress').style.borderLeftColor = 'var(--gj-success)';
   } else {
-    document.querySelector('.giftbox-progress').style.color = 'var(--primary-dark)';
-    document.querySelector('.giftbox-progress').style.borderLeftColor = 'var(--primary-color)';
+    document.querySelector('.giftbox-progress').style.color = 'var(--gj-primary)';
+    document.querySelector('.giftbox-progress').style.borderLeftColor = 'var(--gj-primary)';
   }
 }
 
@@ -232,23 +238,20 @@ export function updateGiftboxSummary() {
       summaryHtml += `
                         <div class="giftbox-summary-product">
                             <div class="product-info">
-                                <div class="product-icon">
-                                    <i class="fas fa-cookie-bite"></i>
-                                </div>
                                 <div>
                                     <div class="product-name">${escapeHtml(product.productName)}</div>
-                                    <div class="product-qty">x ${quantity}</div>
+                                    <div class="product-qty">${quantity} 粒 · 單價 NT$ ${getEffectivePrice(product).toLocaleString('zh-TW')}</div>
                                 </div>
                             </div>
-                            <div class="product-price">NT$ ${subtotal}</div>
+                            <div class="product-price"><span>小計</span>NT$ ${subtotal.toLocaleString('zh-TW')}</div>
                         </div>
                     `;
     }
   }
   summaryHtml += `
                 <div class="giftbox-summary-total">
-                    <span class="total-label"><i class="fas fa-calculator"></i> 單組禮盒總價</span>
-                    <span class="total-price">NT$ ${totalPrice}</span>
+                    <span class="total-label">單組禮盒總價</span>
+                    <span class="total-price">NT$ ${totalPrice.toLocaleString('zh-TW')}</span>
                 </div>
             `;
   summaryContainer.innerHTML = summaryHtml;
@@ -403,41 +406,11 @@ export function loadGiftboxProductsForEdit(existingProducts) {
   if (giftboxProducts.length === 0) {
     renderGiftboxFilterTabs(giftboxProducts);
     container.innerHTML =
-      '<p style="text-align: center; padding: 20px; color: #6b7280;">目前沒有可用於禮盒的商品</p>';
+      '<p style="text-align: center; padding: 20px; color: var(--gj-muted);">目前沒有可用於禮盒的商品</p>';
     return;
   }
   container.innerHTML = `<div class="giftbox-product-grid">${giftboxProducts
-    .map((p) => {
-      const existingQty = existingProducts[p.productId] || 0;
-      const hasQty = existingQty > 0;
-      const eprice = getEffectivePrice(p);
-      const isCompanyPriceActive =
-        state.isCompanyCustomer &&
-        p.companyPrice &&
-        parseFloat(p.companyPrice) > 0 &&
-        parseFloat(p.companyPrice) !== parseFloat(p.price);
-      return `
-                <div class="giftbox-product-card ${hasQty ? 'has-quantity' : ''}" id="card_${escapeAttr(p.productId)}">
-                    <div class="giftbox-product-icon">
-                        <i class="fas fa-cookie-bite"></i>
-                    </div>
-                    <div class="giftbox-product-info">
-                        <h4>${escapeHtml(p.productName)}</h4>
-                        <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + '</span>' : ''}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">企業價</span>' : ''}</span>
-                    </div>
-                    <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display ${hasQty ? 'has-value' : ''}" id="display_${escapeAttr(p.productId)}" value="${existingQty}" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <input type="hidden" class="giftbox-product-input" id="qty_${escapeAttr(p.productId)}" value="${existingQty}">
-                </div>
-            `;
-    })
+    .map((product) => renderGiftboxProductCard(product, existingProducts[product.productId]))
     .join('')}</div>`;
   updateGiftboxProgress();
   renderGiftboxFilterTabs(giftboxProducts);

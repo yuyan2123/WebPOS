@@ -4,13 +4,14 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#1f6f5f">
-    <meta name="app-version" content="0.14.1+4716a4db9d69">
-    <meta name="app-updated-at" content="2026-09-23T01:49:35.645Z">
+    <meta name="theme-color" content="#006973">
+    <meta name="app-version" content="0.15.0+3a1dbd673137">
+    <meta name="app-updated-at" content="2026-09-27T23:22:11.353Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
     <title>WebPOS</title>
+    <script src="/js/theme.js"></script>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -21,7 +22,7 @@
     <link rel="stylesheet" href="/css/app.css">
     <link rel="stylesheet" href="/css/scrollbars.css">
 </head>
-<body class="h-full flex flex-col overflow-hidden">
+<body class="gj-ui h-full flex flex-col overflow-hidden">
 
     <!-- 可視範圍量測探針（iframe 內嵌時用來偵測被瀏覽器介面裁切的高度） -->
     <div id="viewportProbe" aria-hidden="true"></div>
@@ -44,21 +45,21 @@
     <header class="app-navigation" inert>
       <a class="brand" href="#customer" aria-label="WebPOS 首頁"><img class="brand-mark" src="/icons/icon-192.png" width="42" height="42" alt=""><span>WebPOS<span class="brand-subtitle">訂單工作台</span></span></a>
       <nav aria-label="主要導覽">
-        <div class="navigation-group"><p class="navigation-label">建立訂單</p><button type="button" onclick="showSection('customer', this)" id="nav-customer" class="nav-item" aria-label="客戶資料"><i class="fas fa-user" aria-hidden="true"></i><span>客戶資料</span></button>
-<button type="button" onclick="showSection('date', this)" id="nav-date" class="nav-item" aria-label="交貨日期"><i class="fas fa-calendar" aria-hidden="true"></i><span>交貨日期</span></button>
-<button type="button" onclick="showSection('gift', this)" id="nav-gift" class="nav-item" aria-label="商品"><i class="fas fa-box-open" aria-hidden="true"></i><span>商品</span></button>
-<button type="button" onclick="showSection('giftbox', this)" id="nav-giftbox" class="nav-item" aria-label="禮盒組合"><i class="fas fa-box" aria-hidden="true"></i><span>禮盒組合</span></button></div>
+        <div class="navigation-group"><p class="navigation-label">建立訂單</p><button type="button" onclick="showSection('customer', this)" id="nav-customer" class="nav-item" aria-label="客戶資料"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span>客戶資料</span></button>
+<button type="button" onclick="showSection('date', this)" id="nav-date" class="nav-item" aria-label="交貨日期"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></svg><span>交貨日期</span></button>
+<button type="button" onclick="showSection('gift', this)" id="nav-gift" class="nav-item" aria-label="商品"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4Zm0 0 9 4 9-4M12 11v10M7 5l10 4"/></svg><span>商品</span></button>
+<button type="button" onclick="showSection('giftbox', this)" id="nav-giftbox" class="nav-item" aria-label="禮盒組合"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13"/><path d="M12 8C4 8 6 1 9 3l3 5Zm0 0c8 0 6-7 3-5l-3 5Z"/></svg><span>禮盒組合</span></button></div>
         <div class="navigation-group management">
           <p class="navigation-label">管理</p>
-          <button type="button" onclick="showSection('search', this)" id="nav-search" class="nav-item" aria-label="訂單查詢"><i class="fas fa-search" aria-hidden="true"></i><span>訂單查詢</span></button>
-          <button type="button" id="managementToggle" class="nav-item management-toggle" aria-expanded="false" aria-controls="managementLinks"><i class="fas fa-sliders" aria-hidden="true"></i><span>管理</span></button>
+          <button type="button" onclick="showSection('search', this)" id="nav-search" class="nav-item" aria-label="訂單查詢"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg><span>訂單查詢</span></button>
+          <button type="button" id="managementToggle" class="nav-item management-toggle" aria-expanded="false" aria-controls="managementLinks"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4m4 0h8M4 12h10m4 0h2M4 18h2m4 0h10"/><circle cx="10" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg><span>管理</span></button>
           <div id="managementLinks" class="management-links" role="group" aria-label="管理功能">
-            <button type="button" id="nav-products" class="nav-item" data-panel="products"><i class="fas fa-box-open" aria-hidden="true"></i><span>商品管理</span></button>
-            <button type="button" id="nav-capacity" class="nav-item" data-panel="capacity"><i class="fas fa-calendar-check" aria-hidden="true"></i><span>供應量設定</span></button>
-            <button type="button" id="nav-demand" class="nav-item" data-panel="demand"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span>需求統計</span></button>
-            <button type="button" id="nav-reports" class="nav-item" data-panel="reports"><i class="fas fa-chart-bar" aria-hidden="true"></i><span>營業報表</span></button>
-            <button type="button" id="nav-printer" class="nav-item" data-panel="printer"><i class="fas fa-print" aria-hidden="true"></i><span>出單機</span></button>
-            <button type="button" id="nav-device" class="nav-item" data-panel="device"><i class="fas fa-laptop" aria-hidden="true"></i><span>裝置資訊</span></button>
+            <button type="button" id="nav-products" class="nav-item" data-panel="products"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4Zm0 0 9 4 9-4M12 11v10M7 5l10 4"/></svg><span>商品管理</span></button>
+            <button type="button" id="nav-capacity" class="nav-item" data-panel="capacity"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-14 5 3 3 5-5"/></svg><span>供應量設定</span></button>
+            <button type="button" id="nav-demand" class="nav-item" data-panel="demand"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M9 11h6m-6 5h6"/></svg><span>需求統計</span></button>
+            <button type="button" id="nav-reports" class="nav-item" data-panel="reports"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v18h17M8 16v-4m5 4V8m5 8V5"/></svg><span>營業報表</span></button>
+            <button type="button" id="nav-printer" class="nav-item" data-panel="printer"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4"/><path d="M7 14h10v7H7zM17 11h1"/></svg><span>出單機</span></button>
+            <button type="button" id="nav-device" class="nav-item" data-panel="device"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="13" rx="2"/><path d="M2 21h20l-2-5H4ZM10 18h4"/></svg><span>裝置資訊</span></button>
           </div>
         </div>
       </nav>
@@ -68,7 +69,7 @@
     <!-- Main Content -->
     <main inert aria-busy="true" id="mainContent" tabindex="-1" class="workspace-main">
       <aside id="printer-last-order" aria-label="最近建立的訂單" hidden></aside>
-      <div class="workspace-heading"><div><p class="eyebrow">WebPOS · 訂單工作台</p><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">先填寫客戶與配送資料</p></div></div>
+      <div class="workspace-heading"><div><h1 id="workspaceTitle">建立訂單</h1><p id="workspaceSubtitle">客戶資料與配送方式</p></div></div>
       <aside id="orderContext" class="order-context" aria-label="目前訂單摘要">
         <span class="context-mode" id="workspaceMode">新訂單</span>
         <button type="button" data-route="customer"><span class="context-label">客戶</span><span id="workspaceCustomer">尚未填寫客戶</span></button>
@@ -77,14 +78,14 @@
       </aside>
 
         <!-- 客戶資訊頁 -->
-        <section id="customer" class="content-section active max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm">
-            <p class="text-sm text-gray-500 mb-4">客戶姓名或聯絡方式請至少填寫一項</p>
+        <section id="customer" class="content-section active max-w-4xl mx-auto bg-md-content p-8 rounded-2xl shadow-sm">
+            <p class="text-sm text-md-on-surface-variant mb-4">客戶姓名或聯絡方式請至少填寫一項</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="customer-ac-wrap">
-                    <label class="block text-base font-medium text-gray-700 mb-2">客戶姓名</label>
+                    <label class="block text-base font-medium text-md-on-surface-variant mb-2">客戶姓名</label>
                     <div class="name-title-row">
-                        <input type="text" id="customerName" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg name-title-input" placeholder="請輸入姓名" autocomplete="off">
-                        <div class="name-title-group" id="nameTitleGroup">
+                        <input type="text" id="customerName" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl focus:ring-2 focus:ring-md-primary outline-none text-lg name-title-input gj-input" placeholder="請輸入姓名" autocomplete="off">
+                        <div class="name-title-group gj-segment" id="nameTitleGroup">
                             <button type="button" class="name-title-btn" data-title="先生" onclick="toggleNameTitle(this)">先生</button>
                             <button type="button" class="name-title-btn" data-title="小姐" onclick="toggleNameTitle(this)">小姐</button>
                         </div>
@@ -92,10 +93,10 @@
                     <div id="customerAcList" class="customer-ac-list"></div>
                 </div>
                 <div class="customer-ac-wrap">
-                    <label id="customerContactLabel" for="customerPhone" class="block text-base font-medium text-gray-700 mb-2">聯絡電話</label>
+                    <label id="customerContactLabel" for="customerPhone" class="block text-base font-medium text-md-on-surface-variant mb-2">聯絡電話</label>
                     <div class="name-title-row">
-                        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="customerPhone" class="name-title-input w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg" placeholder="09xx-xxx-xxx" autocomplete="off">
-                        <div class="name-title-group contact-method-toggle" role="group" aria-label="聯絡方式">
+                        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="customerPhone" class="name-title-input w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl focus:ring-2 focus:ring-md-primary outline-none text-lg gj-input" placeholder="09xx-xxx-xxx" autocomplete="off">
+                        <div class="name-title-group gj-segment contact-method-toggle" role="group" aria-label="聯絡方式">
                             <button id="contactMethodPhone" type="button" class="name-title-btn active">電話</button>
                             <button id="contactMethodLine" type="button" class="name-title-btn">LINE</button>
                         </div>
@@ -105,8 +106,8 @@
             </div>
 
             <div class="mb-6">
-                <label class="block text-base font-medium text-gray-700 mb-2">客戶類型</label>
-                <div class="grove-btn-group">
+                <label class="block text-base font-medium text-md-on-surface-variant mb-2">客戶類型</label>
+                <div class="grove-btn-group gj-segment">
                     <button id="customerNormal" class="active" onclick="selectCustomerType(this, false)">一般客戶</button>
                     <button id="customerCompany" onclick="selectCustomerType(this, true)">企業客戶</button>
                 </div>
@@ -114,8 +115,8 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                    <label class="block text-base font-medium text-gray-700 mb-2">配送方式</label>
-                    <div class="grove-btn-group">
+                    <label class="block text-base font-medium text-md-on-surface-variant mb-2">配送方式</label>
+                    <div class="grove-btn-group gj-segment">
                         <button id="deliveryHome" data-value="外送" class="active" onclick="selectDeliveryType(this, '外送')">外送</button>
                         <button id="deliveryShipping" data-value="寄貨" onclick="selectDeliveryType(this, '寄貨')">寄貨</button>
                         <button id="deliveryPickup" data-value="自取" onclick="selectDeliveryType(this, '自取')">自取</button>
@@ -123,8 +124,8 @@
                     <input type="hidden" id="deliveryTypeValue" value="外送">
                 </div>
                 <div id="shippingFeeGroup">
-                    <label class="block text-base font-medium text-gray-700 mb-2">運費設定</label>
-                    <div class="grove-btn-group">
+                    <label class="block text-base font-medium text-md-on-surface-variant mb-2">運費設定</label>
+                    <div class="grove-btn-group gj-segment">
                         <button id="freeShipping" data-value="free" class="active" onclick="selectShippingFee(this, 'free')">免運</button>
                         <button id="chargeShipping" data-value="charge" onclick="selectShippingFee(this, 'charge')">收取運費</button>
                     </div>
@@ -133,26 +134,26 @@
             </div>
 
             <div id="shippingFeeInput" style="display: none;" class="mb-6">
-                <label class="block text-base font-medium text-gray-700 mb-2">運費金額</label>
-                <input type="number" inputmode="decimal" step="any" id="shippingFee" placeholder="請輸入運費金額" min="0" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" onchange="updateOrderTotal()">
+                <label class="block text-base font-medium text-md-on-surface-variant mb-2">運費金額</label>
+                <input type="number" inputmode="decimal" step="any" id="shippingFee" placeholder="請輸入運費金額" min="0" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl outline-none gj-input" onchange="updateOrderTotal()">
             </div>
 
-            <div class="border-t border-gray-100 my-6"></div>
+            <div class="border-t border-md-outline-variant my-6"></div>
 
             <details class="recipient-details" id="recipientDetails"><summary>收件人與客戶不同 <span>選填</span></summary>
             <div id="recipientInfoGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                <input type="text" id="recipientName" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="收件人姓名">
-                <input type="tel" inputmode="numeric" pattern="[0-9]*" id="recipientPhone" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="收件人電話">
+                <input type="text" id="recipientName" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl outline-none gj-input" placeholder="收件人姓名">
+                <input type="tel" inputmode="numeric" pattern="[0-9]*" id="recipientPhone" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl outline-none gj-input" placeholder="收件人電話">
             </div>
             </details>
             <div class="mb-8">
                 <label for="customerAddress" class="field-label">配送地址</label>
-                <input type="text" id="customerAddress" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="請輸入完整地址">
+                <input type="text" id="customerAddress" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl outline-none gj-input" placeholder="請輸入完整地址">
             </div>
 
-            <div class="flex gap-4">
-                <button onclick="clearCustomerForm()" class="flex-1 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-300 transition">清空資料</button>
-                <button onclick="saveCustomer()" class="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2">
+            <div class="flex gap-4 customer-actions">
+                <button onclick="clearCustomerForm()" class="flex-1 py-4 text-md-on-surface-variant rounded-xl font-medium text-base gj-btn gj-btn--quiet">清空資料</button>
+                <button onclick="saveCustomer()" class="flex-1 py-4 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg hover:bg-md-primary transition shadow-lg flex items-center justify-center gap-2 gj-btn gj-btn--primary">
                     儲存並下一步 <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
@@ -160,38 +161,38 @@
 
         <!-- 日期選擇頁 -->
         <section id="date" class="content-section max-w-4xl mx-auto min-h-full flex flex-col">
-            <div class="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col">
-                <p id="selected-date-display" class="text-gray-500 mb-6">目前尚未選擇日期</p>
+            <div class="bg-md-content p-6 rounded-2xl shadow-sm flex-1 flex flex-col">
+                <p id="selected-date-display" class="text-md-on-surface-variant mb-6">目前尚未選擇日期</p>
 
                 <div class="flex-1 flex flex-col max-w-2xl mx-auto w-full">
-                    <div class="flex justify-between items-center mb-6 px-4 py-2 bg-gray-50 rounded-xl">
-                        <button onclick="changeMonth(-1)" class="calendar-month-nav p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition" aria-label="上一個月">
+                    <div class="flex justify-between items-center mb-6 px-4 py-2 bg-md-surface rounded-xl">
+                        <button onclick="changeMonth(-1)" class="calendar-month-nav p-3 hover:bg-md-content hover:shadow-sm rounded-lg text-md-on-surface-variant transition" aria-label="上一個月">
                             <i class="fas fa-chevron-left text-xl"></i>
                         </button>
-                        <h3 id="calendar-month-year" class="text-2xl font-bold text-gray-800 tracking-wide">2023年 11月</h3>
-                        <button onclick="changeMonth(1)" class="calendar-month-nav p-3 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition" aria-label="下一個月">
+                        <h3 id="calendar-month-year" class="text-2xl font-bold text-md-on-surface tracking-wide">2023年 11月</h3>
+                        <button onclick="changeMonth(1)" class="calendar-month-nav p-3 hover:bg-md-content hover:shadow-sm rounded-lg text-md-on-surface-variant transition" aria-label="下一個月">
                             <i class="fas fa-chevron-right text-xl"></i>
                         </button>
                     </div>
 
                     <div class="grid grid-cols-7 gap-2 mb-4 text-center">
-                        <div class="text-red-500 font-bold">日</div>
-                        <div class="text-gray-500 font-bold">一</div>
-                        <div class="text-gray-500 font-bold">二</div>
-                        <div class="text-gray-500 font-bold">三</div>
-                        <div class="text-gray-500 font-bold">四</div>
-                        <div class="text-gray-500 font-bold">五</div>
-                        <div class="text-green-600 font-bold">六</div>
+                        <div class="text-md-error font-bold">日</div>
+                        <div class="text-md-on-surface-variant font-bold">一</div>
+                        <div class="text-md-on-surface-variant font-bold">二</div>
+                        <div class="text-md-on-surface-variant font-bold">三</div>
+                        <div class="text-md-on-surface-variant font-bold">四</div>
+                        <div class="text-md-on-surface-variant font-bold">五</div>
+                        <div class="text-md-success font-bold">六</div>
                     </div>
 
                     <div id="calendar-grid" class="grid grid-cols-7 gap-3 text-lg flex-1 align-start"></div>
 
                     <!-- 隱藏的原生日期選擇器，用於保持兼容性 -->
-                    <input type="date" id="deliveryDate" style="display: none;">
+                    <input type="date" id="deliveryDate" style="display: none;" class="gj-input">
                 </div>
 
                 <div class="mt-6 pt-6 border-t">
-                    <button id="btn-confirm-date" onclick="confirmDateSelection()" class="w-full py-4 bg-gray-300 text-white rounded-xl font-bold text-lg transition shadow-sm cursor-not-allowed" disabled>
+                    <button id="btn-confirm-date" onclick="confirmDateSelection()" class="w-full py-4 bg-md-surface-container text-md-on-primary rounded-xl font-bold text-lg transition shadow-sm cursor-not-allowed" disabled>
                         請先選擇日期
                     </button>
                 </div>
@@ -208,47 +209,47 @@
         <section id="giftbox" class="content-section max-w-6xl mx-auto min-h-full flex flex-col">
             <!-- 步驟1: 選擇盒裝規格 -->
             <div id="giftboxStep1" class="giftbox-step active flex-1 flex flex-col items-center justify-center">
-                <h2 class="text-3xl font-bold mb-10 text-gray-800">請選擇禮盒規格</h2>
+                <h2 class="text-3xl font-bold mb-10 text-md-on-surface">請選擇禮盒規格</h2>
                 <div class="grid grid-cols-3 gap-8 w-full max-w-3xl">
-                    <button onclick="selectGiftboxSize(6)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
-                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
-                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">6入</span>
+                    <button onclick="selectGiftboxSize(6)" class="p-10 bg-md-content border-2 border-md-outline-variant rounded-2xl shadow-sm hover:border-md-primary hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-md-primary mb-4 group-hover:text-md-primary transition"></i>
+                        <span class="text-3xl font-bold text-md-on-surface-variant group-hover:text-md-primary">6入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(8)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
-                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
-                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">8入</span>
+                    <button onclick="selectGiftboxSize(8)" class="p-10 bg-md-content border-2 border-md-outline-variant rounded-2xl shadow-sm hover:border-md-primary hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-md-primary mb-4 group-hover:text-md-primary transition"></i>
+                        <span class="text-3xl font-bold text-md-on-surface-variant group-hover:text-md-primary">8入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(10)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
-                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
-                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">10入</span>
+                    <button onclick="selectGiftboxSize(10)" class="p-10 bg-md-content border-2 border-md-outline-variant rounded-2xl shadow-sm hover:border-md-primary hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-md-primary mb-4 group-hover:text-md-primary transition"></i>
+                        <span class="text-3xl font-bold text-md-on-surface-variant group-hover:text-md-primary">10入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(12)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
-                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
-                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">12入</span>
+                    <button onclick="selectGiftboxSize(12)" class="p-10 bg-md-content border-2 border-md-outline-variant rounded-2xl shadow-sm hover:border-md-primary hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-md-primary mb-4 group-hover:text-md-primary transition"></i>
+                        <span class="text-3xl font-bold text-md-on-surface-variant group-hover:text-md-primary">12入</span>
                     </button>
-                    <button onclick="selectGiftboxSize(15)" class="p-10 bg-white border-2 border-gray-100 rounded-2xl shadow-sm hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
-                        <i class="fas fa-box-open text-5xl text-blue-300 mb-4 group-hover:text-blue-600 transition"></i>
-                        <span class="text-3xl font-bold text-gray-700 group-hover:text-blue-600">15入</span>
+                    <button onclick="selectGiftboxSize(15)" class="p-10 bg-md-content border-2 border-md-outline-variant rounded-2xl shadow-sm hover:border-md-primary hover:shadow-xl hover:-translate-y-1 transition flex flex-col items-center group">
+                        <i class="fas fa-box-open text-5xl text-md-primary mb-4 group-hover:text-md-primary transition"></i>
+                        <span class="text-3xl font-bold text-md-on-surface-variant group-hover:text-md-primary">15入</span>
                     </button>
                 </div>
             </div>
 
             <!-- 步驟2: 選擇商品組合 -->
             <div id="giftboxStep2" class="giftbox-step flex-col h-full" style="display: none;">
-                <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm">
-                    <h2 id="giftboxStep2Title" class="text-2xl font-bold text-gray-800">自選禮盒內容</h2>
-                    <div class="giftbox-progress bg-blue-50 px-6 py-2 rounded-lg border-l-4 border-blue-500 transition-colors duration-300">
-                        <span class="text-gray-600">目前進度: </span>
-                        <span id="selectedCount" class="font-bold text-2xl text-blue-600">0</span>
-                        <span class="text-gray-400 text-lg"> / </span>
-                        <span id="targetCount" class="font-bold text-gray-600 text-lg">6</span>
+                <div class="flex justify-between items-center mb-4 bg-md-content p-4 rounded-xl shadow-sm">
+                    <h2 id="giftboxStep2Title" class="text-2xl font-bold text-md-on-surface">自選禮盒內容</h2>
+                    <div class="giftbox-progress bg-md-primary-container px-6 py-2 rounded-lg border-l-4 border-md-primary transition-colors duration-300" role="status" aria-live="polite" aria-atomic="true">
+                        <span class="text-md-on-surface-variant">目前進度: </span>
+                        <span id="selectedCount" class="font-bold text-2xl text-md-primary">0</span>
+                        <span class="text-md-on-surface-variant text-lg"> / </span>
+                        <span id="targetCount" class="font-bold text-md-on-surface-variant text-lg">6</span>
                     </div>
                 </div>
                 <div id="giftboxFilterTabs" class="products-filter-tabs" role="group" aria-label="禮盒商品類別"></div>
-                <div id="giftboxProducts" class="giftbox-product-list bg-white border rounded-xl p-4 mb-4">載入中...</div>
+                <div id="giftboxProducts" class="giftbox-product-list bg-md-content border rounded-xl p-4 mb-4">載入中...</div>
                 <div class="flex gap-4">
-                    <button onclick="backToStep1()" class="px-8 py-3 bg-gray-200 rounded-xl font-bold text-gray-700">重選規格</button>
-                    <button id="proceedStep3" onclick="proceedToStep3()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-lg">下一步</button>
+                    <button onclick="backToStep1()" class="px-8 py-3 bg-md-surface-container rounded-xl font-bold text-md-on-surface-variant gj-btn gj-btn--tonal">重選規格</button>
+                    <button id="proceedStep3" onclick="proceedToStep3()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg gj-btn gj-btn--primary">下一步</button>
                 </div>
             </div>
 
@@ -256,34 +257,31 @@
             <div id="giftboxStep3" class="giftbox-step flex-col" style="display: none;">
                 <div class="giftbox-confirm-container">
                     <div class="giftbox-confirm-header">
-                        <div class="giftbox-confirm-icon">
-                            <i class="fas fa-box-open"></i>
-                        </div>
                         <div class="giftbox-confirm-title">
-                            <h2>完成訂購</h2>
+                            <h2>確認禮盒內容</h2>
                             <span id="giftboxSizeLabel">6粒裝禮盒</span>
                         </div>
                     </div>
 
                     <div class="giftbox-summary-card">
-                        <h4><i class="fas fa-list-check"></i> 禮盒內容總覽</h4>
+                        <h3>每盒商品明細</h3>
                         <div id="giftboxSummary" class="giftbox-summary-list"></div>
                     </div>
 
                     <div class="giftbox-form-section">
                         <div class="giftbox-form-group">
-                            <label><i class="fas fa-layer-group"></i> 需要幾組禮盒</label>
-                            <input type="number" inputmode="numeric" step="1" id="giftboxQuantity" value="1" min="1" oninput="updateGiftboxPrice()">
+                            <label for="giftboxQuantity">禮盒組數</label>
+                            <input type="number" inputmode="numeric" step="1" id="giftboxQuantity" value="1" min="1" oninput="updateGiftboxPrice()" class="gj-input">
                         </div>
                         <div class="giftbox-form-group">
-                            <label><i class="fas fa-sticky-note"></i> 備註</label>
-                            <input type="text" id="giftboxNotes" placeholder="禮盒備註（選填）">
+                            <label for="giftboxNotes">備註（選填）</label>
+                            <input type="text" id="giftboxNotes" placeholder="禮盒備註（選填）" class="gj-input">
                         </div>
                     </div>
 
                     <div class="giftbox-special-price-section">
-                        <label><i class="fas fa-tag"></i> 特價設定（每盒）</label>
-                        <input type="number" inputmode="decimal" step="any" id="giftboxSpecialPriceInput" placeholder="留空使用原價" min="0" oninput="updateGiftboxPrice()" style="width: 100%; padding: 12px 16px; border: 2px solid #b9d8cc; border-radius: 10px; background: white; outline: none;">
+                        <label for="giftboxSpecialPriceInput">自訂每盒價格（選填）</label>
+                        <input type="number" inputmode="decimal" step="any" id="giftboxSpecialPriceInput" placeholder="留空使用原價" min="0" oninput="updateGiftboxPrice()" style="width: 100%; padding: 12px 16px; border: 2px solid var(--gj-border); border-radius: 10px; background: var(--gj-surface); outline: none;" class="gj-input">
                         <div id="giftboxPriceComparison" style="display: none;" class="giftbox-price-comparison">
                             <span class="original">原價：NT$ <span id="giftboxOriginalTotalText">0</span></span>
                             <span class="special">特價：NT$ <span id="giftboxSpecialTotalText">0</span></span>
@@ -292,8 +290,8 @@
 
                     <div class="giftbox-action-buttons">
                         <output id="giftboxTotalAmount" aria-live="polite" class="giftbox-total-preview"></output>
-                        <button onclick="backToStep2()" class="btn-back"><i class="fas fa-arrow-left"></i> 上一步</button>
-                        <button onclick="addGiftboxToCart()" class="btn-add-cart"><i class="fas fa-cart-plus"></i> 加入購物車</button>
+                        <button onclick="backToStep2()" class="btn-back gj-btn gj-btn--quiet"><i class="fas fa-arrow-left"></i> 上一步</button>
+                        <button onclick="addGiftboxToCart()" class="btn-add-cart gj-btn gj-btn--primary"><i class="fas fa-cart-plus"></i> 加入購物車</button>
                     </div>
                 </div>
             </div>
@@ -312,24 +310,24 @@
                         <div class="search-form-group">
                             <div class="search-contact-heading">
                                 <label for="searchPhone">聯絡方式</label>
-                                <div class="name-title-group contact-method-toggle" role="group" aria-label="搜尋聯絡方式">
+                                <div class="name-title-group gj-segment contact-method-toggle" role="group" aria-label="搜尋聯絡方式">
                                     <button id="searchContactPhone" type="button" class="name-title-btn active">電話</button>
                                     <button id="searchContactLine" type="button" class="name-title-btn">LINE</button>
                                 </div>
                             </div>
-                            <input type="tel" inputmode="numeric" pattern="[0-9]*" id="searchPhone" placeholder="輸入電話號碼">
+                            <input type="tel" inputmode="numeric" pattern="[0-9]*" id="searchPhone" placeholder="輸入電話號碼" class="gj-input">
                         </div>
                         <div class="search-form-group">
                             <label for="searchName">客戶姓名</label>
-                            <input type="text" id="searchName" placeholder="請輸入客戶姓名">
+                            <input type="text" id="searchName" placeholder="請輸入客戶姓名" class="gj-input">
                         </div>
                         <div class="search-form-group">
                             <label for="searchDate">交貨日期</label>
-                            <input type="text" id="searchDate" placeholder="點擊選擇日期" readonly>
+                            <input type="text" id="searchDate" placeholder="點擊選擇日期" readonly class="gj-input">
                         </div>
                         <div class="search-form-group" hidden>
                             <label for="searchStatus"><i class="fas fa-filter"></i> 狀態</label>
-                            <select id="searchStatus" disabled>
+                            <select id="searchStatus" disabled class="gj-input">
                                 <option value="">全部狀態</option>
                                 <option value="已確認">已確認</option>
                                 <option value="已付訂金">已付訂金</option>
@@ -341,10 +339,10 @@
                         </div>
                     </div>
                     <div class="search-actions">
-                        <button onclick="searchOrders()" class="btn-search">
+                        <button onclick="searchOrders()" class="btn-search gj-btn gj-btn--primary">
                             <i class="fas fa-search"></i> 搜尋訂單
                         </button>
-                        <button onclick="clearSearch()" class="btn-clear">
+                        <button onclick="clearSearch()" class="btn-clear gj-btn gj-btn--quiet">
                             <i class="fas fa-eraser"></i> 清空條件
                         </button>
                     </div>
@@ -361,10 +359,10 @@
             <div id="settingsProducts" class="settings-section active">
                 <div class="settings-panel">
                     <div class="settings-panel-header" style="justify-content: flex-end;">
-                        <button onclick="showProductOrder()" class="btn-add-product requires-editor" type="button">
+                        <button onclick="showProductOrder()" class="btn-add-product requires-editor gj-btn gj-btn--tonal" type="button">
                             <i class="fas fa-sort"></i> 調整順序
                         </button>
-                        <button onclick="showAddProduct()" class="btn-add-product">
+                        <button onclick="showAddProduct()" class="btn-add-product gj-btn gj-btn--primary">
                             <i class="fas fa-plus"></i>
                             新增商品
                         </button>
@@ -377,34 +375,34 @@
             <!-- 產能設定 -->
             <div id="settingsCapacity" class="settings-section" style="display: none;">
                 <div class="settings-panel">
-                    <div style="font-size: 0.78rem; color: #9ca3af; margin-bottom: 16px;">超過上限僅顯示警告，不阻擋訂單。留空或 0 = 不限制。日期覆寫優先於星期預設。</div>
+                    <div style="font-size: 0.78rem; color: var(--gj-muted); margin-bottom: 16px;">超過上限僅顯示警告，不阻擋訂單。留空或 0 = 不限制。日期覆寫優先於星期預設。</div>
 
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                        <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">星期預設</div>
-                        <div id="weekdayAutoSaveStatus" style="font-size: 0.78rem; color: #9ca3af; min-height: 18px;"></div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--gj-muted);">星期預設</div>
+                        <div id="weekdayAutoSaveStatus" style="font-size: 0.78rem; color: var(--gj-muted); min-height: 18px;"></div>
                     </div>
-                    <div id="capacityWeekdayGrid" class="capacity-weekday-strip"></div>
+                    <div id="capacityWeekdayGrid" class="capacity-weekday-strip grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2"></div>
 
                     <hr class="capacity-section-divider">
 
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div style="font-size: 0.85rem; font-weight: 600; color: #475569;">日期覆寫</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--gj-muted);">日期覆寫</div>
                     </div>
-                    <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end;">
-                        <div style="flex: 1; min-width: 130px;">
-                            <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">日期</label>
-                            <input type="text" id="overrideDate" placeholder="點擊選擇日期" readonly style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; cursor: pointer; background: white;">
+                    <div class="capacity-override-form grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_100px_auto] items-end gap-3 mb-4">
+                        <div class="min-w-0">
+                            <label for="overrideDate" class="block text-sm font-medium text-md-on-surface-variant mb-2">日期</label>
+                            <input type="text" id="overrideDate" placeholder="點擊選擇日期" readonly style="width: 100%; padding: 7px 10px; border: 1px solid var(--gj-border); border-radius: 8px; font-size: 0.85rem; cursor: pointer; background: var(--gj-surface);" class="gj-input">
                         </div>
-                        <div style="width: 88px;">
-                            <label style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 3px;">上限</label>
-                            <input type="number" inputmode="numeric" step="1" id="overrideMaxQty" min="0" placeholder="0" style="width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; text-align: center;">
+                        <div class="min-w-0">
+                            <label for="overrideMaxQty" class="block text-sm font-medium text-md-on-surface-variant mb-2">上限</label>
+                            <input type="number" inputmode="numeric" step="1" id="overrideMaxQty" min="0" placeholder="0" style="width: 100%; padding: 7px 10px; border: 1px solid var(--gj-border); border-radius: 8px; font-size: 0.85rem; text-align: center;" class="gj-input">
                         </div>
-                        <button onclick="addDateOverride()" style="padding: 7px 14px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; white-space: nowrap;">
+                        <button class="gj-btn gj-btn--primary" onclick="addDateOverride()">
                             <i class="fas fa-plus" style="margin-right: 4px;"></i>新增
                         </button>
                     </div>
-                    <div style="border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb;">
-                        <table class="capacity-override-table">
+                    <div style="border-radius: 10px; overflow: hidden; border: 1px solid var(--gj-border);">
+                        <table class="capacity-override-table gj-table">
                             <thead>
                                 <tr>
                                     <th>日期</th>
@@ -415,7 +413,7 @@
                                 </tr>
                             </thead>
                             <tbody id="overrideTableBody">
-                                <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 24px;">尚無日期覆寫設定</td></tr>
+                                <tr><td colspan="5" style="text-align: center; color: var(--gj-muted); padding: 24px;">尚無日期覆寫設定</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -425,12 +423,12 @@
             <!-- 需求統計 -->
             <div id="settingsDemand" class="settings-section" style="display: none;">
                 <div class="settings-panel">
-                    <div class="report-form">
+                    <div class="report-form flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
                         <div class="form-group">
                             <label><i class="fas fa-calendar-alt"></i> 選擇日期或區間</label>
-                            <input type="text" id="demandDatePicker" placeholder="點擊選擇日期" readonly>
+                            <input type="text" id="demandDatePicker" placeholder="點擊選擇日期" readonly class="gj-input">
                         </div>
-                        <button onclick="generateDemandStats()" id="btnDemandStats" class="btn-generate-report">
+                        <button onclick="generateDemandStats()" id="btnDemandStats" class="btn-generate-report gj-btn gj-btn--primary">
                             <i class="fas fa-calculator"></i>
                             產生統計
                         </button>
@@ -442,12 +440,12 @@
             <!-- 營業報表 -->
             <div id="settingsReports" class="settings-section" style="display: none;">
                 <div class="settings-panel">
-                    <div class="report-form">
+                    <div class="report-form flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
                         <div class="form-group">
                             <label><i class="fas fa-calendar-alt"></i> 選擇日期區間（交貨日期）</label>
-                            <input type="text" id="reportDatePicker" placeholder="點擊選擇日期區間" readonly>
+                            <input type="text" id="reportDatePicker" placeholder="點擊選擇日期區間" readonly class="gj-input">
                         </div>
-                        <button onclick="generateReport()" id="btnReport" class="btn-generate-report">
+                        <button onclick="generateReport()" id="btnReport" class="btn-generate-report gj-btn gj-btn--primary">
                             <i class="fas fa-file-export"></i>
                             產生報表
                         </button>
@@ -460,47 +458,47 @@
             <div id="settingsPrinter" class="settings-section" style="display: none;">
                 <div class="settings-panel printer-panel">
                     <div class="printer-heading"><div><h2 class="settings-panel-title">出單機</h2><p>設定出單方式，管理裝置連線。</p></div><span class="printer-local-note">僅套用此帳號與店鋪的本機設定</span></div>
-                    <div class="printer-tabs" role="group" aria-label="出單機設定分類">
+                    <div class="printer-tabs gj-segment" role="group" aria-label="出單機設定分類">
                         <button type="button" id="printer-tab-print" aria-pressed="true" aria-controls="printer-page-print">列印設定</button>
                         <button type="button" id="printer-tab-device" aria-pressed="false" aria-controls="printer-page-device">出單機設定</button>
                     </div>
                     <form id="printer-settings" class="printer-settings" novalidate>
                         <div id="printer-page-print" class="printer-page">
-                            <section class="printer-card">
+                            <section class="printer-card gj-pos-card">
                                 <h3>出單方式</h3>
                                 <label class="printer-toggle-row" for="printer-enabled"><span><strong>啟用列印</strong><small>訂單成立後，自動列印一份。</small></span><input id="printer-enabled" type="checkbox" role="switch"></label>
                                 <p>列印失敗不會重送，訂單仍會保留。</p>
                             </section>
-                            <section class="printer-card">
+                            <section class="printer-card gj-pos-card">
                                 <h3>單據選項</h3>
-                                <div class="printer-field"><label for="printer-title">單據店名</label><input id="printer-title" maxlength="80" placeholder="請輸入店名"></div>
-                                <div class="printer-field"><label for="printer-width">列印寬度</label><select id="printer-width"><option value="576">576 點（預設）</option><option value="512">512 點</option><option value="384">384 點</option></select></div>
-                                <div class="printer-field"><label for="printer-fontSize">字體大小</label><select id="printer-fontSize"><option value="24">24 點（小）</option><option value="28">28 點（預設）</option><option value="32">32 點</option><option value="40">40 點（大）</option></select></div>
+                                <div class="printer-field"><label for="printer-title">單據店名</label><input id="printer-title" maxlength="80" placeholder="請輸入店名" class="gj-input"></div>
+                                <div class="printer-field"><label for="printer-width">列印寬度</label><select id="printer-width" class="gj-input"><option value="576">576 點（預設）</option><option value="512">512 點</option><option value="384">384 點</option></select></div>
+                                <div class="printer-field"><label for="printer-fontSize">字體大小</label><select id="printer-fontSize" class="gj-input"><option value="24">24 點（小）</option><option value="28">28 點（預設）</option><option value="32">32 點</option><option value="40">40 點（大）</option></select></div>
                                 <label class="printer-toggle-row" for="printer-cut"><span><strong>列印後切紙</strong><small>進紙後半切，需出單機支援。</small></span><input id="printer-cut" type="checkbox" role="switch"></label>
                             </section>
-                            <div class="printer-actions printer-page-actions"><button class="btn printer-primary" type="submit">儲存列印設定</button><button class="btn" type="button" id="printer-test">測試列印</button></div>
+                            <div class="printer-actions printer-page-actions"><button class="btn printer-primary gj-btn gj-btn--primary" type="submit">儲存列印設定</button><button class="btn" type="button" id="printer-test">測試列印</button></div>
                         </div>
                         <div id="printer-page-device" class="printer-page" hidden>
-                            <section class="printer-card printer-connection">
+                            <section class="printer-card printer-connection gj-pos-card">
                                 <h3>連接出單機</h3><p>先連上店內 Wi-Fi，再輸入裝置金鑰。</p>
-                                <div class="printer-field"><label for="printer-url">連線位址</label><div class="printer-inline"><input id="printer-url" type="url" required placeholder="wss://xprinter.local/ws" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="printer-use-name">使用預設</button></div></div>
-                                <div class="printer-field"><label for="printer-token">裝置金鑰</label><input id="printer-token" type="password" maxlength="256" autocomplete="off"></div>
+                                <div class="printer-field"><label for="printer-url">連線位址</label><div class="printer-inline"><input id="printer-url" type="url" required placeholder="wss://xprinter.local/ws" autocomplete="off" spellcheck="false" class="gj-input"><button class="btn" type="button" id="printer-use-name">使用預設</button></div></div>
+                                <div class="printer-field"><label for="printer-token">裝置金鑰</label><input id="printer-token" type="password" maxlength="256" autocomplete="off" class="gj-input"></div>
                                 <label class="printer-checkbox" for="printer-remember"><input id="printer-remember" type="checkbox">在這台裝置記住金鑰</label>
                                 <p>未勾選時，登出或切換店鋪後需重新輸入。</p>
-                                <div class="printer-actions"><button class="btn printer-primary" type="button" id="printer-check">儲存並檢查連線</button></div>
+                                <div class="printer-actions"><button class="btn printer-primary gj-btn gj-btn--primary" type="button" id="printer-check">儲存並檢查連線</button></div>
                             </section>
                             <details class="printer-setup">
                                 <summary>首次使用 iPad？安裝連線憑證</summary>
                                 <ol><li><a class="btn" href="/certs/printer-root-ca.cer" data-printer-certificate data-printer-certificate-page target="_blank" rel="noopener">下載 Xprinter 憑證</a><p>若使用 PWA，會先開啟憑證下載頁；請在該頁下載憑證。</p></li><li>設定 → 一般 → VPN 與裝置管理，安裝憑證。</li><li>設定 → 一般 → 關於本機 → 憑證信任設定，啟用「Xprinter」完整信任。</li></ol>
                                 <p>已安裝並信任者可跳過。此憑證僅適用於本店出單機。</p>
                             </details>
-                            <section class="printer-card printer-bridge">
+                            <section class="printer-card printer-bridge gj-pos-card">
                                 <div class="printer-card-heading"><div><h3>裝置網路</h3><p>更換出單機或 Wi-Fi 時使用。</p></div><button class="btn" type="button" id="printer-device-read">讀取裝置設定</button></div>
                                 <p id="printer-device-info"></p>
-                                <div class="printer-network-fields"><div class="printer-field"><label for="printer-target-ip">出單機 IP 位址</label><input id="printer-target-ip" type="text" maxlength="15" autocomplete="off" spellcheck="false" placeholder="192.168.50.153" disabled></div><div class="printer-field"><label for="printer-target-port">連接埠</label><input id="printer-target-port" type="number" min="1" max="65535" step="1" placeholder="9100" disabled></div></div>
+                                <div class="printer-network-fields"><div class="printer-field"><label for="printer-target-ip">出單機 IP 位址</label><input id="printer-target-ip" type="text" maxlength="15" autocomplete="off" spellcheck="false" placeholder="192.168.50.153" disabled class="gj-input"></div><div class="printer-field"><label for="printer-target-port">連接埠</label><input id="printer-target-port" type="number" min="1" max="65535" step="1" placeholder="9100" disabled class="gj-input"></div></div>
                                 <p>先讀取再修改。此設定會影響所有連到這台出單機的裝置。</p>
                                 <div class="printer-actions"><button class="btn" type="button" id="printer-device-save" disabled>儲存網路設定</button></div>
-                                <details><summary>更換 Wi-Fi</summary><div class="printer-wifi-fields"><p>使用店內 2.4 GHz Wi-Fi。切換失敗會回到原網路。</p><label for="printer-wifi-ssid">Wi-Fi 名稱</label><input id="printer-wifi-ssid" type="text" autocomplete="off" spellcheck="false" disabled><label for="printer-wifi-password">Wi-Fi 密碼</label><input id="printer-wifi-password" type="password" autocomplete="new-password" disabled><div class="printer-actions"><button class="btn" type="button" id="printer-wifi-save" disabled>連線並儲存 Wi-Fi</button></div></div></details>
+                                <details><summary>更換 Wi-Fi</summary><div class="printer-wifi-fields"><p>使用店內 2.4 GHz Wi-Fi。切換失敗會回到原網路。</p><label for="printer-wifi-ssid">Wi-Fi 名稱</label><input id="printer-wifi-ssid" type="text" autocomplete="off" spellcheck="false" disabled class="gj-input"><label for="printer-wifi-password">Wi-Fi 密碼</label><input id="printer-wifi-password" type="password" autocomplete="new-password" disabled class="gj-input"><div class="printer-actions"><button class="btn" type="button" id="printer-wifi-save" disabled>連線並儲存 Wi-Fi</button></div></div></details>
                                 <p id="printer-device-status" role="status" aria-live="polite"></p>
                             </section>
                             <details class="printer-help"><summary>連不上？檢查連線</summary><p>iPad 與出單機需在可互通的網路；若主畫面 App 失敗，可用 Safari 再試。</p><div class="printer-actions"><button class="btn" type="button" id="printer-diagnose">執行連線診斷</button></div><pre id="printer-diagnostic-result" role="status" aria-live="polite" hidden></pre></details>
@@ -513,17 +511,24 @@
             <div id="settingsSystem" class="settings-panel" hidden>
                 <div class="settings-panel-title"><i class="fas fa-sync-alt"></i> 系統資訊</div>
                 <div class="device-info-grid">
-                    <div class="device-info-item">
+                    <div class="device-info-item gj-pos-card">
                         <label for="systemVersion">系統版本</label>
-                        <input type="text" id="systemVersion" readonly>
+                        <input type="text" id="systemVersion" readonly class="gj-input">
                     </div>
-                    <div class="device-info-item">
+                    <div class="device-info-item gj-pos-card">
                         <label for="systemUpdatedAt">更新日期</label>
-                        <input type="text" id="systemUpdatedAt" readonly>
+                        <input type="text" id="systemUpdatedAt" readonly class="gj-input">
                     </div>
                 </div>
-                <button id="systemCheckUpdate" type="button" class="btn-generate-report">檢查更新</button>
+                <button id="systemCheckUpdate" type="button" class="btn-generate-report gj-btn gj-btn--primary">檢查更新</button>
                 <p id="systemUpdateStatus" role="status" aria-live="polite"></p>
+            <div class="theme-settings"><div><span class="theme-settings-label">外觀</span><span id="themeToggleStatus" role="status">目前：跟隨系統</span></div>
+        <button id="themeToggle" type="button" class="gj-theme-toggle" aria-label="切換至淺色模式" aria-describedby="themeToggleStatus" title="目前：跟隨系統；切換至淺色模式">
+          <svg class="gj-icon theme-icon-auto" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.5 2.5H18V8l2.5 4-2.5 4v3.5h-3.5L12 22l-2.5-2.5H6V16l-2.5-4L6 8V4.5h3.5Z"/><path d="m9 15 3-7 3 7m-5-2h4"/></svg>
+          <svg class="gj-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+          <svg class="gj-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
+        </button>
+            </div>
             </div>
             <div id="settingsDevice" class="settings-section" style="display: none;">
                 <div class="settings-panel">
@@ -532,17 +537,17 @@
                         裝置資訊
                     </div>
                     <div class="device-info-grid">
-                        <div class="device-info-item">
+                        <div class="device-info-item gj-pos-card">
                             <label><i class="fas fa-desktop"></i> 作業系統</label>
-                            <input type="text" id="deviceOs" readonly>
+                            <input type="text" id="deviceOs" readonly class="gj-input">
                         </div>
-                        <div class="device-info-item">
+                        <div class="device-info-item gj-pos-card">
                             <label><i class="fas fa-tv"></i> 顯示模式</label>
-                            <input type="text" id="layoutMode" readonly>
+                            <input type="text" id="layoutMode" readonly class="gj-input">
                         </div>
-                        <div class="device-info-item">
+                        <div class="device-info-item gj-pos-card">
                             <label><i class="fas fa-code"></i> User Agent</label>
-                            <textarea id="fullUserAgent" readonly rows="4"></textarea>
+                            <textarea id="fullUserAgent" readonly rows="4" class="gj-input"></textarea>
                         </div>
                     </div>
                 </div>
@@ -552,7 +557,7 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version 0.14.1</p>
+            <p>Website content edited by yuyan2123. Version 0.15.0</p>
         </footer>
 
     </main>
@@ -567,89 +572,81 @@
     <div class="cart-overlay" id="cartOverlay" onclick="toggleCartModal()"></div>
     <div class="cart-sidebar" id="cartModal">
         <div class="flex justify-between items-center p-6 border-b">
-            <h2 class="text-2xl font-bold text-gray-800">購物車清單</h2>
-            <button onclick="toggleCartModal()" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
-                <i class="fas fa-times text-2xl"></i>
+            <h2 class="text-2xl font-bold text-md-on-surface">購物車清單</h2>
+            <button type="button" onclick="toggleCartModal()" class="cart-close" aria-label="關閉購物車">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg>
             </button>
         </div>
         <div class="flex-1 overflow-y-auto p-6" id="cartModalBody">
             <div class="text-center mt-20">
-                <i class="fas fa-shopping-basket text-6xl text-gray-200 mb-4"></i>
-                <p class="text-gray-400">購物車是空的</p>
+                <i class="fas fa-shopping-basket text-6xl text-md-on-surface-variant mb-4"></i>
+                <p class="text-md-on-surface-variant">購物車是空的</p>
             </div>
         </div>
         <div class="border-t p-6">
-            <div class="flex justify-between text-xl font-bold mb-4 text-gray-800">
+            <div class="flex justify-between text-xl font-bold mb-4 text-md-on-surface">
                 <span>總計</span>
                 <span>NT$ <span id="cartTotalAmount">0</span></span>
             </div>
-            <button id="checkoutBtn" onclick="submitOrder()" class="checkout-not-ready w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg">建立訂單</button>
+            <button id="checkoutBtn" onclick="submitOrder()" class="checkout-not-ready w-full py-4 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg hover:bg-md-primary shadow-lg gj-btn gj-btn--primary">建立訂單</button>
         </div>
     </div>
 
     <!-- 產品詳情 Modal -->
     <div id="productModal" class="modal">
-        <div class="modal-content transform transition-all duration-300 scale-100" onclick="event.stopPropagation()">
+        <div class="modal-content gj-pos-dialog product-detail-dialog" onclick="event.stopPropagation()">
             <!-- Header -->
-            <div class="relative bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-t-2xl border-b border-blue-100">
-                <button class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-gray-600 shadow-sm transition hover:rotate-90" onclick="closeProductModal()">
-                    <i class="fas fa-times"></i>
+            <div class="product-detail-header">
+                <button type="button" class="close-btn" aria-label="關閉商品詳情" onclick="closeProductModal()">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
-                <h3 id="modalProductName" class="text-2xl font-bold text-gray-800 pr-8">商品名稱</h3>
-                <p id="modalProductPrice" class="text-3xl font-bold text-blue-600 mt-2">NT$ 0</p>
+                <h2 id="modalProductName">商品名稱</h2>
+                <span class="product-detail-price-label">單價</span>
+                <p id="modalProductPrice">NT$ 0</p>
             </div>
 
-            <div class="p-6 overflow-y-auto flex-1 min-h-0">
+            <div class="product-detail-body">
                 <!-- Description -->
-                <div class="bg-gray-50 p-4 rounded-xl mb-6 text-gray-600 text-sm leading-relaxed flex gap-3">
-                    <i class="fas fa-info-circle text-blue-400 mt-1 flex-shrink-0"></i>
-                    <span id="modalProductDescription">商品描述</span>
-                </div>
+                <p id="modalProductDescription">商品描述</p>
 
                 <!-- Quantity -->
-                <div class="mb-8">
-                    <label class="block text-sm font-bold text-gray-700 mb-3">購買數量</label>
-                    <div class="product-quantity-control bg-white border-2 border-gray-100 rounded-xl p-1 shadow-sm">
-                        <button onclick="changeModalQuantity(-1)" class="w-14 h-12 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 active:scale-95 transition">
+                <div class="product-detail-quantity">
+                    <label for="modalQuantity">購買數量</label>
+                    <div class="product-quantity-control bg-md-content border-2 border-md-outline-variant rounded-xl p-1 shadow-sm">
+                        <button onclick="changeModalQuantity(-1)" class="w-14 h-12 flex items-center justify-center bg-md-surface text-md-on-surface-variant rounded-lg hover:bg-md-surface-container active:scale-95 transition">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" inputmode="numeric" step="1" id="modalQuantity" value="1" min="1" class="flex-1 text-center text-2xl font-bold text-gray-800 border-none focus:ring-0 p-0 outline-none" onchange="validateModalQuantity(this.value)">
-                        <button onclick="changeModalQuantity(1)" class="w-14 h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 active:scale-95 transition">
+                        <input type="number" inputmode="numeric" step="1" id="modalQuantity" value="1" min="1" class="flex-1 text-center text-2xl font-bold text-md-on-surface border-none focus:ring-0 p-0 outline-none gj-input" onchange="validateModalQuantity(this.value)" oninput="updateModalPrice()">
+                        <button onclick="changeModalQuantity(1)" class="w-14 h-12 flex items-center justify-center bg-md-primary-container text-md-primary rounded-lg hover:bg-md-primary-container active:scale-95 transition">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Special Price Section -->
-                <div class="border-t border-gray-100 pt-6">
+                <div class="product-detail-special">
                     <div class="flex items-center justify-between mb-4">
-                        <label class="text-sm font-bold text-gray-700 flex items-center gap-2">
-                            <i class="fas fa-tag text-orange-500"></i> 特殊價格設定
-                        </label>
+                        <label for="useSpecialPrice">使用自訂單價</label>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="useSpecialPrice" onchange="toggleSpecialPrice()" class="sr-only peer">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div class="w-11 h-6 bg-md-surface-container peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-md-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-md-on-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-md-content after:border-md-outline-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-md-primary"></div>
                         </label>
                     </div>
                     
-                    <div id="specialPriceSection" class="transition-all duration-300 overflow-hidden" style="max-height: 0; opacity: 0;">
-                        <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
-                            <label class="block text-xs font-bold text-orange-700 mb-2">自訂單價</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-orange-400 font-bold">NT$</span>
-                                <input type="number" inputmode="decimal" step="any" id="specialPriceInput" placeholder="0" min="0" class="w-full pl-12 pr-4 py-3 bg-white border border-orange-200 rounded-lg text-lg font-bold text-orange-600 focus:ring-2 focus:ring-orange-400 outline-none" onclick="activateSpecialPrice()" oninput="updateModalPrice()">
-                            </div>
-                            <div id="priceComparison" style="display: none;" class="mt-3 flex justify-between text-sm items-center bg-white/50 p-2 rounded-lg">
-                                <span class="text-gray-500 line-through text-xs">原價：NT$ <span id="originalPriceText">0</span></span>
-                                <span class="text-orange-600 font-bold">特價：NT$ <span id="specialPriceText">0</span></span>
-                            </div>
+                    <div id="specialPriceSection" hidden>
+                        <label for="specialPriceInput">自訂單價（NT$）</label>
+                        <input type="number" inputmode="decimal" step="any" id="specialPriceInput" placeholder="輸入單價" min="0" class="gj-input" onclick="activateSpecialPrice()" oninput="updateModalPrice()">
+                        <div id="priceComparison" style="display: none;">
+                            <span>原價 NT$ <span id="originalPriceText">0</span></span>
+                            <span>特價 NT$ <span id="specialPriceText">0</span></span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="p-6 border-t bg-gray-50 rounded-b-2xl">
-                <button onclick="addToCartFromModal()" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition flex items-center justify-center gap-2">
+            <div class="product-detail-footer">
+                <output id="modalProductTotal" aria-live="polite"></output>
+                <button type="button" onclick="addToCartFromModal()" class="gj-btn gj-btn--primary w-full flex items-center justify-center gap-2">
                     <span>加入購物車</span>
                     <i class="fas fa-shopping-cart"></i>
                 </button>
@@ -659,59 +656,59 @@
 
     <!-- 產品編輯 Modal -->
     <div id="productEditModal" class="modal">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content gj-pos-dialog" onclick="event.stopPropagation()">
             <div class="p-6 border-b flex justify-between items-center">
-                <h3 id="productEditModalTitle" class="text-2xl font-bold text-gray-800">新增商品</h3>
-                <button class="text-gray-400 hover:text-gray-600" onclick="closeProductEditModal()">
+                <h3 id="productEditModalTitle" class="text-2xl font-bold text-md-on-surface">新增商品</h3>
+                <button class="close-btn text-md-on-surface-variant" onclick="closeProductEditModal()">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
             </div>
             <div class="p-6 overflow-y-auto">
                 <input type="hidden" id="editProductId">
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">商品名稱</label>
-                            <input type="text" id="productName" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">商品名稱</label>
+                            <input type="text" id="productName" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">類別</label>
+                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">類別</label>
                             <div id="productCategoryPicker" class="product-category-picker">
-                                <div class="product-category-control">
-                                    <input type="text" id="productCategory" aria-label="類別" autocomplete="off" maxlength="60" placeholder="輸入或選擇類別" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                                <div class="product-category-control gj-combobox">
+                                    <input type="text" id="productCategory" aria-label="類別" autocomplete="off" maxlength="60" placeholder="輸入或選擇類別" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
                                     <button type="button" id="productCategoryToggle" aria-label="選擇商品類別" aria-expanded="false" aria-controls="productCategoryOptions"><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
                                 </div>
-                                <div id="productCategoryOptions" class="product-category-options" role="group" aria-label="商品類別選項" hidden></div>
+                                <div id="productCategoryOptions" class="product-category-options gj-combobox-menu" role="group" aria-label="商品類別選項" hidden></div>
                             </div>
-                            <p class="text-sm text-gray-500">可自行輸入新類別，儲存後即可用於商品篩選。</p>
+                            <p class="text-sm text-md-on-surface-variant">可自行輸入新類別，儲存後即可用於商品篩選。</p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">價格</label>
-                            <input type="number" inputmode="numeric" step="1" id="productPrice" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">價格</label>
+                            <input type="number" inputmode="numeric" step="1" id="productPrice" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">特價</label>
-                            <input type="number" inputmode="numeric" step="1" id="productSpecialPrice" placeholder="留空表示無特價" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">特價</label>
+                            <input type="number" inputmode="numeric" step="1" id="productSpecialPrice" placeholder="留空表示無特價" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">企業價</label>
-                        <input type="number" inputmode="numeric" step="1" id="productCompanyPrice" placeholder="留空表示無企業價" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-sm font-medium text-md-on-surface-variant mb-2">企業價</label>
+                        <input type="number" inputmode="numeric" step="1" id="productCompanyPrice" placeholder="留空表示無企業價" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">狀態</label>
-                            <div class="grove-btn-group" id="productStatusGroup">
+                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">狀態</label>
+                            <div class="grove-btn-group gj-segment" id="productStatusGroup">
                                 <button type="button" data-value="啟用" onclick="selectProductOption('productStatus', this)">啟用</button>
                                 <button type="button" data-value="停用" onclick="selectProductOption('productStatus', this)">停用</button>
                             </div>
                             <input type="hidden" id="productStatus" value="啟用">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">可禮盒</label>
-                            <div class="grove-btn-group" id="productGiftBoxEnabledGroup">
+                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">可禮盒</label>
+                            <div class="grove-btn-group gj-segment" id="productGiftBoxEnabledGroup">
                                 <button type="button" data-value="是" onclick="selectProductOption('productGiftBoxEnabled', this)">是</button>
                                 <button type="button" data-value="否" onclick="selectProductOption('productGiftBoxEnabled', this)">否</button>
                             </div>
@@ -719,37 +716,37 @@
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
-                        <textarea id="productDescription" rows="3" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <label class="block text-sm font-medium text-md-on-surface-variant mb-2">描述</label>
+                        <textarea id="productDescription" rows="3" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input"></textarea>
                     </div>
                 </div>
             </div>
             <div class="p-6 border-t flex gap-3">
-                <button onclick="closeProductEditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">取消</button>
-                <button onclick="saveProduct()" class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">儲存</button>
+                <button onclick="closeProductEditModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
+                <button onclick="saveProduct()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-lg font-medium hover:bg-md-primary gj-btn gj-btn--primary">儲存</button>
             </div>
         </div>
     </div>
 
     <!-- 確認 Modal -->
     <div id="confirmModal" class="modal">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content gj-pos-dialog" onclick="event.stopPropagation()">
             <div class="p-6 border-b">
-                <h3 class="text-2xl font-bold text-gray-800">確認操作</h3>
+                <h3 class="text-2xl font-bold text-md-on-surface">確認操作</h3>
             </div>
             <div class="p-6">
-                <p id="confirmModalMessage" class="text-gray-700 text-lg">您確定要執行此操作嗎？</p>
+                <p id="confirmModalMessage" class="text-md-on-surface-variant text-lg">您確定要執行此操作嗎？</p>
             </div>
             <div class="p-6 border-t flex gap-3">
-                <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">取消</button>
-                <button id="confirmBtn" onclick="executeConfirmCallback()" class="flex-1 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">確定</button>
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
+                <button id="confirmBtn" onclick="executeConfirmCallback()" class="flex-1 py-3 bg-md-error text-md-on-primary rounded-lg font-medium hover:bg-md-error gj-btn gj-btn--danger">確定</button>
             </div>
         </div>
     </div>
 
     <!-- 狀態更新確認 Modal -->
     <div id="statusConfirmModal" class="modal status-confirm-modal order-action-modal" aria-describedby="statusConfirmDescription">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content gj-pos-dialog" onclick="event.stopPropagation()">
             <div class="status-confirm-header">
                 <div class="icon"><i class="fas fa-check-circle"></i></div>
                 <div class="order-action-heading"><span class="order-action-eyebrow">訂單管理</span><h3 id="statusConfirmTitle">完成這筆訂單？</h3></div>
@@ -770,14 +767,14 @@
                 <div id="statusUpdateStatus" class="status-update-status" role="status" aria-live="polite"></div>
             </div>
             <div class="status-confirm-footer">
-                <button class="btn-cancel" onclick="closeStatusConfirmModal()">返回訂單</button>
+                <button class="btn-cancel gj-btn gj-btn--quiet" onclick="closeStatusConfirmModal()">返回訂單</button>
             </div>
         </div>
     </div>
 
     <!-- 刪除確認 Modal -->
     <div id="deleteConfirmModal" class="modal delete-confirm-modal order-action-modal" aria-describedby="deleteConfirmDescription">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content gj-pos-dialog" onclick="event.stopPropagation()">
             <div class="delete-confirm-header">
                 <div class="icon"><i class="fas fa-trash-alt"></i></div>
                 <div class="order-action-heading"><span class="order-action-eyebrow">訂單管理</span><h3>刪除這筆訂單？</h3></div>
@@ -798,49 +795,50 @@
                 <div id="deleteStatus" class="delete-status" role="status" aria-live="polite"></div>
             </div>
             <div class="delete-confirm-footer">
-                <button class="btn-cancel" onclick="closeDeleteConfirmModal()">保留訂單</button>
+                <button class="btn-cancel gj-btn gj-btn--quiet" onclick="closeDeleteConfirmModal()">保留訂單</button>
             </div>
         </div>
     </div>
 
     <!-- 訂金設定 Modal -->
     <div id="depositModal" class="modal">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="p-6 border-b">
-                <h3 id="depositModalTitle" class="text-2xl font-bold text-gray-800">設定訂金</h3>
+        <div class="modal-content gj-pos-dialog deposit-dialog" onclick="event.stopPropagation()">
+            <div class="deposit-dialog-header">
+                <button type="button" class="close-btn" aria-label="關閉訂金設定" onclick="closeDepositModal()">×</button>
+                <h3 id="depositModalTitle" class="text-2xl font-bold text-md-on-surface">設定訂金</h3>
             </div>
-            <div class="p-6">
+            <div class="deposit-dialog-body">
                 <div class="mb-4">
-                    <span id="depositOrderInfo" class="text-gray-700">訂單編號 - 總金額</span>
+                    <span id="depositOrderInfo" class="text-md-on-surface-variant">訂單編號 - 總金額</span>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">訂金金額</label>
-                    <input type="number" inputmode="decimal" step="any" id="depositAmountInput" placeholder="請輸入訂金金額" min="0" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" oninput="updateDepositCalculation()">
+                    <label for="depositAmountInput" class="block text-sm font-medium text-md-on-surface-variant mb-2">訂金金額（NT$）</label>
+                    <input type="number" inputmode="decimal" step="any" id="depositAmountInput" placeholder="請輸入訂金金額" min="0" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input" oninput="updateDepositCalculation()">
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">付款備註</label>
-                    <textarea id="paymentNotesInput" rows="2" placeholder="選填：付款方式、備註等" class="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <label for="paymentNotesInput" class="block text-sm font-medium text-md-on-surface-variant mb-2">付款備註（選填）</label>
+                    <textarea id="paymentNotesInput" rows="2" placeholder="選填：付款方式、備註等" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input"></textarea>
                 </div>
-                <div id="depositCalculationResult" style="display: none;" class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                <div id="depositCalculationResult" style="display: none;" class="p-4 bg-md-primary-container rounded-lg border-l-4 border-md-primary">
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <span class="text-gray-600">已付訂金：</span>
-                            <span id="currentDepositText" class="font-bold text-green-600">NT$ 0</span>
+                            <span class="text-md-on-surface-variant">已付訂金：</span>
+                            <span id="currentDepositText" class="font-bold text-md-success">NT$ 0</span>
                         </div>
                         <div>
-                            <span class="text-gray-600">剩餘金額：</span>
-                            <span id="remainingAmountText" class="font-bold text-red-600">NT$ 0</span>
+                            <span class="text-md-on-surface-variant">剩餘金額：</span>
+                            <span id="remainingAmountText" class="font-bold text-md-error">NT$ 0</span>
                         </div>
                     </div>
                     <div id="statusPreview" class="mt-3 text-center">
-                        <span class="text-sm text-gray-600">預計狀態：</span>
-                        <span id="newStatusText" class="font-bold px-3 py-1 rounded-lg bg-blue-600 text-white">已確認</span>
+                        <span class="text-sm text-md-on-surface-variant">預計狀態：</span>
+                        <span id="newStatusText" class="font-bold px-3 py-1 rounded-lg bg-md-primary text-md-on-primary">已確認</span>
                     </div>
                 </div>
             </div>
-            <div class="p-6 border-t flex gap-3">
-                <button onclick="closeDepositModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">取消</button>
-                <button id="confirmDepositBtn" onclick="confirmDepositUpdate()" class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">確認設定</button>
+            <div class="deposit-dialog-footer">
+                <button onclick="closeDepositModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
+                <button id="confirmDepositBtn" onclick="confirmDepositUpdate()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-lg font-medium hover:bg-md-primary gj-btn gj-btn--primary">確認設定</button>
             </div>
         </div>
     </div>
@@ -866,18 +864,18 @@
 
     <!-- 產能超量警告 Modal -->
     <div id="capacityWarningModal" class="modal" onclick="closeCapacityWarningModal()">
-        <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
-            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+        <div class="modal-content gj-pos-dialog" style="max-width: 500px;" onclick="event.stopPropagation()">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--gj-warning), var(--gj-warning));">
                 <h3><i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>每日供應量已達上限</h3>
                 <button class="close-btn" onclick="closeCapacityWarningModal()">&times;</button>
             </div>
             <div class="modal-body" id="capacityWarningBody">
             </div>
             <div class="modal-footer" style="justify-content: stretch; gap: 12px;">
-                <button onclick="closeCapacityWarningModal()" class="btn" style="flex: 1; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">
+                <button onclick="closeCapacityWarningModal()" class="btn" style="flex: 1; background: var(--gj-bg); color: var(--gj-muted); border: 1px solid var(--gj-border);">
                     <i class="fas fa-arrow-left" style="margin-right: 6px;"></i>返回修改日期
                 </button>
-                <button onclick="confirmCapacityOverride()" id="btnCapacityConfirm" class="btn" style="flex: 1; background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                <button onclick="confirmCapacityOverride()" id="btnCapacityConfirm" class="btn" style="flex: 1; background: linear-gradient(135deg, var(--gj-warning), var(--gj-warning)); color: var(--gj-on-primary);">
                     <i class="fas fa-check" style="margin-right: 6px;"></i>確認送出訂單
                 </button>
             </div>

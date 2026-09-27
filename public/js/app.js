@@ -2112,16 +2112,16 @@ function numericInput(target) {
 }
 document.addEventListener(
   "beforeinput",
-  (event2) => {
-    if (!numericInput(event2.target) || event2.isComposing || !event2.data) return;
-    const allowed = event2.target.inputMode === "decimal" ? /^[0-9.]+$/ : /^[0-9]+$/;
-    if (!allowed.test(event2.data)) event2.preventDefault();
+  (event) => {
+    if (!numericInput(event.target) || event.isComposing || !event.data) return;
+    const allowed = event.target.inputMode === "decimal" ? /^[0-9.]+$/ : /^[0-9]+$/;
+    if (!allowed.test(event.data)) event.preventDefault();
   },
   true
 );
-function cleanNumericInput(event2) {
-  const input = event2.target;
-  if (!numericInput(input) || event2.isComposing) return;
+function cleanNumericInput(event) {
+  const input = event.target;
+  if (!numericInput(input) || event.isComposing) return;
   const value = input.inputMode === "decimal" ? input.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1") : input.value.replace(/[^0-9]/g, "");
   if (value !== input.value) input.value = value;
 }
@@ -2129,15 +2129,15 @@ document.addEventListener("input", cleanNumericInput, true);
 document.addEventListener("compositionend", cleanNumericInput, true);
 
 // src/platform/gestures.js
-var preventGesture = (event2) => {
-  event2.preventDefault();
+var preventGesture = (event) => {
+  event.preventDefault();
 };
 document.addEventListener("gesturestart", preventGesture, { passive: false, capture: true });
 document.addEventListener("gesturechange", preventGesture, { passive: false, capture: true });
 document.addEventListener("gestureend", preventGesture, { passive: false, capture: true });
-var preventMultiTouch = (event2) => {
-  if (event2.touches.length > 1) {
-    event2.preventDefault();
+var preventMultiTouch = (event) => {
+  if (event.touches.length > 1) {
+    event.preventDefault();
   }
 };
 document.addEventListener("touchstart", preventMultiTouch, { passive: false, capture: true });
@@ -2605,90 +2605,63 @@ function preventDoubleClick(buttonId, func, delay = 1e3) {
 }
 
 // src/app/cart-detail.js
+var renderedBody = null;
+var renderedMarkup = null;
+var renderedFirstChild = null;
+function renderCartBody(body, markup) {
+  if (body === renderedBody && markup === renderedMarkup && body.firstChild === renderedFirstChild) return;
+  const focusedButton = document.activeElement;
+  const focusIndex = body.contains(focusedButton) ? [...body.querySelectorAll("button")].indexOf(focusedButton) : -1;
+  body.innerHTML = markup;
+  renderedBody = body;
+  renderedMarkup = markup;
+  renderedFirstChild = body.firstChild;
+  if (focusIndex >= 0 && document.getElementById("cartModal").classList.contains("active")) {
+    const buttons = [...body.querySelectorAll("button")];
+    (buttons[focusIndex] || buttons.at(-1) || document.getElementById("checkoutBtn")).focus({
+      preventScroll: true
+    });
+  }
+}
 function updateCartModalDisplay() {
   const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
   const cartBody = document.getElementById("cartModalBody");
   if (allItems.length === 0) {
-    cartBody.innerHTML = '<p style="text-align: center;">\u8CFC\u7269\u8ECA\u662F\u7A7A\u7684</p>';
+    renderCartBody(cartBody, '<p style="text-align: center;">\u8CFC\u7269\u8ECA\u662F\u7A7A\u7684</p>');
     return;
   }
-  cartBody.innerHTML = allItems.map((item, index) => {
-    if (item.type === "giftbox") {
-      let priceHtml;
-      if (item.isSpecialPrice && item.originalPrice) {
-        priceHtml = `<span class="original">NT$ ${item.originalPrice}</span>NT$ ${item.price}`;
-      } else {
-        priceHtml = `NT$ ${item.price}`;
-      }
-      const giftboxDetails = generateGiftboxDetailsHtml(item);
-      return `
-                        <div class="cart-item-card">
-                            <div class="cart-item-header">
-                                <div class="cart-item-icon giftbox">
-                                    <i class="fas fa-box-open"></i>
-                                </div>
-                                <div class="cart-item-details">
-                                    <div class="cart-item-name">${escapeHtml(item.name)}</div>
-                                    <div class="cart-item-price">${priceHtml}</div>
-                                </div>
-                            </div>
-                            <div class="cart-item-controls">
-                                <div class="cart-qty-group">
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <div class="cart-qty-value">${item.quantity}</div>
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                                <button class="cart-edit-btn" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})" title="\u7DE8\u8F2F\u79AE\u76D2\u5167\u5BB9">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="cart-delete-btn" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </div>
-                            ${giftboxDetails ? `<div class="cart-giftbox-details">${giftboxDetails.replace(/<[^>]*>/g, "")}</div>` : ""}
-                            ${item.notes ? `<div class="cart-giftbox-notes">${escapeHtml(item.notes)}</div>` : ""}
-                        </div>`;
-    } else {
-      const iconClass = "gift";
-      const iconName = "fa-box-open";
-      let priceHtml = `NT$ ${item.price}`;
-      if (item.isSpecialPrice && item.originalPrice !== item.price) {
-        priceHtml = `<span class="original">NT$ ${item.originalPrice}</span>NT$ ${item.price}`;
-      } else if (item.isCompanyPrice) {
-        priceHtml = `NT$ ${item.price}<span class="company-price-tag">\u4F01\u696D\u50F9</span>`;
-      }
-      return `
-                        <div class="cart-item-card">
-                            <div class="cart-item-header">
-                                <div class="cart-item-icon ${iconClass}">
-                                    <i class="fas ${iconName}"></i>
-                                </div>
-                                <div class="cart-item-details">
-                                    <div class="cart-item-name">${escapeHtml(item.productName)}</div>
-                                    <div class="cart-item-price">${priceHtml}</div>
-                                </div>
-                            </div>
-                            <div class="cart-item-controls">
-                                <div class="cart-qty-group">
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <div class="cart-qty-value">${item.quantity}</div>
-                                    <button class="cart-qty-btn" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                                <button class="cart-delete-btn" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </div>
-                        </div>`;
-    }
+  const markup = allItems.map((item, index) => {
+    const isGiftbox = item.type === "giftbox";
+    const name = escapeHtml(isGiftbox ? item.name : item.productName);
+    const accessibleName = escapeAttr(isGiftbox ? item.name : item.productName);
+    const money2 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+    const special = item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.price;
+    const giftboxDetails = isGiftbox ? generateGiftboxDetailsHtml(item) : "";
+    return `<div class="cart-item-card gj-pos-card">
+        <div class="cart-item-header">
+          <div class="cart-item-details">
+            <h3 class="cart-item-name">${name}</h3>
+            <div class="cart-item-price">${special ? '<span class="cart-price-label">\u7279\u50F9</span>' : ""}${money2(item.price)}<span class="cart-price-label">\uFF0F${isGiftbox ? "\u76D2" : "\u4EF6"}</span>${item.isCompanyPrice && !special ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</div>
+            ${special ? `<span class="cart-original-price">\u539F\u50F9 ${money2(item.originalPrice)}</span>` : ""}
+          </div>
+          <div class="cart-item-subtotal"><span>\u5C0F\u8A08</span><strong>${money2(item.price * item.quantity)}</strong></div>
+        </div>
+        ${giftboxDetails}
+        ${item.notes ? `<div class="cart-giftbox-notes"><span>\u5099\u8A3B</span> ${escapeHtml(item.notes)}</div>` : ""}
+        <div class="cart-item-controls">
+          <div class="cart-qty-group" role="group" aria-label="${accessibleName} \u6578\u91CF">
+            <button type="button" class="cart-qty-btn" aria-label="\u6E1B\u5C11 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
+            <span class="cart-qty-value">${escapeHtml(item.quantity)}</span>
+            <button type="button" class="cart-qty-btn" aria-label="\u589E\u52A0 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
+          </div>
+          <div class="cart-item-actions">
+            ${isGiftbox ? `<button type="button" class="cart-edit-btn" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u5167\u5BB9</button>` : ""}
+            <button type="button" class="cart-delete-btn" aria-label="\u79FB\u9664 ${accessibleName}" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})"><i class="fas fa-trash-alt" aria-hidden="true"></i> \u79FB\u9664</button>
+          </div>
+        </div>
+      </div>`;
   }).join("");
+  renderCartBody(cartBody, markup);
 }
 function updateCartItemQuantity(index, change) {
   const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
@@ -2722,14 +2695,28 @@ function removeFromCartModal(index) {
 }
 
 // src/app/product-detail.js
+function renderModalProductPrice() {
+  if (!state.currentModalProduct) return;
+  const product = state.currentModalProduct;
+  const effectivePrice = getEffectivePrice(product);
+  const money2 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+  document.getElementById("modalProductPrice").innerHTML = state.isCompanyCustomer && effectivePrice !== parseFloat(product.price) ? `${money2(effectivePrice)}<span class="company-price-tag">\u4F01\u696D\u50F9</span><span class="company-original-price">\u539F\u50F9 ${money2(product.price)}</span>` : money2(effectivePrice);
+}
+function updateProductTotal() {
+  if (!state.currentModalProduct) return;
+  const specialPrice = parseFloat(document.getElementById("specialPriceInput").value) || 0;
+  const price = document.getElementById("useSpecialPrice").checked && specialPrice > 0 ? specialPrice : getEffectivePrice(state.currentModalProduct);
+  const quantity = Math.max(1, parseInt(document.getElementById("modalQuantity").value) || 1);
+  document.getElementById("modalProductTotal").textContent = `\u5408\u8A08 NT$ ${(price * quantity).toLocaleString("zh-TW")}`;
+}
 function showProductDetail(productId) {
   const product = state.allProducts.find((p) => p.productId === productId);
   if (!product) return;
   state.currentModalProduct = product;
-  const effectivePrice = getEffectivePrice(product);
   document.getElementById("modalProductName").textContent = product.productName;
-  document.getElementById("modalProductPrice").innerHTML = state.isCompanyCustomer && effectivePrice !== parseFloat(product.price) ? '<span class="company-original-price">NT$ ' + product.price + "</span> NT$ " + effectivePrice + '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : "NT$ " + effectivePrice;
-  document.getElementById("modalProductDescription").textContent = product.description || "\u7121\u5546\u54C1\u63CF\u8FF0";
+  const description = document.getElementById("modalProductDescription");
+  description.textContent = product.description || "";
+  description.hidden = !product.description;
   document.getElementById("modalQuantity").value = 1;
   const specialPriceInput = document.getElementById("specialPriceInput");
   const useSpecialPriceCheckbox = document.getElementById("useSpecialPrice");
@@ -2752,18 +2739,14 @@ function toggleSpecialPrice() {
   const checkbox = document.getElementById("useSpecialPrice");
   const priceComparison = document.getElementById("priceComparison");
   const section = document.getElementById("specialPriceSection");
+  section.hidden = !checkbox.checked;
   if (checkbox.checked) {
-    section.style.maxHeight = "200px";
-    section.style.opacity = "1";
     priceComparison.style.display = "flex";
     updateModalPrice();
   } else {
-    section.style.maxHeight = "0";
-    section.style.opacity = "0";
     priceComparison.style.display = "none";
-    if (state.currentModalProduct) {
-      document.getElementById("modalProductPrice").textContent = `NT$ ${state.currentModalProduct.price}`;
-    }
+    renderModalProductPrice();
+    updateProductTotal();
   }
 }
 function activateSpecialPrice() {
@@ -2779,14 +2762,15 @@ function updateModalPrice() {
   const specialPriceInput = document.getElementById("specialPriceInput");
   const specialPrice = parseFloat(specialPriceInput.value) || 0;
   if (checkbox.checked && specialPrice > 0) {
-    document.getElementById("modalProductPrice").textContent = `NT$ ${specialPrice}`;
+    document.getElementById("modalProductPrice").textContent = `\u7279\u50F9 NT$ ${specialPrice.toLocaleString("zh-TW")}`;
     document.getElementById("originalPriceText").textContent = state.currentModalProduct.price;
     document.getElementById("specialPriceText").textContent = specialPrice;
-    document.getElementById("priceComparison").style.display = "block";
+    document.getElementById("priceComparison").style.display = "flex";
   } else {
-    document.getElementById("modalProductPrice").textContent = `NT$ ${state.currentModalProduct.price}`;
+    renderModalProductPrice();
     document.getElementById("priceComparison").style.display = "none";
   }
+  updateProductTotal();
 }
 function updateProductSpecialPrice(productId, specialPrice) {
   if (isConnected()) {
@@ -2802,6 +2786,7 @@ function changeModalQuantity(change) {
   let val = parseInt(qtyInput.value) + change;
   if (val < 1) val = 1;
   qtyInput.value = val;
+  updateProductTotal();
 }
 function validateModalQuantity(newQuantity) {
   const qty = parseInt(newQuantity) || 1;
@@ -2811,337 +2796,7 @@ function validateModalQuantity(newQuantity) {
   } else {
     qtyInput.value = qty;
   }
-}
-
-// src/app/cart.js
-function updateOrderTotal() {
-  const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
-  const itemsTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  let shippingFee = 0;
-  const isPickup = document.getElementById("deliveryTypeValue").value === "\u81EA\u53D6";
-  const isChargeShipping = document.getElementById("shippingOption").value === "charge";
-  if (!isPickup && isChargeShipping) {
-    const shippingFeeInput = document.getElementById("shippingFee");
-    shippingFee = parseFloat(shippingFeeInput.value) || 0;
-  }
-  const totalAmount = itemsTotal + shippingFee;
-  const cartTotalEl = document.getElementById("cartTotalAmount");
-  if (cartTotalEl) {
-    cartTotalEl.textContent = totalAmount;
-  }
-  return {
-    itemsTotal,
-    shippingFee,
-    totalAmount
-  };
-}
-function addToCartFromModal() {
-  if (!state.currentModalProduct) return;
-  const addBtn = window.event?.currentTarget || window.event?.target;
-  setButtonLoading(addBtn, true, "\u52A0\u5165\u4E2D...");
-  const quantity = parseInt(document.getElementById("modalQuantity").value);
-  const useSpecialPrice = document.getElementById("useSpecialPrice").checked;
-  const specialPrice = parseFloat(document.getElementById("specialPriceInput").value) || 0;
-  let finalPrice = getEffectivePrice(state.currentModalProduct);
-  let isSpecialPrice = false;
-  if (useSpecialPrice && specialPrice > 0) {
-    finalPrice = specialPrice;
-    isSpecialPrice = true;
-  }
-  const cart = state.giftCart;
-  const existing = cart.find((i) => i.productId === state.currentModalProduct.productId);
-  const cartItem = {
-    ...state.currentModalProduct,
-    price: finalPrice,
-    originalPrice: state.currentModalProduct.price,
-    isSpecialPrice,
-    isCompanyPrice: !isSpecialPrice && state.isCompanyCustomer,
-    quantity: existing ? existing.quantity + quantity : quantity
-  };
-  if (existing) {
-    existing.quantity += quantity;
-    existing.price = finalPrice;
-    existing.originalPrice = state.currentModalProduct.price;
-    existing.isSpecialPrice = isSpecialPrice;
-  } else {
-    cart.push(cartItem);
-  }
-  updateCartDisplay();
-  const priceText = isSpecialPrice ? `\u7279\u50F9 NT$ ${finalPrice}` : `NT$ ${finalPrice}`;
-  showAlert(
-    `\u5DF2\u5C07 ${quantity} \u500B ${state.currentModalProduct.productName} (${priceText}) \u52A0\u5165\u8CFC\u7269\u8ECA`,
-    "success"
-  );
-  if (useSpecialPrice && specialPrice > 0) {
-    updateProductSpecialPrice(state.currentModalProduct.productId, specialPrice);
-  }
-  setButtonLoading(addBtn, false);
-  closeProductModal();
-}
-function toggleCartModal() {
-  const cartModal = document.getElementById("cartModal");
-  const cartOverlay = document.getElementById("cartOverlay");
-  cartModal.classList.toggle("active");
-  cartOverlay.classList.toggle("active");
-  document.body.classList.toggle("cart-open", cartModal.classList.contains("active"));
-  if (cartModal.classList.contains("active")) {
-    updateCartModalDisplay();
-    setTimeout(() => initializeModalCloseHandlers(), 50);
-  }
-}
-function closeCartModal() {
-  document.getElementById("cartModal").classList.remove("active");
-  document.getElementById("cartOverlay").classList.remove("active");
-  document.body.classList.remove("cart-open");
-}
-function updateCartDisplay() {
-  const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
-  const totalCount = allItems.reduce((sum, item) => sum + item.quantity, 0);
-  const orderTotals = updateOrderTotal();
-  const cartCountEl = document.getElementById("cartCount");
-  cartCountEl.textContent = totalCount;
-  cartCountEl.style.display = totalCount > 0 ? "flex" : "none";
-  if (totalCount >= 10) {
-    cartCountEl.classList.add("two-digits");
-  } else {
-    cartCountEl.classList.remove("two-digits");
-  }
-  document.getElementById("cartTotalAmount").textContent = orderTotals.totalAmount;
-  const checkoutBtn = document.getElementById("checkoutBtn");
-  const notReady = totalCount === 0 || !state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone || !state.currentDeliveryDate || !navigator.onLine || document.body.dataset.shopRole === "viewer";
-  checkoutBtn.classList.toggle("checkout-not-ready", notReady);
-  if (state.isEditingOrder) {
-    checkoutBtn.textContent = "\u66F4\u65B0\u8A02\u55AE";
-  } else {
-    checkoutBtn.textContent = "\u5EFA\u7ACB\u8A02\u55AE";
-  }
-  updateCartModalDisplay();
-  scheduleDraftSave();
-}
-function generateGiftboxDetailsHtml(giftboxItem) {
-  if (!giftboxItem.products || Object.keys(giftboxItem.products).length === 0) {
-    return "";
-  }
-  const detailItems = [];
-  for (const [productId, quantity] of Object.entries(giftboxItem.products)) {
-    const product = state.allProducts.find((p) => p.productId === productId);
-    if (product && quantity > 0) {
-      detailItems.push(`${escapeHtml(product.productName)} \xD7 ${quantity}`);
-    }
-  }
-  if (detailItems.length === 0) {
-    return "";
-  }
-  return `
-                <div class="giftbox-details">
-                    <div class="giftbox-details-content">
-                        ${detailItems.join(" | ")}
-                    </div>
-                </div>
-            `;
-}
-
-// src/app/dialogs.js
-function showConfirmModal(message, callback) {
-  document.getElementById("confirmModalMessage").textContent = message;
-  state.confirmCallback = callback;
-  document.getElementById("confirmModal").classList.add("active");
-}
-function closeConfirmModal() {
-  document.getElementById("confirmModal").classList.remove("active");
-  state.confirmCallback = null;
-}
-function executeConfirmCallback() {
-  if (state.confirmCallback) {
-    state.confirmCallback();
-  }
-}
-
-// src/app/platform.js
-function initAccessibleDialogs() {
-  document.querySelectorAll(".modal").forEach(function(modal) {
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-  });
-  document.querySelectorAll("label:not([for])").forEach(function(label) {
-    const control = label.parentElement?.querySelector("input[id], select[id], textarea[id]");
-    if (control) label.htmlFor = control.id;
-  });
-  document.querySelectorAll("input:not([aria-label]), select:not([aria-label]), textarea:not([aria-label])").forEach(function(control) {
-    if (!control.labels?.length)
-      control.setAttribute("aria-label", control.placeholder || control.id || "\u8F38\u5165\u6B04\u4F4D");
-  });
-  document.querySelectorAll("button").forEach(function(button) {
-    if (!button.getAttribute("aria-label") && !button.textContent.trim()) {
-      const icon = button.querySelector("i");
-      if (icon?.classList.contains("fa-plus")) button.setAttribute("aria-label", "\u589E\u52A0\u6578\u91CF");
-      else if (icon?.classList.contains("fa-minus")) button.setAttribute("aria-label", "\u6E1B\u5C11\u6578\u91CF");
-      else if (icon?.classList.contains("fa-trash-alt")) button.setAttribute("aria-label", "\u522A\u9664");
-      else if (icon?.classList.contains("fa-times")) button.setAttribute("aria-label", "\u95DC\u9589");
-      else if (icon?.classList.contains("fa-chevron-left")) button.setAttribute("aria-label", "\u4E0A\u4E00\u500B\u6708");
-      else if (icon?.classList.contains("fa-chevron-right")) button.setAttribute("aria-label", "\u4E0B\u4E00\u500B\u6708");
-      else if (button.textContent.trim() === "\xD7") button.setAttribute("aria-label", "\u95DC\u9589");
-    }
-  });
-}
-function initVisibleViewportFit() {
-  if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
-    document.documentElement.classList.add("standalone-app");
-    return;
-  }
-  const probe = document.getElementById("viewportProbe");
-  if (!probe || typeof IntersectionObserver === "undefined") return;
-  const thresholds = [];
-  for (let i = 0; i <= 100; i++) thresholds.push(i / 100);
-  state.viewportProbeObserver = new IntersectionObserver(
-    function(entries) {
-      applyVisibleViewport(entries[entries.length - 1]);
-    },
-    { threshold: thresholds }
-  );
-  state.viewportProbeObserver.observe(probe);
-  window.addEventListener("resize", scheduleViewportRemeasure);
-  window.addEventListener("orientationchange", scheduleViewportRemeasure);
-  document.addEventListener("visibilitychange", scheduleViewportRemeasure);
-  window.addEventListener("touchend", scheduleViewportRemeasure, { passive: true });
-  setTimeout(scheduleViewportRemeasure, 300);
-  setTimeout(scheduleViewportRemeasure, 1500);
-}
-function scheduleViewportRemeasure() {
-  if (!state.viewportProbeObserver) return;
-  clearTimeout(state.viewportRemeasureTimer);
-  state.viewportRemeasureTimer = setTimeout(function() {
-    const probe = document.getElementById("viewportProbe");
-    if (!probe) return;
-    state.viewportProbeObserver.unobserve(probe);
-    state.viewportProbeObserver.observe(probe);
-  }, 150);
-}
-function applyVisibleViewport(entry) {
-  if (!entry || !entry.intersectionRect) return;
-  const frameHeight = window.innerHeight;
-  const rect = entry.intersectionRect;
-  if (!frameHeight || rect.height <= 0) return;
-  let top = Math.max(0, Math.round(rect.top));
-  let bottom = Math.max(0, Math.round(frameHeight - rect.bottom));
-  if (!isFinite(top) || !isFinite(bottom)) return;
-  if (top + bottom < 8) {
-    top = 0;
-    bottom = 0;
-  }
-  if (frameHeight - top - bottom < 320) return;
-  const root = document.documentElement;
-  if (root.style.getPropertyValue("--vp-top") === top + "px" && root.style.getPropertyValue("--vp-bottom") === bottom + "px") {
-    return;
-  }
-  root.style.setProperty("--vp-top", top + "px");
-  root.style.setProperty("--vp-bottom", bottom + "px");
-}
-function detectDevice() {
-  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-  const isIPad = /iPad/i.test(userAgent) || /Macintosh|MacIntel/i.test(userAgent + " " + navigator.platform) && navigator.maxTouchPoints > 1;
-  const isMobile = isIPad || /android|iPhone|iPod/i.test(userAgent);
-  const body = document.body;
-  if (isMobile) {
-    body.classList.add("mobile-device");
-  } else {
-    body.classList.add("desktop-device");
-  }
-  const deviceOsEl = document.getElementById("deviceOs");
-  const layoutModeEl = document.getElementById("layoutMode");
-  const fullUserAgentEl = document.getElementById("fullUserAgent");
-  if (deviceOsEl) {
-    let os = "\u672A\u77E5";
-    if (isIPad) os = "iPadOS";
-    else if (/iPhone|iPod/i.test(userAgent)) os = "iOS";
-    else if (userAgent.indexOf("Win") !== -1) os = "Windows";
-    else if (userAgent.indexOf("Mac") !== -1) os = "macOS";
-    else if (userAgent.indexOf("Android") !== -1) os = "Android";
-    else if (userAgent.indexOf("Linux") !== -1) os = "Linux";
-    deviceOsEl.value = os;
-  }
-  if (layoutModeEl) {
-    layoutModeEl.value = isMobile ? "\u884C\u52D5\u88DD\u7F6E\u6A21\u5F0F" : "\u684C\u9762\u6A21\u5F0F";
-  }
-  if (fullUserAgentEl) {
-    fullUserAgentEl.value = userAgent;
-  }
-}
-function initializeButtonStates() {
-  const importantButtons = ["proceedStep3"];
-  importantButtons.forEach((btnId) => {
-    const btn = document.getElementById(btnId);
-    if (btn && !btn.dataset.protectedClick) {
-      const originalOnclick = btn.onclick;
-      if (originalOnclick) {
-        btn.onclick = preventDoubleClick(btnId, originalOnclick, 2e3);
-        btn.dataset.protectedClick = "true";
-      }
-    }
-  });
-}
-function initEscapeToClose() {
-  document.addEventListener("keydown", function(e) {
-    if (e.key !== "Escape") return;
-    const activeModals = document.querySelectorAll(".modal.active");
-    if (activeModals.length > 0) {
-      const top = activeModals[activeModals.length - 1];
-      top.classList.remove("active");
-      if (!top.id) top.remove();
-      return;
-    }
-    const cartModal = document.getElementById("cartModal");
-    if (cartModal && cartModal.classList.contains("active")) {
-      closeCartModal();
-    }
-  });
-}
-function initializeModalCloseHandlers() {
-  const modals = document.querySelectorAll(".modal");
-  modals.forEach((modal) => {
-    if (!modal.onclick) {
-      const modalId = modal.id;
-      switch (modalId) {
-        case "cartModal":
-          modal.onclick = closeCartModal;
-          break;
-        case "productModal":
-          modal.onclick = closeProductModal;
-          break;
-        case "productEditModal":
-          modal.onclick = closeProductEditModal;
-          break;
-        case "confirmModal":
-          modal.onclick = closeConfirmModal;
-          break;
-        default:
-          modal.onclick = function() {
-            this.classList.remove("active");
-            if (!document.getElementById(modalId)) {
-              this.remove();
-            }
-          };
-      }
-    }
-    const modalContent = modal.querySelector(".modal-content");
-    if (modalContent && !modalContent.onclick) {
-      modalContent.onclick = function(event2) {
-        event2.stopPropagation();
-      };
-    }
-  });
-}
-function showSectionById(sectionName) {
-  showSection(sectionName, document.getElementById("nav-" + sectionName));
-}
-function setDefaultDate() {
-  const today = getTaipeiDate();
-  document.getElementById("deliveryDate").value = today;
-}
-function getTaipeiDate() {
-  const now = /* @__PURE__ */ new Date();
-  const taipeiTime = new Date(now.getTime() + 8 * 60 * 60 * 1e3);
-  return taipeiTime.toISOString().split("T")[0];
+  updateProductTotal();
 }
 
 // src/app/order-status.js
@@ -3395,7 +3050,7 @@ function displayOrderTable(orders, containerId, type = "search") {
   container.innerHTML = `
                 ${headerContent}
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table gj-table">
                         <thead><tr>${tableHeaders}</tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table>
@@ -3489,7 +3144,7 @@ function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
                         <div class="order-items-expand">
                             <div class="order-items-scroll">
                               <div class="order-items-content">
-                                <table class="order-items-table">
+                                <table class="order-items-table gj-table">
                                     <thead><tr><th>\u5546\u54C1</th><th>\u6578\u91CF</th><th>\u55AE\u50F9</th><th>\u5C0F\u8A08</th></tr></thead>
                                     <tbody>${itemsHtml}</tbody>
                                 </table>
@@ -3598,7 +3253,7 @@ function renderCapacitySettingsUI() {
     var col = document.createElement("div");
     col.className = "capacity-day-col" + (isActive ? " active" : "");
     var val = setting.maxQuantity === "" || setting.maxQuantity === null ? "" : setting.maxQuantity;
-    col.innerHTML = '<div class="day-name">' + escapeHtml(state.weekdayNames[i]) + '</div><input type="number" inputmode="numeric" step="1" min="0" placeholder="0" aria-label="\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u4E0A\u9650" value="' + val + '" data-day="' + i + '" id="capDay' + i + '"><label class="day-toggle" for="capDayEnabled' + i + '"><input type="checkbox" aria-label="\u555F\u7528\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u9650\u5236" ' + (isActive ? "checked" : "") + ' data-day="' + i + '" id="capDayEnabled' + i + '"><span class="slider" aria-hidden="true"></span></label>';
+    col.innerHTML = '<div class="day-name">' + escapeHtml(state.weekdayNames[i]) + '</div><input type="number" inputmode="numeric" step="1" min="0" placeholder="0" aria-label="\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u4E0A\u9650" value="' + val + '" data-day="' + i + '" id="capDay' + i + '" class="gj-input"><label class="day-toggle" for="capDayEnabled' + i + '"><input type="checkbox" aria-label="\u555F\u7528\u661F\u671F' + escapeAttr(state.weekdayNames[i]) + '\u4F9B\u61C9\u91CF\u9650\u5236" ' + (isActive ? "checked" : "") + ' data-day="' + i + '" id="capDayEnabled' + i + '"><span class="slider" aria-hidden="true"></span></label>';
     grid.appendChild(col);
   }
   grid.querySelectorAll('input[type="number"], input[type="checkbox"]').forEach(function(el) {
@@ -3620,7 +3275,7 @@ function renderOverrideTable() {
   const tbody = document.getElementById("overrideTableBody");
   if (!tbody) return;
   if (!state.capacitySettings.dateOverrides || state.capacitySettings.dateOverrides.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 24px;">\u5C1A\u7121\u65E5\u671F\u8986\u5BEB\u8A2D\u5B9A</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--gj-muted); padding: 24px;">\u5C1A\u7121\u65E5\u671F\u8986\u5BEB\u8A2D\u5B9A</td></tr>';
     return;
   }
   var todayStr = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -3647,14 +3302,14 @@ function renderOverrideTable() {
     var maxStr = o.maxQuantity === "" || o.maxQuantity === null || o.maxQuantity === 0 ? "\u4E0D\u9650\u5236" : o.maxQuantity;
     var statusBadge;
     if (isExpired) {
-      statusBadge = '<span style="color: #9ca3af;">\u5DF2\u904E\u671F</span>';
+      statusBadge = '<span style="color: var(--gj-muted);">\u5DF2\u904E\u671F</span>';
     } else if (o.enabled) {
-      statusBadge = '<span style="color: #16a34a; font-weight: 600;">\u555F\u7528</span>';
+      statusBadge = '<span style="color: var(--gj-success); font-weight: 600;">\u555F\u7528</span>';
     } else {
-      statusBadge = '<span style="color: #9ca3af;">\u505C\u7528</span>';
+      statusBadge = '<span style="color: var(--gj-muted);">\u505C\u7528</span>';
     }
     var rowStyle = isExpired ? ' style="opacity: 0.5;"' : "";
-    var deleteButton = document.body.dataset.shopRole === "viewer" ? "" : '<button class="requires-editor" aria-label="\u522A\u9664 ' + escapeAttr(o.date) + ` \u65E5\u671F\u8986\u5BEB" onclick="deleteDateOverrideById('` + escapeAttr(o.id) + `')" style="padding: 4px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.8rem; cursor: pointer;"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`;
+    var deleteButton = document.body.dataset.shopRole === "viewer" ? "" : '<button class="requires-editor" aria-label="\u522A\u9664 ' + escapeAttr(o.date) + ` \u65E5\u671F\u8986\u5BEB" onclick="deleteDateOverrideById('` + escapeAttr(o.id) + `')" style="padding: 4px 10px; background: var(--gj-surface); color: var(--gj-danger); border: 1px solid var(--gj-surface); border-radius: 6px; font-size: 0.8rem; cursor: pointer;"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`;
     return "<tr" + rowStyle + "><td>" + escapeHtml(o.date) + "</td><td>" + dayStr + '</td><td style="font-weight: 600;">' + maxStr + "</td><td>" + statusBadge + '</td><td style="text-align: center;">' + deleteButton + "</td></tr>";
   }).join("");
 }
@@ -3695,19 +3350,19 @@ function saveWeekdayCapacitySettings() {
       invalidateCapacityCache();
     }).withFailureHandler(function(error) {
       if (statusEl) {
-        statusEl.style.color = "#dc2626";
+        statusEl.style.color = "var(--gj-danger)";
         statusEl.textContent = "\u5132\u5B58\u5931\u6557: " + error.message;
       }
       setTimeout(function() {
         if (statusEl) {
-          statusEl.style.color = "#9ca3af";
+          statusEl.style.color = "var(--gj-muted)";
           statusEl.textContent = "";
         }
       }, 3e3);
     }).saveWeekdayCapacity(settings);
   } else {
     if (statusEl) {
-      statusEl.style.color = "#dc2626";
+      statusEl.style.color = "var(--gj-danger)";
       statusEl.textContent = "\u5C1A\u672A\u9023\u63A5 Firebase\uFF0C\u672A\u5132\u5B58";
     }
   }
@@ -3940,12 +3595,12 @@ function selectCalendarDate(day) {
   renderCalendar();
   const weekDay = new Date(state.calendarState.currYear, state.calendarState.currMonth, day).getDay();
   const weekStr = ["\u65E5", "\u4E00", "\u4E8C", "\u4E09", "\u56DB", "\u4E94", "\u516D"][weekDay];
-  document.getElementById("selected-date-display").innerHTML = `\u5DF2\u9078\u64C7\uFF1A<span class="text-blue-600 font-bold text-xl">${state.calendarState.currYear}/${state.calendarState.currMonth + 1}/${day} (\u9031${weekStr})</span>`;
+  document.getElementById("selected-date-display").innerHTML = `\u5DF2\u9078\u64C7\uFF1A<span class="text-md-primary font-bold text-xl">${state.calendarState.currYear}/${state.calendarState.currMonth + 1}/${day} (\u9031${weekStr})</span>`;
   document.getElementById("deliveryDate").value = state.calendarState.selectedDateStr;
   const btn = document.getElementById("btn-confirm-date");
   btn.disabled = false;
-  btn.classList.remove("bg-gray-300", "cursor-not-allowed");
-  btn.classList.add("bg-blue-600", "hover:bg-blue-700", "shadow-lg");
+  btn.classList.remove("bg-md-surface-container", "cursor-not-allowed");
+  btn.classList.add("bg-md-primary", "hover:bg-md-primary", "shadow-lg");
   btn.innerHTML = `\u78BA\u8A8D\u65E5\u671F <i class="fas fa-check ml-2"></i>`;
 }
 function confirmDateSelection() {
@@ -4035,11 +3690,7 @@ function updateProductDisplays() {
   const tabs = document.getElementById("catalogFilterTabs");
   const previous = tabs.dataset.category || "";
   const activeProducts = state.allProducts.filter((p) => p.status === "\u555F\u7528");
-  const categories = [
-    ...new Set(
-      activeProducts.map((p) => p.category).filter(Boolean)
-    )
-  ];
+  const categories = [...new Set(activeProducts.map((p) => p.category).filter(Boolean))];
   const selected = categories.includes(previous) ? previous : "";
   tabs.dataset.category = selected;
   tabs.replaceChildren(
@@ -4073,83 +3724,85 @@ function loadProductsByCategory(category, containerId) {
     container.innerHTML = '<div class="col-span-full workspace-empty" role="status"><h3>\u76EE\u524D\u6C92\u6709\u555F\u7528\u7684\u5546\u54C1</h3><p>\u53EF\u5728\u300C\u7BA1\u7406\u300D\u7684\u300C\u5546\u54C1\u7BA1\u7406\u300D\u65B0\u589E\u6216\u555F\u7528\u5546\u54C1\u3002</p></div>';
     return;
   }
-  const companyBanner = state.isCompanyCustomer ? '<div class="company-mode-banner col-span-full"><i class="fas fa-building"></i>\u76EE\u524D\u70BA\u4F01\u696D\u5BA2\u6236\u6A21\u5F0F\uFF0C\u5546\u54C1\u5DF2\u5957\u7528\u4F01\u696D\u50F9\u683C</div>' : "";
-  const iconClass = "fa-box-open";
-  const bgClass = "bg-orange-50 text-orange-300";
-  const hoverBorderClass = "hover:border-orange-300";
+  const companyBanner = state.isCompanyCustomer ? '<div class="company-mode-banner col-span-full">\u4F01\u696D\u50F9\u5DF2\u555F\u7528\uFF1B\u672A\u8A2D\u5B9A\u7684\u54C1\u9805\u63A1\u4E00\u822C\u552E\u50F9\u3002</div>' : "";
   container.innerHTML = companyBanner + products.map((p) => {
     const effectivePrice = getEffectivePrice(p);
+    const quantity = getCatalogQuantity(p.productId);
     const isCompanyPriceActive = state.isCompanyCustomer && p.companyPrice && parseFloat(p.companyPrice) > 0 && parseFloat(p.companyPrice) !== parseFloat(p.price);
     return `
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col border ${hoverBorderClass} transition group relative h-full">
-                    <!-- \u4E0A\u534A\u90E8\uFF1A\u9EDE\u64CA\u67E5\u770B\u8A73\u60C5/\u7279\u50F9 -->
-                    <div class="cursor-pointer flex-1 flex flex-col" onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')">
-                        <div class="h-32 ${bgClass} flex items-center justify-center relative overflow-hidden">
-                            <i class="fas ${iconClass} text-5xl transform group-hover:scale-110 transition-transform duration-300"></i>
-                            ${isCompanyPriceActive ? '<div class="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm">\u4F01\u696D\u50F9</div>' : ""}
-                        </div>
-                        <div class="p-4 pb-2 flex-1">
-                            <h3 class="font-bold text-lg mb-1 text-gray-800 line-clamp-2 h-14">${escapeHtml(p.productName)}</h3>
-                            <p class="text-red-500 font-bold text-xl">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + "</span>" : ""}NT$ ${effectivePrice}${isCompanyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</p>
-                        </div>
+                <div class="giftbox-product-card gj-pos-card catalog-product-card ${quantity > 0 ? "has-quantity" : ""}" data-catalog-product="${escapeAttr(p.productId)}">
+                    <div class="giftbox-product-meta">
+                        <span class="giftbox-product-category">${escapeHtml(p.category || "\u672A\u5206\u985E")}</span>
+                        <span class="giftbox-product-selection"><i class="fas fa-check" aria-hidden="true"></i> \u5DF2\u52A0\u5165 <span class="giftbox-selected-quantity">${quantity}</span> \u4EF6</span>
                     </div>
-
-                    <!-- \u4E0B\u534A\u90E8\uFF1A\u64CD\u4F5C\u6309\u9215 -->
-                    <div class="p-4 pt-0 mt-auto">
-                        <div class="flex items-center justify-between gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <button onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')" class="flex-1 py-2 px-2 text-gray-600 text-sm font-medium hover:text-blue-600 transition flex items-center justify-center gap-1">
-                                <i class="fas fa-edit"></i> \u8A73\u60C5
-                            </button>
-                            <div class="w-px h-6 bg-gray-300"></div>
-                            <button onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition">
-                                <i class="fas fa-plus"></i>
+                    <div class="giftbox-product-info">
+                        <h3>${escapeHtml(p.productName)}</h3>
+                        <div class="giftbox-product-pricing"><span class="price">NT$ ${effectivePrice.toLocaleString("zh-TW")}</span><span class="giftbox-price-unit">\uFF0F\u4EF6</span>${isCompanyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</div>
+                        ${isCompanyPriceActive ? `<span class="company-original-price">\u539F\u50F9 NT$ ${Number(p.price).toLocaleString("zh-TW")}</span>` : ""}
+                    </div>
+                    <div class="giftbox-product-quantity">
+                        <button type="button" aria-label="${escapeAttr(p.productName)} \u5546\u54C1\u8A73\u60C5" onclick="showProductDetail('${escapeHandlerArgument(p.productId)}')" class="catalog-details-btn gj-btn gj-btn--quiet">\u8A73\u60C5</button>
+                        <div class="giftbox-quantity-control catalog-quantity-control">
+                            <button type="button" class="giftbox-qty-btn catalog-remove-btn" aria-label="\u6E1B\u5C11 ${escapeAttr(p.productName)} \u6578\u91CF" ${quantity === 0 ? "disabled" : ""} onclick="adjustCatalogQuantity('${escapeHandlerArgument(p.productId)}', -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
+                            <input type="number" inputmode="numeric" min="0" step="1" class="giftbox-qty-display gj-input catalog-quantity" aria-label="${escapeAttr(p.productName)} \u8CFC\u7269\u8ECA\u6578\u91CF" value="${quantity}" onfocus="this.select()" onchange="setCatalogQuantity('${escapeHandlerArgument(p.productId)}', this.value)">
+                            <button type="button" aria-label="\u52A0\u5165 ${escapeAttr(p.productName)} \u5230\u8CFC\u7269\u8ECA" onclick="addToCartDirectly('${escapeHandlerArgument(p.productId)}')" class="giftbox-qty-btn catalog-add-btn">
+                                <i class="fas fa-plus" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
                 </div>`;
   }).join("");
 }
-function addToCartDirectly(productId) {
-  event.stopPropagation();
-  const btn = window.event?.currentTarget || window.event?.target;
-  if (btn.dataset.animating === "true") {
-    const product2 = state.allProducts.find((p) => p.productId === productId);
-    if (!product2) return;
-    const cart2 = state.giftCart;
-    const existingItem2 = cart2.find(
-      (item) => item.productId === productId && !item.isSpecialPrice && !item.isCompanyPrice === !state.isCompanyCustomer && (!item.notes || item.notes === "")
-    );
-    if (existingItem2) {
-      existingItem2.quantity += 1;
-    } else {
-      cart2.push({
-        productId: product2.productId,
-        productName: product2.productName,
-        price: getEffectivePrice(product2),
-        quantity: 1,
-        category: product2.category,
-        isSpecialPrice: false,
-        isCompanyPrice: state.isCompanyCustomer,
-        notes: ""
-      });
+function getCatalogQuantity(productId) {
+  return state.giftCart.filter((item) => item.productId === productId).reduce((total, item) => total + Number(item.quantity || 0), 0);
+}
+function updateCatalogQuantities() {
+  document.querySelectorAll("[data-catalog-product]").forEach((card) => {
+    const quantity = getCatalogQuantity(card.dataset.catalogProduct);
+    card.querySelector(".catalog-quantity").value = quantity;
+    card.querySelector(".giftbox-selected-quantity").textContent = quantity;
+    card.querySelector(".catalog-remove-btn").disabled = quantity === 0;
+    card.classList.toggle("has-quantity", quantity > 0);
+  });
+}
+function adjustCatalogQuantity(productId, change) {
+  setCatalogQuantity(productId, getCatalogQuantity(productId) + change);
+}
+function setCatalogQuantity(productId, rawQuantity) {
+  const product = state.allProducts.find((p) => p.productId === productId);
+  if (!product) return;
+  const quantity = Math.max(0, parseInt(rawQuantity, 10) || 0);
+  const currentQuantity = getCatalogQuantity(productId);
+  const cart = state.giftCart;
+  if (quantity < currentQuantity) {
+    let remaining = currentQuantity - quantity;
+    for (let index = cart.length - 1; index >= 0 && remaining > 0; index--) {
+      const item = cart[index];
+      if (item.productId !== productId) continue;
+      const removed = Math.min(remaining, item.quantity);
+      item.quantity -= removed;
+      remaining -= removed;
+      if (item.quantity === 0) cart.splice(index, 1);
     }
     updateCartDisplay();
     return;
   }
-  const product = state.allProducts.find((p) => p.productId === productId);
-  if (!product) return;
-  const cart = state.giftCart;
+  const additionalQuantity = quantity - currentQuantity;
+  if (additionalQuantity === 0) {
+    updateCatalogQuantities();
+    return;
+  }
   const existingItem = cart.find(
     (item) => item.productId === productId && !item.isSpecialPrice && !item.isCompanyPrice === !state.isCompanyCustomer && (!item.notes || item.notes === "")
   );
   if (existingItem) {
-    existingItem.quantity += 1;
+    existingItem.quantity += additionalQuantity;
   } else {
     cart.push({
       productId: product.productId,
       productName: product.productName,
       price: getEffectivePrice(product),
-      quantity: 1,
+      quantity: additionalQuantity,
       category: product.category,
       isSpecialPrice: false,
       isCompanyPrice: state.isCompanyCustomer,
@@ -4157,16 +3810,352 @@ function addToCartDirectly(productId) {
     });
   }
   updateCartDisplay();
-  const originalContent = '<i class="fas fa-plus"></i>';
-  const originalClasses = "w-10 h-10 bg-white border border-blue-200 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white shadow-sm active:scale-95 transition add-to-cart-btn";
+}
+function addToCartDirectly(productId) {
+  window.event?.stopPropagation();
+  const btn = window.event?.currentTarget || window.event?.target?.closest("button");
+  adjustCatalogQuantity(productId, 1);
+  if (!btn || btn.dataset.animating === "true") return;
+  const icon = btn.querySelector("i");
+  const originalIconClasses = icon?.className;
   btn.dataset.animating = "true";
-  btn.innerHTML = '<i class="fas fa-check"></i>';
-  btn.className = "w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center shadow-md transition add-to-cart-btn";
+  icon?.classList.replace("fa-plus", "fa-check");
   setTimeout(() => {
-    btn.innerHTML = originalContent;
-    btn.className = originalClasses;
+    if (icon) icon.className = originalIconClasses;
     btn.dataset.animating = "false";
   }, 600);
+}
+
+// src/app/cart.js
+function updateOrderTotal() {
+  const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
+  const itemsTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  let shippingFee = 0;
+  const isPickup = document.getElementById("deliveryTypeValue").value === "\u81EA\u53D6";
+  const isChargeShipping = document.getElementById("shippingOption").value === "charge";
+  if (!isPickup && isChargeShipping) {
+    const shippingFeeInput = document.getElementById("shippingFee");
+    shippingFee = parseFloat(shippingFeeInput.value) || 0;
+  }
+  const totalAmount = itemsTotal + shippingFee;
+  const cartTotalEl = document.getElementById("cartTotalAmount");
+  if (cartTotalEl) {
+    cartTotalEl.textContent = totalAmount.toLocaleString("zh-TW");
+  }
+  return {
+    itemsTotal,
+    shippingFee,
+    totalAmount
+  };
+}
+function addToCartFromModal() {
+  if (!state.currentModalProduct) return;
+  const addBtn = window.event?.currentTarget || window.event?.target;
+  setButtonLoading(addBtn, true, "\u52A0\u5165\u4E2D...");
+  const quantity = parseInt(document.getElementById("modalQuantity").value);
+  const useSpecialPrice = document.getElementById("useSpecialPrice").checked;
+  const specialPrice = parseFloat(document.getElementById("specialPriceInput").value) || 0;
+  let finalPrice = getEffectivePrice(state.currentModalProduct);
+  let isSpecialPrice = false;
+  if (useSpecialPrice && specialPrice > 0) {
+    finalPrice = specialPrice;
+    isSpecialPrice = true;
+  }
+  const cart = state.giftCart;
+  const existing = cart.find((i) => i.productId === state.currentModalProduct.productId);
+  const cartItem = {
+    ...state.currentModalProduct,
+    price: finalPrice,
+    originalPrice: state.currentModalProduct.price,
+    isSpecialPrice,
+    isCompanyPrice: !isSpecialPrice && state.isCompanyCustomer,
+    quantity: existing ? existing.quantity + quantity : quantity
+  };
+  if (existing) {
+    existing.quantity += quantity;
+    existing.price = finalPrice;
+    existing.originalPrice = state.currentModalProduct.price;
+    existing.isSpecialPrice = isSpecialPrice;
+  } else {
+    cart.push(cartItem);
+  }
+  updateCartDisplay();
+  const priceText = isSpecialPrice ? `\u7279\u50F9 NT$ ${finalPrice}` : `NT$ ${finalPrice}`;
+  showAlert(
+    `\u5DF2\u5C07 ${quantity} \u500B ${state.currentModalProduct.productName} (${priceText}) \u52A0\u5165\u8CFC\u7269\u8ECA`,
+    "success"
+  );
+  if (useSpecialPrice && specialPrice > 0) {
+    updateProductSpecialPrice(state.currentModalProduct.productId, specialPrice);
+  }
+  setButtonLoading(addBtn, false);
+  closeProductModal();
+}
+function toggleCartModal() {
+  const cartModal = document.getElementById("cartModal");
+  const cartOverlay = document.getElementById("cartOverlay");
+  cartModal.classList.toggle("active");
+  cartOverlay.classList.toggle("active");
+  document.body.classList.toggle("cart-open", cartModal.classList.contains("active"));
+  if (cartModal.classList.contains("active")) {
+    updateCartModalDisplay();
+  }
+}
+function closeCartModal() {
+  document.getElementById("cartModal").classList.remove("active");
+  document.getElementById("cartOverlay").classList.remove("active");
+  document.body.classList.remove("cart-open");
+}
+function updateCartDisplay() {
+  const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
+  const totalCount = allItems.reduce((sum, item) => sum + item.quantity, 0);
+  const orderTotals = updateOrderTotal();
+  const cartCountEl = document.getElementById("cartCount");
+  cartCountEl.textContent = totalCount;
+  cartCountEl.style.display = totalCount > 0 ? "flex" : "none";
+  if (totalCount >= 10) {
+    cartCountEl.classList.add("two-digits");
+  } else {
+    cartCountEl.classList.remove("two-digits");
+  }
+  document.getElementById("cartTotalAmount").textContent = orderTotals.totalAmount.toLocaleString("zh-TW");
+  const checkoutBtn = document.getElementById("checkoutBtn");
+  const notReady = totalCount === 0 || !state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone || !state.currentDeliveryDate || !navigator.onLine || document.body.dataset.shopRole === "viewer";
+  checkoutBtn.classList.toggle("checkout-not-ready", notReady);
+  if (state.isEditingOrder) {
+    checkoutBtn.textContent = "\u66F4\u65B0\u8A02\u55AE";
+  } else {
+    checkoutBtn.textContent = "\u5EFA\u7ACB\u8A02\u55AE";
+  }
+  updateCartModalDisplay();
+  updateCatalogQuantities();
+  scheduleDraftSave();
+}
+function generateGiftboxDetailsHtml(giftboxItem) {
+  if (!giftboxItem.products || Object.keys(giftboxItem.products).length === 0) {
+    return "";
+  }
+  const detailItems = [];
+  for (const [productId, quantity] of Object.entries(giftboxItem.products)) {
+    const product = state.allProducts.find((p) => p.productId === productId);
+    if (product && quantity > 0) {
+      detailItems.push(
+        `<li><span>${escapeHtml(product.productName)}</span><span>\u6BCF\u76D2 ${quantity} \u7C92</span></li>`
+      );
+    }
+  }
+  if (detailItems.length === 0) {
+    return "";
+  }
+  return `
+                <div class="cart-giftbox-details">
+                    <span class="cart-price-label">\u79AE\u76D2\u5167\u5BB9</span>
+                    <ul>${detailItems.join("")}</ul>
+                </div>
+            `;
+}
+
+// src/app/dialogs.js
+function showConfirmModal(message, callback) {
+  document.getElementById("confirmModalMessage").textContent = message;
+  state.confirmCallback = callback;
+  document.getElementById("confirmModal").classList.add("active");
+}
+function closeConfirmModal() {
+  document.getElementById("confirmModal").classList.remove("active");
+  state.confirmCallback = null;
+}
+function executeConfirmCallback() {
+  if (state.confirmCallback) {
+    state.confirmCallback();
+  }
+}
+
+// src/app/platform.js
+function initAccessibleDialogs() {
+  document.querySelectorAll(".modal").forEach(function(modal) {
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+  });
+  document.querySelectorAll("label:not([for])").forEach(function(label) {
+    const control = label.parentElement?.querySelector("input[id], select[id], textarea[id]");
+    if (control) label.htmlFor = control.id;
+  });
+  document.querySelectorAll("input:not([aria-label]), select:not([aria-label]), textarea:not([aria-label])").forEach(function(control) {
+    if (!control.labels?.length)
+      control.setAttribute("aria-label", control.placeholder || control.id || "\u8F38\u5165\u6B04\u4F4D");
+  });
+  document.querySelectorAll("button").forEach(function(button) {
+    if (!button.getAttribute("aria-label") && !button.textContent.trim()) {
+      const icon = button.querySelector("i");
+      if (icon?.classList.contains("fa-plus")) button.setAttribute("aria-label", "\u589E\u52A0\u6578\u91CF");
+      else if (icon?.classList.contains("fa-minus")) button.setAttribute("aria-label", "\u6E1B\u5C11\u6578\u91CF");
+      else if (icon?.classList.contains("fa-trash-alt")) button.setAttribute("aria-label", "\u522A\u9664");
+      else if (icon?.classList.contains("fa-times")) button.setAttribute("aria-label", "\u95DC\u9589");
+      else if (icon?.classList.contains("fa-chevron-left")) button.setAttribute("aria-label", "\u4E0A\u4E00\u500B\u6708");
+      else if (icon?.classList.contains("fa-chevron-right")) button.setAttribute("aria-label", "\u4E0B\u4E00\u500B\u6708");
+      else if (button.textContent.trim() === "\xD7") button.setAttribute("aria-label", "\u95DC\u9589");
+    }
+  });
+}
+function initVisibleViewportFit() {
+  if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
+    document.documentElement.classList.add("standalone-app");
+    return;
+  }
+  const probe = document.getElementById("viewportProbe");
+  if (!probe || typeof IntersectionObserver === "undefined") return;
+  const thresholds = [];
+  for (let i = 0; i <= 100; i++) thresholds.push(i / 100);
+  state.viewportProbeObserver = new IntersectionObserver(
+    function(entries) {
+      applyVisibleViewport(entries[entries.length - 1]);
+    },
+    { threshold: thresholds }
+  );
+  state.viewportProbeObserver.observe(probe);
+  window.addEventListener("resize", scheduleViewportRemeasure);
+  window.addEventListener("orientationchange", scheduleViewportRemeasure);
+  document.addEventListener("visibilitychange", scheduleViewportRemeasure);
+  window.addEventListener("touchend", scheduleViewportRemeasure, { passive: true });
+  setTimeout(scheduleViewportRemeasure, 300);
+  setTimeout(scheduleViewportRemeasure, 1500);
+}
+function scheduleViewportRemeasure() {
+  if (!state.viewportProbeObserver) return;
+  clearTimeout(state.viewportRemeasureTimer);
+  state.viewportRemeasureTimer = setTimeout(function() {
+    const probe = document.getElementById("viewportProbe");
+    if (!probe) return;
+    state.viewportProbeObserver.unobserve(probe);
+    state.viewportProbeObserver.observe(probe);
+  }, 150);
+}
+function applyVisibleViewport(entry) {
+  if (!entry || !entry.intersectionRect) return;
+  const frameHeight = window.innerHeight;
+  const rect = entry.intersectionRect;
+  if (!frameHeight || rect.height <= 0) return;
+  let top = Math.max(0, Math.round(rect.top));
+  let bottom = Math.max(0, Math.round(frameHeight - rect.bottom));
+  if (!isFinite(top) || !isFinite(bottom)) return;
+  if (top + bottom < 8) {
+    top = 0;
+    bottom = 0;
+  }
+  if (frameHeight - top - bottom < 320) return;
+  const root = document.documentElement;
+  if (root.style.getPropertyValue("--vp-top") === top + "px" && root.style.getPropertyValue("--vp-bottom") === bottom + "px") {
+    return;
+  }
+  root.style.setProperty("--vp-top", top + "px");
+  root.style.setProperty("--vp-bottom", bottom + "px");
+}
+function detectDevice() {
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  const isIPad = /iPad/i.test(userAgent) || /Macintosh|MacIntel/i.test(userAgent + " " + navigator.platform) && navigator.maxTouchPoints > 1;
+  const isMobile = isIPad || /android|iPhone|iPod/i.test(userAgent);
+  const body = document.body;
+  if (isMobile) {
+    body.classList.add("mobile-device");
+  } else {
+    body.classList.add("desktop-device");
+  }
+  const deviceOsEl = document.getElementById("deviceOs");
+  const layoutModeEl = document.getElementById("layoutMode");
+  const fullUserAgentEl = document.getElementById("fullUserAgent");
+  if (deviceOsEl) {
+    let os = "\u672A\u77E5";
+    if (isIPad) os = "iPadOS";
+    else if (/iPhone|iPod/i.test(userAgent)) os = "iOS";
+    else if (userAgent.indexOf("Win") !== -1) os = "Windows";
+    else if (userAgent.indexOf("Mac") !== -1) os = "macOS";
+    else if (userAgent.indexOf("Android") !== -1) os = "Android";
+    else if (userAgent.indexOf("Linux") !== -1) os = "Linux";
+    deviceOsEl.value = os;
+  }
+  if (layoutModeEl) {
+    layoutModeEl.value = isMobile ? "\u884C\u52D5\u88DD\u7F6E\u6A21\u5F0F" : "\u684C\u9762\u6A21\u5F0F";
+  }
+  if (fullUserAgentEl) {
+    fullUserAgentEl.value = userAgent;
+  }
+}
+function initializeButtonStates() {
+  const importantButtons = ["proceedStep3"];
+  importantButtons.forEach((btnId) => {
+    const btn = document.getElementById(btnId);
+    if (btn && !btn.dataset.protectedClick) {
+      const originalOnclick = btn.onclick;
+      if (originalOnclick) {
+        btn.onclick = preventDoubleClick(btnId, originalOnclick, 2e3);
+        btn.dataset.protectedClick = "true";
+      }
+    }
+  });
+}
+function initEscapeToClose() {
+  document.addEventListener("keydown", function(e) {
+    if (e.key !== "Escape") return;
+    const activeModals = document.querySelectorAll(".modal.active");
+    if (activeModals.length > 0) {
+      const top = activeModals[activeModals.length - 1];
+      top.classList.remove("active");
+      if (!top.id) top.remove();
+      return;
+    }
+    const cartModal = document.getElementById("cartModal");
+    if (cartModal && cartModal.classList.contains("active")) {
+      closeCartModal();
+    }
+  });
+}
+function initializeModalCloseHandlers() {
+  const modals = document.querySelectorAll(".modal");
+  modals.forEach((modal) => {
+    if (!modal.onclick) {
+      const modalId = modal.id;
+      switch (modalId) {
+        case "cartModal":
+          modal.onclick = closeCartModal;
+          break;
+        case "productModal":
+          modal.onclick = closeProductModal;
+          break;
+        case "productEditModal":
+          modal.onclick = closeProductEditModal;
+          break;
+        case "confirmModal":
+          modal.onclick = closeConfirmModal;
+          break;
+        default:
+          modal.onclick = function() {
+            this.classList.remove("active");
+            if (!document.getElementById(modalId)) {
+              this.remove();
+            }
+          };
+      }
+    }
+    const modalContent = modal.querySelector(".modal-content");
+    if (modalContent && !modalContent.onclick) {
+      modalContent.onclick = function(event) {
+        event.stopPropagation();
+      };
+    }
+  });
+}
+function showSectionById(sectionName) {
+  showSection(sectionName, document.getElementById("nav-" + sectionName));
+}
+function setDefaultDate() {
+  const today = getTaipeiDate();
+  document.getElementById("deliveryDate").value = today;
+}
+function getTaipeiDate() {
+  const now = /* @__PURE__ */ new Date();
+  const taipeiTime = new Date(now.getTime() + 8 * 60 * 60 * 1e3);
+  return taipeiTime.toISOString().split("T")[0];
 }
 
 // src/app/products.js
@@ -4244,23 +4233,23 @@ function initializeCategoryPicker() {
   });
   input.addEventListener("click", () => open());
   input.addEventListener("input", () => open(input.value));
-  const navigate = (event2) => {
-    if (event2.key === "ArrowDown" || event2.key === "ArrowUp") {
-      event2.preventDefault();
+  const navigate = (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
       if (options.hidden) open();
       const buttons = [...options.querySelectorAll("button")];
       const index = buttons.indexOf(document.activeElement);
-      const next = event2.key === "ArrowDown" ? index + 1 : index < 0 ? buttons.length - 1 : index - 1;
+      const next = event.key === "ArrowDown" ? index + 1 : index < 0 ? buttons.length - 1 : index - 1;
       buttons[(next + buttons.length) % buttons.length]?.focus();
     }
   };
   picker.addEventListener("keydown", navigate);
   options.addEventListener("keydown", navigate);
-  options.addEventListener("click", (event2) => event2.stopPropagation());
+  options.addEventListener("click", (event) => event.stopPropagation());
   modal.addEventListener(
     "scroll",
-    (event2) => {
-      if (event2.target !== options) position();
+    (event) => {
+      if (event.target !== options) position();
     },
     true
   );
@@ -4268,13 +4257,13 @@ function initializeCategoryPicker() {
   window.addEventListener("resize", position);
   window.visualViewport?.addEventListener("resize", position);
   window.visualViewport?.addEventListener("scroll", position);
-  document.addEventListener("keyup", (event2) => {
-    if (event2.key === "Tab" && !contains(document.activeElement)) closeCategoryOptions();
+  document.addEventListener("keyup", (event) => {
+    if (event.key === "Tab" && !contains(document.activeElement)) closeCategoryOptions();
   });
   document.addEventListener(
     "click",
-    (event2) => {
-      if (!contains(event2.target)) closeCategoryOptions();
+    (event) => {
+      if (!contains(event.target)) closeCategoryOptions();
     },
     true
   );
@@ -4312,11 +4301,12 @@ function renderProductCards() {
     const statusClass = p.status === "\u555F\u7528" ? "enabled" : "disabled";
     const statusIcon = p.status === "\u555F\u7528" ? "fa-check-circle" : "fa-times-circle";
     const giftboxBadge = p.giftBoxEnabled === "\u662F" ? '<span class="status-badge yes"><i class="fas fa-gift"></i> \u53EF\u88DD\u79AE\u76D2</span>' : "";
-    const specialPriceDisplay = p.specialPrice && p.specialPrice !== "" ? `<span class="price-special">NT$ ${p.specialPrice}</span>` : '<span class="price-none">--</span>';
-    const companyPriceDisplay = p.companyPrice && p.companyPrice !== "" ? `<span class="price-value" style="color: #4f46e5;">NT$ ${p.companyPrice}</span>` : '<span class="price-none">--</span>';
-    return `<div class="product-card">
+    const money2 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+    const specialPriceDisplay = p.specialPrice && p.specialPrice !== "" ? `<span class="price-special">${money2(p.specialPrice)}</span>` : '<span class="price-none">\u672A\u8A2D\u5B9A</span>';
+    const companyPriceDisplay = p.companyPrice && p.companyPrice !== "" ? `<span class="price-value">${money2(p.companyPrice)}</span>` : '<span class="price-none">\u672A\u8A2D\u5B9A</span>';
+    return `<div class="product-card gj-pos-card">
                     <div class="product-card-header">
-                        <span class="product-name">${escapeHtml(p.productName)}</span>
+                        <h3 class="product-name">${escapeHtml(p.productName)}</h3>
                         <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${p.status}</span>
                     </div>
                     <div class="product-card-tags">
@@ -4326,7 +4316,7 @@ function renderProductCards() {
                     <div class="product-card-prices">
                         <div class="price-row">
                             <span class="price-label">\u552E\u50F9</span>
-                            <span class="price-value">NT$ ${p.price}</span>
+                            <span class="price-value">${money2(p.price)}</span>
                         </div>
                         <div class="price-row">
                             <span class="price-label">\u7279\u50F9</span>
@@ -4724,12 +4714,12 @@ function selectContactMethod(method, clearValue = true) {
 function initContactMethodToggle() {
   const phoneButton = document.getElementById("contactMethodPhone");
   const lineButton = document.getElementById("contactMethodLine");
-  phoneButton?.addEventListener("click", function(event2) {
-    event2.preventDefault();
+  phoneButton?.addEventListener("click", function(event) {
+    event.preventDefault();
     selectContactMethod("phone");
   });
-  lineButton?.addEventListener("click", function(event2) {
-    event2.preventDefault();
+  lineButton?.addEventListener("click", function(event) {
+    event.preventDefault();
     selectContactMethod("line");
   });
 }
@@ -4751,12 +4741,12 @@ function selectSearchContactMethod(method, clearValue = true) {
   else if (clearValue) input.value = "";
 }
 function initSearchContactMethodToggle() {
-  document.getElementById("searchContactPhone")?.addEventListener("click", function(event2) {
-    event2.preventDefault();
+  document.getElementById("searchContactPhone")?.addEventListener("click", function(event) {
+    event.preventDefault();
     selectSearchContactMethod("phone");
   });
-  document.getElementById("searchContactLine")?.addEventListener("click", function(event2) {
-    event2.preventDefault();
+  document.getElementById("searchContactLine")?.addEventListener("click", function(event) {
+    event.preventDefault();
     selectSearchContactMethod("line");
   });
 }
@@ -4998,6 +4988,7 @@ function toggleShippingField() {
   const addressGroup = document.getElementById("customerAddress").closest(".mb-8") || document.getElementById("customerAddress").parentElement;
   const shippingFeeGroup = document.getElementById("shippingFeeGroup");
   const recipientInfoGroup = document.getElementById("recipientInfoGroup");
+  document.getElementById("recipientDetails").hidden = isPickup;
   if (isPickup) {
     addressGroup.style.display = "none";
     shippingFeeGroup.style.display = "none";
@@ -5027,6 +5018,43 @@ function toggleShippingFeeInput() {
 }
 
 // src/app/giftboxes.js
+function renderGiftboxProductCard(product, selectedQuantity = 0) {
+  const quantity = Math.max(0, parseInt(selectedQuantity, 10) || 0);
+  const productId = escapeAttr(product.productId);
+  const handlerId = escapeHandlerArgument(product.productId);
+  const productName = escapeHtml(product.productName);
+  const accessibleName = escapeAttr(product.productName);
+  const price = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+  const effectivePrice = getEffectivePrice(product);
+  const companyPriceActive = state.isCompanyCustomer && Number(product.companyPrice) > 0 && Number(product.companyPrice) !== Number(product.price);
+  return `<div class="giftbox-product-card gj-pos-card ${quantity > 0 ? "has-quantity" : ""}" id="card_${productId}">
+    <div class="giftbox-product-meta">
+      <span class="giftbox-product-category">${escapeHtml(product.category || "\u79AE\u76D2\u5546\u54C1")}</span>
+      <span class="giftbox-product-selection"><i class="fas fa-check" aria-hidden="true"></i> \u5DF2\u9078 <span class="giftbox-selected-quantity">${quantity}</span> \u7C92</span>
+    </div>
+    <div class="giftbox-product-info">
+      <h3>${productName}</h3>
+      <div class="giftbox-product-pricing"><span class="price">${price(effectivePrice)}</span><span class="giftbox-price-unit">\uFF0F\u7C92</span>${companyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</div>
+      ${companyPriceActive ? `<span class="company-original-price">\u539F\u50F9 ${price(product.price)}</span>` : ""}
+    </div>
+    <div class="giftbox-product-quantity">
+      <label for="display_${productId}">\u6578\u91CF\uFF08\u7C92\uFF09</label>
+      <div class="giftbox-quantity-control">
+        <button type="button" class="giftbox-qty-btn" aria-label="\u6E1B\u5C11 ${accessibleName} \u6578\u91CF" ${quantity === 0 ? "disabled" : ""} onclick="adjustGiftboxQty('${handlerId}', -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
+        <input type="number" inputmode="numeric" min="0" step="1" class="giftbox-qty-display ${quantity > 0 ? "has-value" : ""} gj-input" id="display_${productId}" aria-label="${accessibleName} \u6578\u91CF\uFF08\u7C92\uFF09" value="${quantity}" onfocus="this.select()" onchange="setGiftboxQty('${handlerId}', this.value)">
+        <button type="button" class="giftbox-qty-btn" aria-label="\u589E\u52A0 ${accessibleName} \u6578\u91CF" onclick="adjustGiftboxQty('${handlerId}', 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <input type="hidden" class="giftbox-product-input" id="qty_${productId}" value="${quantity}">
+  </div>`;
+}
+function updateGiftboxCard(productId, quantity) {
+  const card = document.getElementById("card_" + productId);
+  document.getElementById("display_" + productId).classList.toggle("has-value", quantity > 0);
+  card.classList.toggle("has-quantity", quantity > 0);
+  card.querySelector(".giftbox-selected-quantity").textContent = quantity;
+  card.querySelector(".giftbox-qty-btn").disabled = quantity === 0;
+}
 function renderGiftboxFilterTabs(products) {
   const tabs = document.getElementById("giftboxFilterTabs");
   const categories = [...new Set(products.map((product) => product.category).filter(Boolean))];
@@ -5082,40 +5110,16 @@ function loadGiftboxProducts() {
   const container = document.getElementById("giftboxProducts");
   if (giftboxProducts.length === 0) {
     renderGiftboxFilterTabs(giftboxProducts);
-    container.innerHTML = '<p style="text-align: center; padding: 20px; color: #6b7280;">\u76EE\u524D\u6C92\u6709\u53EF\u7528\u65BC\u79AE\u76D2\u7684\u5546\u54C1</p>';
+    container.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--gj-muted);">\u76EE\u524D\u6C92\u6709\u53EF\u7528\u65BC\u79AE\u76D2\u7684\u5546\u54C1</p>';
     return;
   }
-  container.innerHTML = `<div class="giftbox-product-grid">${giftboxProducts.map((p) => {
-    const eprice = getEffectivePrice(p);
-    const isCompanyPriceActive = state.isCompanyCustomer && p.companyPrice && parseFloat(p.companyPrice) > 0 && parseFloat(p.companyPrice) !== parseFloat(p.price);
-    return `
-                <div class="giftbox-product-card" id="card_${escapeAttr(p.productId)}">
-                    <div class="giftbox-product-icon">
-                        <i class="fas fa-cookie-bite"></i>
-                    </div>
-                    <div class="giftbox-product-info">
-                        <h4>${escapeHtml(p.productName)}</h4>
-                        <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + "</span>" : ""}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</span>
-                    </div>
-                    <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display" id="display_${escapeAttr(p.productId)}" value="0" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <input type="hidden" class="giftbox-product-input" id="qty_${escapeAttr(p.productId)}" value="0">
-                </div>`;
-  }).join("")}</div>`;
+  container.innerHTML = `<div class="giftbox-product-grid">${giftboxProducts.map((product) => renderGiftboxProductCard(product)).join("")}</div>`;
   updateGiftboxProgress();
   renderGiftboxFilterTabs(giftboxProducts);
 }
 function adjustGiftboxQty(productId, change) {
   const input = document.getElementById("qty_" + productId);
   const display = document.getElementById("display_" + productId);
-  const card = document.getElementById("card_" + productId);
   let currentVal = parseInt(input.value) || 0;
   const currentTotal = Object.values(state.giftboxSelection).reduce((sum, qty) => sum + qty, 0);
   if (change > 0 && currentTotal >= state.currentGiftboxSize) {
@@ -5125,19 +5129,12 @@ function adjustGiftboxQty(productId, change) {
   let newVal = Math.max(0, currentVal + change);
   input.value = newVal;
   display.value = newVal;
-  if (newVal > 0) {
-    display.classList.add("has-value");
-    card.classList.add("has-quantity");
-  } else {
-    display.classList.remove("has-value");
-    card.classList.remove("has-quantity");
-  }
+  updateGiftboxCard(productId, newVal);
   updateGiftboxSelection(productId, newVal);
 }
 function setGiftboxQty(productId, rawValue) {
   const input = document.getElementById("qty_" + productId);
   const display = document.getElementById("display_" + productId);
-  const card = document.getElementById("card_" + productId);
   let newVal = Math.max(0, parseInt(rawValue, 10) || 0);
   const otherTotal = Object.entries(state.giftboxSelection).filter(([id]) => id !== productId).reduce((sum, [, qty]) => sum + qty, 0);
   if (otherTotal + newVal > state.currentGiftboxSize) {
@@ -5146,8 +5143,7 @@ function setGiftboxQty(productId, rawValue) {
   }
   input.value = newVal;
   display.value = newVal;
-  display.classList.toggle("has-value", newVal > 0);
-  card.classList.toggle("has-quantity", newVal > 0);
+  updateGiftboxCard(productId, newVal);
   updateGiftboxSelection(productId, newVal);
 }
 function updateGiftboxSelection(productId, quantity) {
@@ -5163,14 +5159,14 @@ function updateGiftboxProgress() {
   const totalSelected = Object.values(state.giftboxSelection).reduce((sum, qty) => sum + qty, 0);
   document.getElementById("selectedCount").textContent = totalSelected;
   if (totalSelected > state.currentGiftboxSize) {
-    document.querySelector(".giftbox-progress").style.color = "#c66b6b";
-    document.querySelector(".giftbox-progress").style.borderLeftColor = "#c66b6b";
+    document.querySelector(".giftbox-progress").style.color = "var(--gj-danger)";
+    document.querySelector(".giftbox-progress").style.borderLeftColor = "var(--gj-danger)";
   } else if (totalSelected === state.currentGiftboxSize) {
-    document.querySelector(".giftbox-progress").style.color = "#2ecc71";
-    document.querySelector(".giftbox-progress").style.borderLeftColor = "#2ecc71";
+    document.querySelector(".giftbox-progress").style.color = "var(--gj-success)";
+    document.querySelector(".giftbox-progress").style.borderLeftColor = "var(--gj-success)";
   } else {
-    document.querySelector(".giftbox-progress").style.color = "var(--primary-dark)";
-    document.querySelector(".giftbox-progress").style.borderLeftColor = "var(--primary-color)";
+    document.querySelector(".giftbox-progress").style.color = "var(--gj-primary)";
+    document.querySelector(".giftbox-progress").style.borderLeftColor = "var(--gj-primary)";
   }
 }
 function proceedToStep3() {
@@ -5218,23 +5214,20 @@ function updateGiftboxSummary() {
       summaryHtml += `
                         <div class="giftbox-summary-product">
                             <div class="product-info">
-                                <div class="product-icon">
-                                    <i class="fas fa-cookie-bite"></i>
-                                </div>
                                 <div>
                                     <div class="product-name">${escapeHtml(product.productName)}</div>
-                                    <div class="product-qty">x ${quantity}</div>
+                                    <div class="product-qty">${quantity} \u7C92 \xB7 \u55AE\u50F9 NT$ ${getEffectivePrice(product).toLocaleString("zh-TW")}</div>
                                 </div>
                             </div>
-                            <div class="product-price">NT$ ${subtotal}</div>
+                            <div class="product-price"><span>\u5C0F\u8A08</span>NT$ ${subtotal.toLocaleString("zh-TW")}</div>
                         </div>
                     `;
     }
   }
   summaryHtml += `
                 <div class="giftbox-summary-total">
-                    <span class="total-label"><i class="fas fa-calculator"></i> \u55AE\u7D44\u79AE\u76D2\u7E3D\u50F9</span>
-                    <span class="total-price">NT$ ${totalPrice}</span>
+                    <span class="total-label">\u55AE\u7D44\u79AE\u76D2\u7E3D\u50F9</span>
+                    <span class="total-price">NT$ ${totalPrice.toLocaleString("zh-TW")}</span>
                 </div>
             `;
   summaryContainer.innerHTML = summaryHtml;
@@ -5360,36 +5353,10 @@ function loadGiftboxProductsForEdit(existingProducts) {
   const container = document.getElementById("giftboxProducts");
   if (giftboxProducts.length === 0) {
     renderGiftboxFilterTabs(giftboxProducts);
-    container.innerHTML = '<p style="text-align: center; padding: 20px; color: #6b7280;">\u76EE\u524D\u6C92\u6709\u53EF\u7528\u65BC\u79AE\u76D2\u7684\u5546\u54C1</p>';
+    container.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--gj-muted);">\u76EE\u524D\u6C92\u6709\u53EF\u7528\u65BC\u79AE\u76D2\u7684\u5546\u54C1</p>';
     return;
   }
-  container.innerHTML = `<div class="giftbox-product-grid">${giftboxProducts.map((p) => {
-    const existingQty = existingProducts[p.productId] || 0;
-    const hasQty = existingQty > 0;
-    const eprice = getEffectivePrice(p);
-    const isCompanyPriceActive = state.isCompanyCustomer && p.companyPrice && parseFloat(p.companyPrice) > 0 && parseFloat(p.companyPrice) !== parseFloat(p.price);
-    return `
-                <div class="giftbox-product-card ${hasQty ? "has-quantity" : ""}" id="card_${escapeAttr(p.productId)}">
-                    <div class="giftbox-product-icon">
-                        <i class="fas fa-cookie-bite"></i>
-                    </div>
-                    <div class="giftbox-product-info">
-                        <h4>${escapeHtml(p.productName)}</h4>
-                        <span class="price">${isCompanyPriceActive ? '<span class="company-original-price">NT$ ' + p.price + "</span>" : ""}NT$ ${eprice}${isCompanyPriceActive ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</span>
-                    </div>
-                    <div class="giftbox-quantity-control">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', -1)">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <input type="number" inputmode="numeric" min="0" class="giftbox-qty-display ${hasQty ? "has-value" : ""}" id="display_${escapeAttr(p.productId)}" value="${existingQty}" onfocus="this.select()" onchange="setGiftboxQty('${escapeHandlerArgument(p.productId)}', this.value)">
-                        <button type="button" class="giftbox-qty-btn" onclick="adjustGiftboxQty('${escapeHandlerArgument(p.productId)}', 1)">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <input type="hidden" class="giftbox-product-input" id="qty_${escapeAttr(p.productId)}" value="${existingQty}">
-                </div>
-            `;
-  }).join("")}</div>`;
+  container.innerHTML = `<div class="giftbox-product-grid">${giftboxProducts.map((product) => renderGiftboxProductCard(product, existingProducts[product.productId])).join("")}</div>`;
   updateGiftboxProgress();
   renderGiftboxFilterTabs(giftboxProducts);
 }
@@ -5536,7 +5503,7 @@ function handleReportGenerated(report) {
   var container = document.getElementById("reportResults");
   var dateLabel = escapeHtml(report.date || "");
   if (report.totalOrders === 0) {
-    container.innerHTML = '<div class="report-date-label"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>' + dateLabel + '</div><p style="padding:20px;text-align:center;color:#64748b;">\u6B64\u671F\u9593\u7121\u71DF\u696D\u8A18\u9304</p>';
+    container.innerHTML = '<div class="report-date-label"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>' + dateLabel + '</div><p style="padding:20px;text-align:center;color:var(--gj-muted);">\u6B64\u671F\u9593\u7121\u71DF\u696D\u8A18\u9304</p>';
     return;
   }
   var totalRevenue = Math.round(report.totalRevenue);
@@ -5544,14 +5511,14 @@ function handleReportGenerated(report) {
   var html = "";
   html += '<div class="report-date-label"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>' + dateLabel + "\uFF0C\u5171 " + report.totalOrders + " \u7B46\u8A02\u55AE</div>";
   html += '<div class="report-summary-cards">';
-  html += '<div class="report-summary-card revenue"><div class="card-label">\u7E3D\u71DF\u696D\u984D</div><div class="card-value">$' + totalRevenue.toLocaleString() + "</div></div>";
-  html += '<div class="report-summary-card orders"><div class="card-label">\u8A02\u55AE\u6578</div><div class="card-value">' + report.totalOrders + "</div></div>";
-  html += '<div class="report-summary-card items"><div class="card-label">\u5546\u54C1\u7E3D\u6578</div><div class="card-value">' + report.totalItems + "</div></div>";
-  html += '<div class="report-summary-card avg"><div class="card-label">\u5E73\u5747\u5BA2\u55AE\u50F9</div><div class="card-value">$' + avgOrder.toLocaleString() + "</div></div>";
+  html += '<div class="report-summary-card revenue gj-pos-card"><div class="card-label">\u7E3D\u71DF\u696D\u984D</div><div class="card-value">$' + totalRevenue.toLocaleString() + "</div></div>";
+  html += '<div class="report-summary-card orders gj-pos-card"><div class="card-label">\u8A02\u55AE\u6578</div><div class="card-value">' + report.totalOrders + "</div></div>";
+  html += '<div class="report-summary-card items gj-pos-card"><div class="card-label">\u5546\u54C1\u7E3D\u6578</div><div class="card-value">' + report.totalItems + "</div></div>";
+  html += '<div class="report-summary-card avg gj-pos-card"><div class="card-label">\u5E73\u5747\u5BA2\u55AE\u50F9</div><div class="card-value">$' + avgOrder.toLocaleString() + "</div></div>";
   html += "</div>";
   if (report.productSales && report.productSales.length > 0) {
     html += '<div class="demand-section-title"><i class="fas fa-chart-bar" style="margin-right:8px;"></i>\u5546\u54C1\u92B7\u552E\u660E\u7D30</div>';
-    html += '<table class="demand-stats-table"><thead><tr><th>\u5546\u54C1\u540D\u7A31</th><th>\u6578\u91CF</th><th>\u91D1\u984D</th><th>\u4F54\u6BD4</th></tr></thead><tbody>';
+    html += '<table class="demand-stats-table gj-table"><thead><tr><th>\u5546\u54C1\u540D\u7A31</th><th>\u6578\u91CF</th><th>\u91D1\u984D</th><th>\u4F54\u6BD4</th></tr></thead><tbody>';
     for (var i = 0; i < report.productSales.length; i++) {
       var p = report.productSales[i];
       var amount = Math.round(p.amount);
@@ -5560,7 +5527,7 @@ function handleReportGenerated(report) {
     }
     html += "</tbody></table>";
   } else {
-    html += '<p style="padding:20px;text-align:center;color:#64748b;">\u6B64\u671F\u9593\u7121\u5546\u54C1\u92B7\u552E\u660E\u7D30</p>';
+    html += '<p style="padding:20px;text-align:center;color:var(--gj-muted);">\u6B64\u671F\u9593\u7121\u5546\u54C1\u92B7\u552E\u660E\u7D30</p>';
   }
   container.innerHTML = html;
 }
@@ -5598,7 +5565,7 @@ function generateDemandStats() {
 function renderDemandResults(result, startDate, endDate) {
   const container = document.getElementById("demandResults");
   if (!result || result.orderCount === 0) {
-    container.innerHTML = '<p style="padding: 20px; text-align: center; color: #64748b;">\u6B64\u671F\u9593\u7121\u8A02\u55AE\u8CC7\u6599</p>';
+    container.innerHTML = '<p style="padding: 20px; text-align: center; color: var(--gj-muted);">\u6B64\u671F\u9593\u7121\u8A02\u55AE\u8CC7\u6599</p>';
     return;
   }
   const dateLabel = startDate === endDate ? startDate : startDate + " ~ " + endDate;
@@ -5606,7 +5573,7 @@ function renderDemandResults(result, startDate, endDate) {
   html += `<div class="demand-date-range-label"><i class="fas fa-calendar-check" style="margin-right:6px;"></i>${dateLabel}\uFF0C\u5171 ${result.orderCount} \u7B46\u8A02\u55AE</div>`;
   if (result.productStats.length > 0) {
     html += '<div class="demand-section-title"><i class="fas fa-boxes-stacked" style="margin-right:8px;"></i>\u5404\u5546\u54C1\u9700\u6C42\u91CF</div>';
-    html += '<table class="demand-stats-table"><thead><tr><th>\u5546\u54C1\u540D\u7A31</th><th>\u6563\u88DD</th><th>\u79AE\u76D2\u5167</th><th>\u5408\u8A08</th></tr></thead><tbody>';
+    html += '<table class="demand-stats-table gj-table"><thead><tr><th>\u5546\u54C1\u540D\u7A31</th><th>\u6563\u88DD</th><th>\u79AE\u76D2\u5167</th><th>\u5408\u8A08</th></tr></thead><tbody>';
     result.productStats.forEach((p) => {
       html += `<tr>
                         <td>${escapeHtml(p.name)}</td>
@@ -5621,7 +5588,7 @@ function renderDemandResults(result, startDate, endDate) {
     html += '<div class="demand-section-title"><i class="fas fa-box" style="margin-right:8px;"></i>\u79AE\u76D2\u898F\u683C\u7D71\u8A08</div>';
     html += '<div class="demand-summary-cards">';
     result.giftboxStats.forEach((g) => {
-      html += `<div class="demand-summary-card">
+      html += `<div class="demand-summary-card gj-pos-card">
                         <div class="card-label">${escapeHtml(g.size)}</div>
                         <div class="card-value">${g.count}</div>
                         <div class="card-label">\u76D2</div>
@@ -5650,13 +5617,13 @@ function showSection(sectionName, navElement, panel) {
   const mainScroller = document.querySelector("main");
   if (mainScroller) mainScroller.scrollTop = 0;
   document.querySelectorAll(".nav-item").forEach((item) => {
-    item.classList.remove("bg-blue-100", "text-blue-700");
-    item.classList.add("text-gray-600");
+    item.classList.remove("bg-md-primary-container", "text-md-primary");
+    item.classList.add("text-md-on-surface-variant");
     item.removeAttribute("aria-current");
   });
   if (navElement) {
-    navElement.classList.remove("text-gray-600");
-    navElement.classList.add("bg-blue-100", "text-blue-700");
+    navElement.classList.remove("text-md-on-surface-variant");
+    navElement.classList.add("bg-md-primary-container", "text-md-primary");
     navElement.setAttribute("aria-current", "page");
   }
   const floatingCart = document.querySelector(".floating-cart");
@@ -5724,7 +5691,7 @@ function showProductOrder() {
   modal.id = "productOrderModal";
   modal.className = "modal active";
   modal.setAttribute("aria-labelledby", "productOrderTitle");
-  modal.innerHTML = `<div class="modal-content product-order-content">
+  modal.innerHTML = `<div class="modal-content product-order-content gj-pos-dialog">
     <div class="product-order-heading"><h3 id="productOrderTitle">\u8ABF\u6574\u5546\u54C1\u9806\u5E8F</h3><button type="button" data-close aria-label="\u95DC\u9589\u6392\u5E8F\u8996\u7A97">\xD7</button></div>
     <ol class="product-order-list" aria-label="\u5546\u54C1\u6392\u5E8F"></ol>
     <span class="sr-only" data-announcement aria-live="polite"></span>
@@ -5795,8 +5762,8 @@ function showProductOrder() {
       row.querySelector(".product-order-handle").setAttribute("aria-label", `\u62D6\u66F3\u6392\u5E8F ${p.productName}\uFF08\u9375\u76E4\u53EF\u7528\u4E0A\u4E0B\u65B9\u5411\u9375\uFF09`);
       row.querySelector("[data-up]").setAttribute("aria-label", `\u4E0A\u79FB ${p.productName}`);
       row.querySelector("[data-down]").setAttribute("aria-label", `\u4E0B\u79FB ${p.productName}`);
-      row.addEventListener("click", (event2) => {
-        const button = event2.target.closest("[data-up],[data-down]");
+      row.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-up],[data-down]");
         if (!button || busy || drag) return;
         finishDrop?.();
         const index = draft.findIndex((item) => item.productId === p.productId);
@@ -5806,12 +5773,12 @@ function showProductOrder() {
         });
         row.scrollIntoView({ block: "nearest" });
       });
-      row.querySelector(".product-order-handle").addEventListener("keydown", (event2) => {
-        if (busy || drag || !["ArrowUp", "ArrowDown"].includes(event2.key)) return;
+      row.querySelector(".product-order-handle").addEventListener("keydown", (event) => {
+        if (busy || drag || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
         finishDrop?.();
-        event2.preventDefault();
+        event.preventDefault();
         const index = draft.findIndex((item) => item.productId === p.productId);
-        move(index, index + (event2.key === "ArrowUp" ? -1 : 1));
+        move(index, index + (event.key === "ArrowUp" ? -1 : 1));
         row.querySelector(".product-order-handle").focus({ preventScroll: true });
         row.scrollIntoView({ block: "nearest" });
       });
@@ -5866,8 +5833,8 @@ function showProductOrder() {
       if (row.isConnected)
         row.animate(
           [
-            { backgroundColor: "#dbeafe", borderColor: "#2563eb" },
-            { backgroundColor: "#fafaf9", borderColor: "#e7e5e4" }
+            { backgroundColor: "var(--gj-primary-soft)", borderColor: "var(--gj-primary)" },
+            { backgroundColor: "var(--gj-surface)", borderColor: "var(--gj-border)" }
           ],
           { duration: 450, easing: "ease-out" }
         );
@@ -5894,13 +5861,13 @@ function showProductOrder() {
     move(index, target);
     frame = requestAnimationFrame(dragFrame);
   }
-  list.addEventListener("pointerdown", (event2) => {
-    const handle = event2.target.closest(".product-order-handle");
-    if (!handle || busy || drag || event2.button !== 0) return;
+  list.addEventListener("pointerdown", (event) => {
+    const handle = event.target.closest(".product-order-handle");
+    if (!handle || busy || drag || event.button !== 0) return;
     finishDrop?.();
     motions.forEach((animation) => animation.cancel());
     motions.clear();
-    event2.preventDefault();
+    event.preventDefault();
     handle.focus();
     const row = handle.closest("li");
     const rect = row.getBoundingClientRect();
@@ -5923,32 +5890,32 @@ function showProductOrder() {
     modal.append(overlay);
     drag = {
       id: row.dataset.productId,
-      x: event2.clientX,
-      y: event2.clientY,
-      startX: event2.clientX,
-      startY: event2.clientY,
-      pointerId: event2.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      startX: event.clientX,
+      startY: event.clientY,
+      pointerId: event.pointerId,
       overlay
     };
     row.classList.add("is-dragging");
-    modal.setPointerCapture(event2.pointerId);
+    modal.setPointerCapture(event.pointerId);
     frame = requestAnimationFrame(dragFrame);
   });
-  modal.addEventListener("pointermove", (event2) => {
-    if (drag?.pointerId === event2.pointerId) {
-      drag.x = event2.clientX;
-      drag.y = event2.clientY;
+  modal.addEventListener("pointermove", (event) => {
+    if (drag?.pointerId === event.pointerId) {
+      drag.x = event.clientX;
+      drag.y = event.clientY;
     }
   });
-  modal.addEventListener("pointerup", (event2) => {
-    if (drag?.pointerId === event2.pointerId) stopDrag(true);
+  modal.addEventListener("pointerup", (event) => {
+    if (drag?.pointerId === event.pointerId) stopDrag(true);
   });
   modal.addEventListener("pointercancel", () => stopDrag());
   modal.addEventListener("lostpointercapture", () => {
     if (drag) stopDrag();
   });
-  modal.addEventListener("pointerdown", (event2) => {
-    backdropPressed = event2.target === modal;
+  modal.addEventListener("pointerdown", (event) => {
+    backdropPressed = event.target === modal;
   });
   dismiss = () => {
     if (busy) return;
@@ -5958,8 +5925,8 @@ function showProductOrder() {
     modal.remove();
     dismiss = null;
   };
-  modal.onclick = (event2) => {
-    if (event2.target === modal && backdropPressed || event2.target.closest("[data-close],[data-cancel]"))
+  modal.onclick = (event) => {
+    if (event.target === modal && backdropPressed || event.target.closest("[data-close],[data-cancel]"))
       closeProductOrder();
   };
   modal.querySelector("[data-reload]").onclick = async () => {
@@ -6093,7 +6060,7 @@ async function printerRequest({ url, token, data, command, signal, timeoutMs = 1
       };
       const abort = () => finish(new Error("\u64CD\u4F5C\u5DF2\u53D6\u6D88"));
       ws.onerror = () => finish(new Error(describeFailure("WSS \u9023\u7DDA\u5931\u6557\uFF1B\u700F\u89BD\u5668\u672A\u63D0\u4F9B\u5E95\u5C64\u539F\u56E0")));
-      ws.onclose = (event2) => finish(new Error(describeFailure(`\u5370\u8868\u6A5F\u9023\u7DDA\u5DF2\u4E2D\u65B7\uFF0C\u4EE3\u78BC ${event2.code}`)));
+      ws.onclose = (event) => finish(new Error(describeFailure(`\u5370\u8868\u6A5F\u9023\u7DDA\u5DF2\u4E2D\u65B7\uFF0C\u4EE3\u78BC ${event.code}`)));
       timer = setTimeout(() => finish(new Error(describeFailure("\u5370\u8868\u6A5F\u56DE\u61C9\u903E\u6642"))), timeoutMs);
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) {
@@ -6102,9 +6069,9 @@ async function printerRequest({ url, token, data, command, signal, timeoutMs = 1
       }
       if (!send) ws.onopen = () => finish(null);
       else {
-        ws.onmessage = (event2) => {
+        ws.onmessage = (event) => {
           try {
-            const result = JSON.parse(event2.data);
+            const result = JSON.parse(event.data);
             if (result.event === "error") throw new Error(messages[result.code] || "\u5370\u8868\u6A5F\u62D2\u7D55\u6B64\u64CD\u4F5C");
             finish(null, result);
           } catch (error) {
@@ -6258,7 +6225,7 @@ async function diagnosePrinter(value, { signal, report, timeoutMs = 8e3 } = {}) 
         probeSignal.addEventListener("abort", abort, { once: true });
         ws.onopen = () => finish(null, "\u63E1\u624B\u6210\u529F");
         ws.onerror = () => finish(new Error("\u9023\u7DDA\u5931\u6557"));
-        ws.onclose = (event2) => finish(null, `\u9023\u7DDA\u95DC\u9589 ${event2.code}`);
+        ws.onclose = (event) => finish(null, `\u9023\u7DDA\u95DC\u9589 ${event.code}`);
         if (probeSignal.aborted) abort();
       })
     );
@@ -6665,7 +6632,7 @@ function createPreview() {
   modal.setAttribute("aria-label", "\u5217\u5370\u9810\u89BD");
   modal.onclick = () => {
   };
-  modal.innerHTML = `<div class="modal-content printer-dialog">
+  modal.innerHTML = `<div class="modal-content printer-dialog gj-pos-dialog">
     <div class="modal-header"><h3>\u5217\u5370\u9810\u89BD</h3><button type="button" class="close-btn" aria-label="\u95DC\u9589\u5217\u5370\u9810\u89BD">\xD7</button></div>
     <div class="modal-body"><p>\u6BCF\u6B21\u5217\u5370\u4E00\u4EFD\u3002\u9001\u51FA\u5F8C\u7121\u6CD5\u64A4\u56DE\uFF1B\u88DC\u5370\u524D\u8ACB\u5148\u78BA\u8A8D\u7D19\u5F35\u3002</p>
       <div class="receipt-preview" aria-label="\u55AE\u64DA\u9810\u89BD"></div>
@@ -6848,8 +6815,8 @@ function initializePrinter() {
   role = document.body.dataset.shopRole || "";
   loadSettings();
   void refreshPrinterBadge();
-  document.addEventListener("click", (event2) => {
-    if (event2.target.closest("#firebasePrinterStatus")) void refreshPrinterBadge();
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("#firebasePrinterStatus")) void refreshPrinterBadge();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
@@ -6897,8 +6864,8 @@ function initializePrinter() {
   element("printer-device-read").addEventListener("click", () => void configureBridge("get_config"));
   element("printer-device-save").addEventListener("click", () => void configureBridge("set_config"));
   element("printer-wifi-save").addEventListener("click", () => void configureBridge("set_wifi"));
-  element("printer-settings").addEventListener("submit", (event2) => {
-    event2.preventDefault();
+  element("printer-settings").addEventListener("submit", (event) => {
+    event.preventDefault();
     try {
       saveSettings();
       element("printer-status").textContent = "\u5DF2\u5132\u5B58\u6B64\u88DD\u7F6E\u7684\u51FA\u55AE\u8A2D\u5B9A";
@@ -7047,8 +7014,8 @@ function resetOrderForm() {
     const confirmDateBtn = document.getElementById("btn-confirm-date");
     if (confirmDateBtn) {
       confirmDateBtn.disabled = true;
-      confirmDateBtn.classList.remove("bg-blue-600", "hover:bg-blue-700", "shadow-lg");
-      confirmDateBtn.classList.add("bg-gray-300", "cursor-not-allowed");
+      confirmDateBtn.classList.remove("bg-md-primary", "hover:bg-md-primary", "shadow-lg");
+      confirmDateBtn.classList.add("bg-md-surface-container", "cursor-not-allowed");
       confirmDateBtn.innerHTML = "\u8ACB\u5148\u9078\u64C7\u65E5\u671F";
     }
     state.currentGiftboxSize = 0;
@@ -7112,7 +7079,7 @@ function showCapacityWarningModal(capacityStatus, orderData) {
   closeCartModal();
   const body = document.getElementById("capacityWarningBody");
   const cs = capacityStatus;
-  body.innerHTML = '<div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; margin-bottom: 16px;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">\u4EA4\u8CA8\u65E5\u671F</span><span style="font-size: 1rem; font-weight: 700; color: #1f2937;">' + escapeHtml(cs.date) + '</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">\u6BCF\u65E5\u4E0A\u9650</span><span style="font-size: 1rem; font-weight: 700; color: #1f2937;">' + cs.limit + ' \u4EF6</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">\u76EE\u524D\u5DF2\u6392\u5B9A</span><span style="font-size: 1rem; font-weight: 700; color: #1f2937;">' + cs.currentQuantity + ' \u4EF6</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: #92400e; font-weight: 600;">\u672C\u6B21\u8A02\u55AE</span><span style="font-size: 1rem; font-weight: 700; color: #1f6f5f;">' + cs.newOrderQuantity + ' \u4EF6</span></div></div></div><div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;"><i class="fas fa-exclamation-circle" style="color: #dc2626; margin-top: 2px; flex-shrink: 0;"></i><div><div style="font-weight: 700; color: #991b1b; margin-bottom: 4px;">\u9001\u51FA\u5F8C\u9810\u8A08\u7E3D\u91CF: ' + cs.projectedQuantity + " \u4EF6\uFF0C\u8D85\u51FA\u4E0A\u9650 " + cs.exceededQuantity + ' \u4EF6</div><div style="font-size: 0.85rem; color: #7f1d1d;">\u6B64\u8B66\u544A\u4E0D\u6703\u963B\u64CB\u8A02\u55AE\u5EFA\u7ACB\uFF0C\u8ACB\u78BA\u8A8D\u662F\u5426\u7E7C\u7E8C\u9001\u51FA\uFF0C\u6216\u8FD4\u56DE\u4FEE\u6539\u4EA4\u8CA8\u65E5\u671F\u3002</div></div></div>';
+  body.innerHTML = '<div style="background: var(--gj-surface); border: 1px solid var(--gj-warning-soft); border-radius: 12px; padding: 20px; margin-bottom: 16px;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">\u4EA4\u8CA8\u65E5\u671F</span><span style="font-size: 1rem; font-weight: 700; color: var(--gj-text);">' + escapeHtml(cs.date) + '</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">\u6BCF\u65E5\u4E0A\u9650</span><span style="font-size: 1rem; font-weight: 700; color: var(--gj-text);">' + cs.limit + ' \u4EF6</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">\u76EE\u524D\u5DF2\u6392\u5B9A</span><span style="font-size: 1rem; font-weight: 700; color: var(--gj-text);">' + cs.currentQuantity + ' \u4EF6</span></div><div style="display: flex; flex-direction: column;"><span style="font-size: 0.75rem; color: var(--gj-warning); font-weight: 600;">\u672C\u6B21\u8A02\u55AE</span><span style="font-size: 1rem; font-weight: 700; color: var(--gj-primary);">' + cs.newOrderQuantity + ' \u4EF6</span></div></div></div><div style="background: var(--gj-surface); border: 1px solid var(--gj-surface); border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;"><i class="fas fa-exclamation-circle" style="color: var(--gj-danger); margin-top: 2px; flex-shrink: 0;"></i><div><div style="font-weight: 700; color: var(--gj-danger); margin-bottom: 4px;">\u9001\u51FA\u5F8C\u9810\u8A08\u7E3D\u91CF: ' + cs.projectedQuantity + " \u4EF6\uFF0C\u8D85\u51FA\u4E0A\u9650 " + cs.exceededQuantity + ' \u4EF6</div><div style="font-size: 0.85rem; color: var(--gj-danger);">\u6B64\u8B66\u544A\u4E0D\u6703\u963B\u64CB\u8A02\u55AE\u5EFA\u7ACB\uFF0C\u8ACB\u78BA\u8A8D\u662F\u5426\u7E7C\u7E8C\u9001\u51FA\uFF0C\u6216\u8FD4\u56DE\u4FEE\u6539\u4EA4\u8CA8\u65E5\u671F\u3002</div></div></div>';
   document.getElementById("capacityWarningModal").classList.add("active");
 }
 function closeCapacityWarningModal() {
@@ -7168,9 +7135,9 @@ function initConfirmSlider(thumbId, progressId, onConfirm) {
     "aria-label",
     thumbId.startsWith("delete") ? "\u78BA\u8A8D\u522A\u9664\u8A02\u55AE\uFF0C\u6309 Enter \u6216\u7A7A\u767D\u9375" : "\u78BA\u8A8D\u8B8A\u66F4\u8A02\u55AE\u72C0\u614B\uFF0C\u6309 Enter \u6216\u7A7A\u767D\u9375"
   );
-  thumb.addEventListener("keydown", (event2) => {
-    if (!["Enter", " "].includes(event2.key) || confirmed || event2.repeat) return;
-    event2.preventDefault();
+  thumb.addEventListener("keydown", (event) => {
+    if (!["Enter", " "].includes(event.key) || confirmed || event.repeat) return;
+    event.preventDefault();
     confirmed = true;
     thumb.classList.add("completed");
     thumb.setAttribute("aria-disabled", "true");
@@ -7291,7 +7258,8 @@ function showDepositModal(orderId, totalAmount, depositAmount) {
   state.currentDepositOrderId = orderId;
   state.currentDepositTotalAmount = totalAmount;
   state.currentDepositAmount = depositAmount;
-  document.getElementById("depositOrderInfo").textContent = `\u8A02\u55AE\u7DE8\u865F\uFF1A${orderId} - \u7E3D\u91D1\u984D\uFF1ANT$ ${totalAmount}`;
+  document.getElementById("depositOrderInfo").textContent = `\u8A02\u55AE\u7DE8\u865F\uFF1A${orderId}
+\u7E3D\u91D1\u984D\uFF1ANT$ ${Number(totalAmount).toLocaleString("zh-TW")}`;
   document.getElementById("depositAmountInput").value = depositAmount || "";
   document.getElementById("paymentNotesInput").value = "";
   updateDepositCalculation();
@@ -7308,11 +7276,11 @@ function updateDepositCalculation() {
   const newDepositAmount = parseFloat(depositInput.value) || 0;
   const calculationResult = document.getElementById("depositCalculationResult");
   if (newDepositAmount < 0 || newDepositAmount > state.currentDepositTotalAmount) {
-    depositInput.style.borderColor = "#e74c3c";
+    depositInput.style.borderColor = "var(--gj-danger)";
     calculationResult.style.display = "none";
     return;
   } else {
-    depositInput.style.borderColor = "#e5e7eb";
+    depositInput.style.borderColor = "var(--gj-border)";
   }
   if (newDepositAmount > 0) {
     calculationResult.style.display = "block";
@@ -7320,14 +7288,14 @@ function updateDepositCalculation() {
       total: state.currentDepositTotalAmount,
       paid: newDepositAmount
     });
-    const statusColor = newStatus === "\u5DF2\u4ED8\u8A02\u91D1" ? "#99621a" : "#226b4e";
-    document.getElementById("currentDepositText").textContent = `NT$ ${newDepositAmount}`;
-    document.getElementById("remainingAmountText").textContent = `NT$ ${remainingAmount}`;
-    document.getElementById("remainingAmountText").style.color = remainingAmount > 0 ? "#e74c3c" : "#27ae60";
+    const statusColor = newStatus === "\u5DF2\u4ED8\u8A02\u91D1" ? "var(--gj-warning-soft)" : "var(--gj-success-soft)";
+    document.getElementById("currentDepositText").textContent = `NT$ ${newDepositAmount.toLocaleString("zh-TW")}`;
+    document.getElementById("remainingAmountText").textContent = `NT$ ${remainingAmount.toLocaleString("zh-TW")}`;
+    document.getElementById("remainingAmountText").style.color = remainingAmount > 0 ? "var(--gj-danger)" : "var(--gj-success)";
     const statusText = document.getElementById("newStatusText");
     statusText.textContent = newStatus;
     statusText.style.backgroundColor = statusColor;
-    statusText.style.color = "white";
+    statusText.style.color = newStatus === "\u5DF2\u4ED8\u8A02\u91D1" ? "var(--gj-warning)" : "var(--gj-success)";
   } else {
     calculationResult.style.display = "none";
   }
@@ -7563,155 +7531,109 @@ function viewOrderDetails(orderId) {
   }
 }
 function handleOrderDetails(details) {
+  const orderId = details.orderId || details.id;
+  const handlerId = escapeHandlerArgument(orderId);
+  const money2 = (value) => `NT$ ${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
+  const remainingAmount = details.remainingAmount ?? details.totalAmount;
+  const items = details.items || [];
+  const isLine = details.customerContactType === "line" || Boolean(details.customerLineId);
+  const contact = details.customerContactValue || details.customerLineId || details.customerPhone;
+  const canEditOrders = document.body.dataset.shopRole !== "viewer";
+  const canUpdate = canEditOrders && details.status !== "\u5B8C\u6210";
   const detailModal = document.createElement("div");
-  detailModal.className = "modal active";
+  detailModal.className = "modal active order-detail-modal";
   detailModal.setAttribute("role", "dialog");
   detailModal.setAttribute("aria-modal", "true");
+  detailModal.setAttribute("aria-label", `\u8A02\u55AE\u8A73\u60C5 ${orderId}`);
   detailModal.onclick = function() {
   };
-  let itemsHtml = "";
-  details.items.forEach((item) => {
+  const itemsHtml = items.map((item) => {
+    let giftContents = "";
     if (item.isGiftBox && item.giftBoxDetails) {
-      itemsHtml += `
-                        <tr style="background-color: #f0f8ff;">
-                            <td colspan="4"><strong>${escapeHtml(item.productName)} x ${item.quantity}</strong></td>
-                        </tr>`;
-      for (const [productId, qty] of Object.entries(item.giftBoxDetails.products || {})) {
+      const products = Object.entries(item.giftBoxDetails.products || {});
+      giftContents = `<details class="order-detail-gift">
+        <summary>\u79AE\u76D2\u5167\u5BB9 \xB7 ${products.length} \u7A2E\u5546\u54C1</summary>
+        <ul>${products.map(([productId, qty]) => {
         const product = state.allProducts.find((p) => p.productId === productId);
-        const productName = product ? product.productName : `\u5546\u54C1ID: ${productId}`;
         const totalQty = (parseInt(qty) || 0) * (parseInt(item.quantity) || 1);
-        itemsHtml += `
-                            <tr style="padding-left: 20px; color: #666; font-size: 0.9em;">
-                                <td style="padding-left: 30px;">\u2514 ${escapeHtml(productName)}</td>
-                                <td>${totalQty}</td>
-                                <td>-</td>
-                                <td>-</td>
-                            </tr>`;
-      }
-      if (item.giftBoxDetails.notes) {
-        itemsHtml += `
-                            <tr style="color: #888; font-style: italic;">
-                                <td colspan="4" style="padding-left: 30px;">\u5099\u8A3B: ${escapeHtml(item.giftBoxDetails.notes)}</td>
-                            </tr>`;
-      }
-      let giftboxPriceDisplay = `NT$ ${item.unitPrice}`;
-      if (item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice) {
-        giftboxPriceDisplay = `<span class="original-price">NT$ ${item.originalPrice}</span><br><span class="special-price-text">\u7279\u50F9 NT$ ${item.unitPrice}</span>`;
-      }
-      itemsHtml += `
-                        <tr style="background-color: #f0f8ff; font-weight: bold;">
-                            <td style="padding-left: 30px;">\u79AE\u76D2\u5C0F\u8A08</td>
-                            <td>-</td>
-                            <td>${giftboxPriceDisplay}</td>
-                            <td>NT$ ${item.subtotal}</td>
-                        </tr>`;
-    } else {
-      let priceDisplay = `NT$ ${item.unitPrice}`;
-      if (item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice) {
-        priceDisplay = `<span class="original-price">NT$ ${item.originalPrice}</span> <span class="special-price-text">\u7279\u50F9 NT$ ${item.unitPrice}</span>`;
-      }
-      itemsHtml += `
-                        <tr>
-                            <td>${escapeHtml(item.productName)}</td>
-                            <td>${item.quantity}</td>
-                            <td>${priceDisplay}</td>
-                            <td>NT$ ${item.subtotal}</td>
-                        </tr>`;
+        return `<li><span>${escapeHtml(product?.productName || `\u5546\u54C1ID: ${productId}`)}</span><span>\u5171 ${totalQty} \u500B</span></li>`;
+      }).join("")}</ul>
+        ${item.giftBoxDetails.notes ? `<p class="order-detail-note">\u79AE\u76D2\u5099\u8A3B\uFF1A${escapeHtml(item.giftBoxDetails.notes)}</p>` : ""}
+      </details>`;
     }
-  });
-  let statusButtons = "";
-  const canEditOrders = document.body.dataset.shopRole !== "viewer";
-  if (canEditOrders && details.status !== "\u5B8C\u6210") {
-    statusButtons += `<button class="btn btn-success" onclick="showStatusConfirm('${escapeHandlerArgument(details.orderId)}', '\u5B8C\u6210'); this.closest('.modal').remove();">\u5B8C\u6210</button>`;
-  }
-  detailModal.innerHTML = `<div class="modal-content" onclick="event.stopPropagation()">
+    const specialPrice = item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice;
+    const price = specialPrice ? `<span class="original-price">${money2(item.originalPrice)}</span><span class="special-price-text">\u7279\u50F9 ${money2(item.unitPrice)}</span>` : money2(item.unitPrice);
+    return `<tr role="row">
+      <td role="cell" class="order-detail-product"><strong>${escapeHtml(item.productName)}</strong>${giftContents}</td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u6578\u91CF</span>${escapeHtml(item.quantity)}</td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u55AE\u50F9</span>${price}</td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u5C0F\u8A08</span><strong>${money2(item.subtotal)}</strong></td>
+    </tr>`;
+  }).join("");
+  detailModal.innerHTML = `<div class="modal-content gj-pos-dialog order-detail-dialog" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h3>\u8A02\u55AE\u8A73\u60C5 - ${details.orderId}</h3>
-                    <button class="close-btn" onclick="this.closest('.modal').remove()">\xD7</button>
+                    <div class="order-detail-heading">
+                      <h2>\u8A02\u55AE\u8A73\u60C5</h2>
+                      <span class="order-detail-id">\u8A02\u55AE\u7DE8\u865F ${escapeHtml(orderId)}</span>
+                    </div>
+                    <span class="status-pill ${getStatusPillClass(details.status)}">${escapeHtml(details.status || "\u672A\u8A2D\u5B9A")}</span>
+                    <button type="button" class="close-btn" aria-label="\u95DC\u9589\u8A02\u55AE\u8A73\u60C5" onclick="this.closest('.modal').remove()">\xD7</button>
                 </div>
                 <div class="modal-body">
-                    <div class="order-info-grid">
-                        <div class="order-info-item">
-                            <span class="order-info-label">\u5BA2\u6236</span>
-                            <span class="order-info-value">${escapeHtml(details.customerName)} (${escapeHtml(details.customerContactType === "line" || details.customerLineId ? "LINE" : details.customerContactValue || details.customerPhone || "-")})</span>
+                    <dl class="order-detail-overview" aria-label="\u4EA4\u8CA8\u8207\u6536\u6B3E\u6458\u8981">
+                      <div><dt>\u4EA4\u8CA8\u65E5\u671F</dt><dd>${escapeHtml(formatDisplayDate(details.deliveryDate))}</dd></div>
+                      <div><dt>\u914D\u9001\u65B9\u5F0F</dt><dd>${escapeHtml(details.deliveryType || "\u5916\u9001")}</dd></div>
+                      <div><dt>${remainingAmount > 0 ? "\u5F85\u6536\u91D1\u984D" : "\u5269\u9918\u91D1\u984D"}</dt><dd class="order-detail-balance ${remainingAmount > 0 ? "is-outstanding" : "is-paid"}">${money2(remainingAmount)}</dd></div>
+                    </dl>
+                    <div class="order-detail-layout">
+                      <section class="order-detail-items" aria-label="\u8A02\u55AE\u660E\u7D30">
+                        <div class="order-detail-section-heading"><h3>\u8A02\u55AE\u660E\u7D30</h3><span>${items.length} \u9805</span></div>
+                        <div class="table-responsive">
+                          <table class="table gj-table order-detail-table" role="table" aria-label="\u8A02\u8CFC\u5546\u54C1">
+                            <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">\u5546\u54C1</th><th role="columnheader" scope="col">\u6578\u91CF</th><th role="columnheader" scope="col">\u55AE\u50F9</th><th role="columnheader" scope="col">\u5C0F\u8A08</th></tr></thead>
+                            <tbody role="rowgroup">${itemsHtml || '<tr role="row" class="order-detail-empty"><td role="cell" colspan="4">\u6B64\u8A02\u55AE\u6C92\u6709\u5546\u54C1\u660E\u7D30</td></tr>'}</tbody>
+                          </table>
                         </div>
-                        ${(details.recipientName || details.recipientPhone) && details.deliveryType !== "\u81EA\u53D6" ? `
-                        <div class="order-info-item">
-                            <span class="order-info-label">\u6536\u4EF6\u4EBA</span>
-                            <span class="order-info-value">${escapeHtml(details.recipientName || "-")} ${details.recipientPhone ? `(${escapeHtml(details.recipientPhone)})` : ""}</span>
-                        </div>` : ""}
-                        <div class="order-info-item">
-                            <span class="order-info-label">\u5730\u5740</span>
-                            <span class="order-info-value">${escapeHtml(details.customerAddress || "\u672A\u63D0\u4F9B")}</span>
-                        </div>
-                        <div class="order-info-item">
-                            <span class="order-info-label">\u914D\u9001\u65B9\u5F0F</span>
-                            <span class="order-info-value delivery-badge">${escapeHtml(details.deliveryType || "\u5916\u9001")}</span>
-                        </div>
-                        ${details.isCompanyCustomer ? `<div class="order-info-item">
-                            <span class="order-info-label">\u5BA2\u6236\u985E\u578B</span>
-                            <span class="order-info-value" style="color: #4f46e5; font-weight: 600;">\u4F01\u696D\u5BA2\u6236</span>
-                        </div>` : ""}
-                        <div class="order-info-item">
-                            <span class="order-info-label">\u4EA4\u8CA8\u65E5\u671F</span>
-                            <span class="order-info-value">${formatDisplayDate(details.deliveryDate)}</span>
-                        </div>
-                        <div class="order-info-item">
-                            <span class="order-info-label">\u8A02\u55AE\u72C0\u614B</span>
-                            <span class="status-pill ${getStatusPillClass(details.status)}">${escapeHtml(details.status)}</span>
-                        </div>
-                    </div>
-
-                    <h4>\u8A02\u55AE\u660E\u7D30</h4>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead><tr><th>\u5546\u54C1</th><th>\u6578\u91CF</th><th>\u55AE\u50F9</th><th>\u5C0F\u8A08</th></tr></thead>
-                            <tbody>${itemsHtml}</tbody>
-                        </table>
-                    </div>
-
-                    <div class="payment-status-box">
-                        <h4>\u4ED8\u6B3E\u72C0\u614B</h4>
-                        <div class="payment-grid">
-                            <div class="payment-item">
-                                <span class="payment-label">\u7E3D\u91D1\u984D</span>
-                                <span class="payment-value primary">NT$ ${Math.round(details.totalAmount).toLocaleString()}</span>
-                            </div>
-                            <div class="payment-item">
-                                <span class="payment-label">\u5DF2\u4ED8\u8A02\u91D1</span>
-                                <span class="payment-value ${details.depositAmount > 0 ? "success" : ""}">NT$ ${details.depositAmount || 0}</span>
-                            </div>
-                            <div class="payment-item">
-                                <span class="payment-label">\u5269\u9918\u91D1\u984D</span>
-                                <span class="payment-value ${details.remainingAmount > 0 ? "danger" : "success"}">NT$ ${details.remainingAmount ?? details.totalAmount}</span>
-                            </div>
-                            ${details.shippingFee > 0 || details.shippingNotes ? `
-                            <div class="payment-item">
-                                <span class="payment-label">\u904B\u8CBB</span>
-                                <span class="payment-value info">${details.shippingFee > 0 ? `NT$ ${details.shippingFee}` : "\u514D\u904B"}</span>
-                            </div>` : ""}
-                        </div>
-                        ${canEditOrders && details.status !== "\u5B8C\u6210" ? `
-                        <div class="deposit-action">
-                            <button class="btn btn-deposit" onclick="showDepositModal('${escapeHandlerArgument(details.orderId)}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();">
-                                <i class="fas fa-coins"></i> \u8A2D\u5B9A\u8A02\u91D1
-                            </button>
-                        </div>` : ""}
-                    </div>
-
-                    <div class="order-total">
-                        <span>\u7E3D\u8A08</span>
-                        <span class="total-amount">NT$ ${details.totalAmount}</span>
+                      </section>
+                      <div class="order-detail-sidebar">
+                        <section aria-label="\u5BA2\u6236\u8207\u914D\u9001">
+                          <div class="order-detail-section-heading"><h3>\u5BA2\u6236\u8207\u914D\u9001</h3></div>
+                          <dl class="order-detail-facts">
+                            <div><dt>\u5BA2\u6236</dt><dd>${escapeHtml(details.customerName || "\u672A\u63D0\u4F9B")}${details.isCompanyCustomer ? '<span class="order-detail-company">\u4F01\u696D\u5BA2\u6236</span>' : ""}</dd></div>
+                            <div><dt>${isLine ? "LINE ID" : "\u806F\u7D61\u96FB\u8A71"}</dt><dd>${escapeHtml(contact || "\u672A\u63D0\u4F9B")}</dd></div>
+                            ${(details.recipientName || details.recipientPhone) && details.deliveryType !== "\u81EA\u53D6" ? `<div><dt>\u6536\u4EF6\u4EBA</dt><dd>${escapeHtml(details.recipientName || "\u672A\u63D0\u4F9B")}${details.recipientPhone ? `<br>${escapeHtml(details.recipientPhone)}` : ""}</dd></div>` : ""}
+                            ${details.customerAddress || details.deliveryType !== "\u81EA\u53D6" ? `<div><dt>${details.deliveryType === "\u81EA\u53D6" ? "\u5BA2\u6236\u5730\u5740" : "\u914D\u9001\u5730\u5740"}</dt><dd>${escapeHtml(details.customerAddress || "\u672A\u63D0\u4F9B")}</dd></div>` : ""}
+                          </dl>
+                          ${details.shippingNotes ? `<div class="order-detail-note"><span>\u914D\u9001\u5099\u8A3B</span><p>${escapeHtml(details.shippingNotes)}</p></div>` : ""}
+                        </section>
+                        <section class="order-detail-payment" aria-label="\u4ED8\u6B3E\u8CC7\u8A0A">
+                          <div class="order-detail-section-heading"><h3>\u4ED8\u6B3E\u8CC7\u8A0A</h3></div>
+                          <dl class="order-detail-facts order-detail-payment-facts">
+                            <div><dt>\u7E3D\u91D1\u984D</dt><dd>${money2(details.totalAmount)}</dd></div>
+                            <div><dt>\u5DF2\u4ED8\u8A02\u91D1</dt><dd>${money2(details.depositAmount)}</dd></div>
+                            ${details.shippingFee > 0 || details.shippingNotes ? `<div><dt>\u904B\u8CBB\uFF08\u5DF2\u542B\u65BC\u7E3D\u91D1\u984D\uFF09</dt><dd>${details.shippingFee > 0 ? money2(details.shippingFee) : "\u514D\u904B"}</dd></div>` : ""}
+                            <div class="order-detail-payment-balance"><dt>\u5269\u9918\u91D1\u984D</dt><dd class="order-detail-balance ${remainingAmount > 0 ? "is-outstanding" : "is-paid"}">${money2(remainingAmount)}</dd></div>
+                          </dl>
+                          ${canUpdate ? `<button type="button" class="gj-btn order-detail-deposit" onclick="showDepositModal('${handlerId}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();"><i class="fas fa-coins" aria-hidden="true"></i> \u8A2D\u5B9A\u8A02\u91D1</button>` : ""}
+                        </section>
+                      </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" onclick="editOrder('${escapeHandlerArgument(details.orderId)}'); this.closest('.modal').remove();"><i class="fas fa-edit"></i> \u7DE8\u8F2F</button>` : ""}
-                    ${statusButtons}
-                    <button class="btn btn-close-modal" onclick="this.closest('.modal').remove()">\u95DC\u9589</button>
+                    <div class="order-detail-secondary-actions">
+                      ${canEditOrders ? `<button type="button" class="gj-btn requires-editor" onclick="editOrder('${handlerId}'); this.closest('.modal').remove();"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u8A02\u55AE</button>` : ""}
+                    </div>
+                    <div class="order-detail-primary-actions">
+                      <button type="button" class="gj-btn gj-btn--quiet" onclick="this.closest('.modal').remove()">\u95DC\u9589</button>
+                      ${canUpdate ? `<button type="button" class="gj-btn gj-btn--primary" onclick="showStatusConfirm('${handlerId}', '\u5B8C\u6210'); this.closest('.modal').remove();">\u6A19\u8A18\u5B8C\u6210</button>` : ""}
+                    </div>
                 </div>
             </div>`;
   document.body.appendChild(detailModal);
-  addOrderPrintButton(detailModal.querySelector(".modal-footer"), details.orderId || details.id);
+  const actions = detailModal.querySelector(".order-detail-secondary-actions");
+  addOrderPrintButton(actions, orderId);
+  const printButton = actions.querySelector("[data-printer-order]");
+  if (printButton) printButton.className = "gj-btn";
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }
 
@@ -7771,6 +7693,8 @@ Object.assign(window, {
   loadProducts,
   showProductDetail,
   addToCartDirectly,
+  adjustCatalogQuantity,
+  setCatalogQuantity,
   adjustGiftboxQty,
   setGiftboxQty,
   showStatusConfirm,
@@ -7786,13 +7710,13 @@ Object.assign(window, {
 
 // src/ui/workspace.js
 var sections = {
-  customer: ["\u5EFA\u7ACB\u8A02\u55AE", "\u5148\u586B\u5BEB\u5BA2\u6236\u8207\u914D\u9001\u8CC7\u6599"],
-  date: ["\u4EA4\u8CA8\u5B89\u6392", "\u9078\u64C7\u65E5\u671F\uFF0C\u638C\u63E1\u6BCF\u65E5\u4F9B\u61C9\u91CF"],
-  gift: ["\u5546\u54C1", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
-  cake: ["\u5546\u54C1", "\u6311\u9078\u5546\u54C1\uFF0C\u96A8\u6642\u6AA2\u8996\u8A02\u55AE"],
-  giftbox: ["\u79AE\u76D2\u7D44\u5408", "\u9078\u64C7\u898F\u683C\uFF0C\u81EA\u7531\u642D\u914D\u5167\u5BB9"],
-  search: ["\u8A02\u55AE\u7BA1\u7406", "\u67E5\u8A62\u9032\u5EA6\u3001\u4ED8\u6B3E\u8207\u4EA4\u8CA8\u8CC7\u8A0A"],
-  settings: ["\u5546\u54C1\u7BA1\u7406", "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1"]
+  customer: ["\u5EFA\u7ACB\u8A02\u55AE", "\u5BA2\u6236\u8CC7\u6599\u8207\u914D\u9001\u65B9\u5F0F"],
+  date: ["\u4EA4\u8CA8\u5B89\u6392", "\u4EA4\u8CA8\u65E5\u671F\u8207\u6BCF\u65E5\u4F9B\u61C9\u91CF"],
+  gift: ["\u5546\u54C1", "\u9078\u64C7\u5546\u54C1\u4E26\u52A0\u5165\u8A02\u55AE"],
+  cake: ["\u5546\u54C1", "\u9078\u64C7\u5546\u54C1\u4E26\u52A0\u5165\u8A02\u55AE"],
+  giftbox: ["\u79AE\u76D2\u7D44\u5408", "\u79AE\u76D2\u898F\u683C\u8207\u5546\u54C1\u6578\u91CF"],
+  search: ["\u8A02\u55AE\u7BA1\u7406", "\u4F9D\u5BA2\u6236\u6216\u4EA4\u8CA8\u65E5\u671F\u67E5\u8A62"],
+  settings: ["\u5546\u54C1\u7BA1\u7406", "\u54C1\u9805\u3001\u50F9\u683C\u8207\u4E0A\u67B6\u72C0\u614B"]
 };
 var panels = {
   products: "\u5546\u54C1\u7BA1\u7406",
@@ -7803,12 +7727,12 @@ var panels = {
   printer: "\u51FA\u55AE\u6A5F"
 };
 var panelSubtitles = {
-  products: "\u65B0\u589E\u3001\u7DE8\u8F2F\u8207\u7BA1\u7406\u5546\u54C1",
-  capacity: "\u8A2D\u5B9A\u6BCF\u65E5\u4F9B\u61C9\u91CF\u8207\u6307\u5B9A\u65E5\u671F\u4E0A\u9650",
-  demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5F59\u6574\u5546\u54C1\u9700\u6C42",
-  reports: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u5340\u9593\u67E5\u770B\u71DF\u6536\u8207\u5546\u54C1\u92B7\u552E",
-  device: "\u67E5\u770B\u76EE\u524D\u4F7F\u7528\u7684\u88DD\u7F6E\u8207\u700F\u89BD\u5668",
-  printer: "\u7BA1\u7406\u5217\u5370\u65B9\u5F0F\u8207\u51FA\u55AE\u6A5F\u9023\u7DDA"
+  products: "\u54C1\u9805\u3001\u50F9\u683C\u8207\u4E0A\u67B6\u72C0\u614B",
+  capacity: "\u661F\u671F\u9810\u8A2D\u8207\u65E5\u671F\u4E0A\u9650",
+  demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u7D71\u8A08\u5546\u54C1\u6578\u91CF",
+  reports: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u7D71\u8A08\u71DF\u6536\u8207\u92B7\u91CF",
+  device: "\u7248\u672C\u3001\u66F4\u65B0\u8207\u700F\u89BD\u5668\u8CC7\u8A0A",
+  printer: "\u5217\u5370\u8A2D\u5B9A\u8207\u88DD\u7F6E\u9023\u7DDA"
 };
 var restoring = false;
 function navigateFromUrl() {
@@ -7857,17 +7781,17 @@ function initializeWorkspace() {
       (managementLinks.querySelector('[aria-current="page"]') || managementLinks.querySelector("button")).focus();
     }
   });
-  document.addEventListener("click", (event2) => {
-    if (!managementLinks.contains(event2.target) && !managementToggle.contains(event2.target))
+  document.addEventListener("click", (event) => {
+    if (!managementLinks.contains(event.target) && !managementToggle.contains(event.target))
       closeManagement();
   });
-  document.addEventListener("focusin", (event2) => {
-    if (!managementLinks.contains(event2.target) && !managementToggle.contains(event2.target))
+  document.addEventListener("focusin", (event) => {
+    if (!managementLinks.contains(event.target) && !managementToggle.contains(event.target))
       closeManagement();
   });
-  document.addEventListener("keydown", (event2) => {
-    if (event2.key === "Escape" && managementToggle.getAttribute("aria-expanded") === "true") {
-      event2.preventDefault();
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && managementToggle.getAttribute("aria-expanded") === "true") {
+      event.preventDefault();
       closeManagement(true);
     }
   });
@@ -7882,14 +7806,14 @@ function initializeWorkspace() {
     searchOrders();
   });
   document.getElementById("overdueShortcut").addEventListener("click", searchOverdueOrders);
-  document.querySelector(".search-form").addEventListener("keydown", (event2) => {
-    if (event2.key === "Enter" && event2.target.matches("input")) {
-      event2.preventDefault();
+  document.querySelector(".search-form").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.matches("input")) {
+      event.preventDefault();
       searchOrders();
     }
   });
-  document.addEventListener("pos:navigate", (event2) => {
-    const { section, panel } = event2.detail;
+  document.addEventListener("pos:navigate", (event) => {
+    const { section, panel } = event.detail;
     if (!sections[section]) return;
     const [title, subtitle] = sections[section];
     document.getElementById("workspaceTitle").textContent = panels[panel] || title;
@@ -7913,14 +7837,14 @@ function initializeWorkspace() {
   window.addEventListener("hashchange", navigateFromUrl);
   document.addEventListener("input", refreshWorkspace);
   document.addEventListener("pos:draft-changed", refreshWorkspace);
-  document.addEventListener("keydown", (event2) => {
-    if (event2.key !== "/" || event2.ctrlKey || event2.metaKey || event2.altKey || event2.target.matches("input,textarea,select,[contenteditable]"))
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || event.target.matches("input,textarea,select,[contenteditable]"))
       return;
     if (document.querySelector(
       ".modal.active, .cart-sidebar.active, #firebaseAuthOverlay.active, #firebaseShopOverlay.active"
     ))
       return;
-    event2.preventDefault();
+    event.preventDefault();
     showSection("search");
     document.getElementById("searchName").focus();
   });
@@ -7985,7 +7909,12 @@ function initializeAccessibility() {
       document.querySelector("header").inert = blocked;
       document.querySelector(".fab-cart").inert = blocked;
       if (top) {
-        returns.set(top, document.activeElement);
+        if (!returns.has(top)) {
+          returns.set(
+            top,
+            previous && !dialogs.includes(previous) ? returns.get(previous) : document.activeElement
+          );
+        }
         top.setAttribute("role", "dialog");
         top.setAttribute("aria-modal", "true");
         if (!top.hasAttribute("aria-label") && !top.hasAttribute("aria-labelledby")) {
@@ -7996,12 +7925,14 @@ function initializeAccessibility() {
           } else top.setAttribute("aria-label", "\u64CD\u4F5C\u8996\u7A97");
         }
         const first = [...top.querySelectorAll(focusable)].find(visible);
+        const restored = previous && returns.get(previous);
         top.tabIndex = -1;
-        (first || top).focus({ preventScroll: true });
+        (restored?.isConnected && top.contains(restored) && visible(restored) ? restored : first || top).focus({ preventScroll: true });
       } else if (previous) {
         const target = returns.get(previous);
         if (target?.isConnected && visible(target)) target.focus({ preventScroll: true });
       }
+      if (previous && !dialogs.includes(previous)) returns.delete(previous);
     }
   }
   let pending = false;
@@ -8024,37 +7955,38 @@ function initializeAccessibility() {
   });
   document.addEventListener(
     "keydown",
-    (event2) => {
+    (event) => {
       if (!active2) return;
-      if (event2.key === "Escape") {
-        event2.preventDefault();
-        event2.stopImmediatePropagation();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
         if (active2.id === "productEditModal" && !document.getElementById("productCategoryOptions").hidden) {
           closeCategoryOptions();
           document.getElementById("productCategoryToggle").focus();
           return;
         }
-        if (active2.id === "printer-preview") active2.remove();
+        if (active2.id === "printer-preview" || active2.classList.contains("order-detail-modal"))
+          active2.remove();
         else if (close[active2.id]) close[active2.id]();
         else if (!["firebaseAuthOverlay", "firebaseShopOverlay"].includes(active2.id))
           active2.classList.remove("active");
       }
-      if (event2.key === "Tab") {
+      if (event.key === "Tab") {
         const controls = [...active2.querySelectorAll(focusable)].filter(visible);
         const first = controls[0] || active2, last = controls.at(-1) || active2;
-        if (event2.shiftKey && (document.activeElement === first || !active2.contains(document.activeElement))) {
-          event2.preventDefault();
+        if (event.shiftKey && (document.activeElement === first || !active2.contains(document.activeElement))) {
+          event.preventDefault();
           last.focus();
-        } else if (!event2.shiftKey && (document.activeElement === last || !active2.contains(document.activeElement))) {
-          event2.preventDefault();
+        } else if (!event.shiftKey && (document.activeElement === last || !active2.contains(document.activeElement))) {
+          event.preventDefault();
           first.focus();
         }
       }
     },
     true
   );
-  document.addEventListener("focusin", (event2) => {
-    if (active2 && !active2.contains(event2.target))
+  document.addEventListener("focusin", (event) => {
+    if (active2 && !active2.contains(event.target))
       ([...active2.querySelectorAll(focusable)].find(visible) || active2).focus();
   });
   enhance();

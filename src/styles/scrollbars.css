@@ -39,7 +39,7 @@ html.overlay-scrollbars-ready,
   box-sizing: border-box;
   border: 3px solid transparent;
   border-radius: 8px;
-  background: rgba(72, 92, 82, 0.55);
+  background: var(--gj-outline, #74777f);
   background-clip: padding-box;
 }
 #overlayScrollbars .overlay-scrollbar-y .overlay-scrollbar-thumb {
@@ -50,15 +50,23 @@ html.overlay-scrollbars-ready,
 }
 #overlayScrollbars .overlay-scrollbar:hover,
 #overlayScrollbars .overlay-scrollbar.is-dragging {
-  background: rgba(72, 92, 82, 0.1);
+  background: var(--gj-subtle, #eaeef5);
 }
 #overlayScrollbars .overlay-scrollbar:hover .overlay-scrollbar-thumb,
 #overlayScrollbars .is-dragging .overlay-scrollbar-thumb {
-  background-color: rgba(37, 101, 77, 0.8);
+  background-color: var(--gj-primary, #0b57d0);
   border-width: 2px;
 }
+#overlayScrollbars.is-touch-device .overlay-scrollbar {
+  transition: opacity 240ms ease-out;
+}
+#overlayScrollbars.is-touch-device .overlay-scrollbar.is-visible {
+  transition-duration: 80ms;
+}
 @media (prefers-reduced-motion: reduce) {
-  #overlayScrollbars .overlay-scrollbar {
+  #overlayScrollbars .overlay-scrollbar,
+  #overlayScrollbars.is-touch-device .overlay-scrollbar,
+  #overlayScrollbars.is-touch-device .overlay-scrollbar.is-visible {
     transition: none;
   }
 }

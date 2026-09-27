@@ -38,179 +38,115 @@ export function viewOrderDetails(orderId) {
 }
 
 export function handleOrderDetails(details) {
+  const orderId = details.orderId || details.id;
+  const handlerId = escapeHandlerArgument(orderId);
+  const money = (value) => `NT$ ${Math.round(Number(value) || 0).toLocaleString('zh-TW')}`;
+  const remainingAmount = details.remainingAmount ?? details.totalAmount;
+  const items = details.items || [];
+  const isLine = details.customerContactType === 'line' || Boolean(details.customerLineId);
+  const contact = details.customerContactValue || details.customerLineId || details.customerPhone;
+  const canEditOrders = document.body.dataset.shopRole !== 'viewer';
+  const canUpdate = canEditOrders && details.status !== '完成';
   const detailModal = document.createElement('div');
-  detailModal.className = 'modal active';
+  detailModal.className = 'modal active order-detail-modal';
   detailModal.setAttribute('role', 'dialog');
   detailModal.setAttribute('aria-modal', 'true');
+  detailModal.setAttribute('aria-label', `訂單詳情 ${orderId}`);
   // 設定 no-op onclick：避免點背景誤關，也讓 initializeModalCloseHandlers 不套用預設關閉行為
   detailModal.onclick = function () {};
-  let itemsHtml = '';
-  details.items.forEach((item) => {
-    if (item.isGiftBox && item.giftBoxDetails) {
-      // 禮盒項目顯示
-      itemsHtml += `
-                        <tr style="background-color: #f0f8ff;">
-                            <td colspan="4"><strong>${escapeHtml(item.productName)} x ${item.quantity}</strong></td>
-                        </tr>`;
-      // 顯示禮盒內容物
-      for (const [productId, qty] of Object.entries(item.giftBoxDetails.products || {})) {
-        const product = state.allProducts.find((p) => p.productId === productId);
-        const productName = product ? product.productName : `商品ID: ${productId}`;
-        const totalQty = (parseInt(qty) || 0) * (parseInt(item.quantity) || 1);
-        itemsHtml += `
-                            <tr style="padding-left: 20px; color: #666; font-size: 0.9em;">
-                                <td style="padding-left: 30px;">└ ${escapeHtml(productName)}</td>
-                                <td>${totalQty}</td>
-                                <td>-</td>
-                                <td>-</td>
-                            </tr>`;
+  const itemsHtml = items
+    .map((item) => {
+      let giftContents = '';
+      if (item.isGiftBox && item.giftBoxDetails) {
+        const products = Object.entries(item.giftBoxDetails.products || {});
+        giftContents = `<details class="order-detail-gift">
+        <summary>禮盒內容 · ${products.length} 種商品</summary>
+        <ul>${products
+          .map(([productId, qty]) => {
+            const product = state.allProducts.find((p) => p.productId === productId);
+            const totalQty = (parseInt(qty) || 0) * (parseInt(item.quantity) || 1);
+            return `<li><span>${escapeHtml(product?.productName || `商品ID: ${productId}`)}</span><span>共 ${totalQty} 個</span></li>`;
+          })
+          .join('')}</ul>
+        ${item.giftBoxDetails.notes ? `<p class="order-detail-note">禮盒備註：${escapeHtml(item.giftBoxDetails.notes)}</p>` : ''}
+      </details>`;
       }
-      // 禮盒備註
-      if (item.giftBoxDetails.notes) {
-        itemsHtml += `
-                            <tr style="color: #888; font-style: italic;">
-                                <td colspan="4" style="padding-left: 30px;">備註: ${escapeHtml(item.giftBoxDetails.notes)}</td>
-                            </tr>`;
-      }
-      // 禮盒小計
-      let giftboxPriceDisplay = `NT$ ${item.unitPrice}`;
-      if (item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice) {
-        giftboxPriceDisplay = `<span class="original-price">NT$ ${item.originalPrice}</span><br><span class="special-price-text">特價 NT$ ${item.unitPrice}</span>`;
-      }
-      itemsHtml += `
-                        <tr style="background-color: #f0f8ff; font-weight: bold;">
-                            <td style="padding-left: 30px;">禮盒小計</td>
-                            <td>-</td>
-                            <td>${giftboxPriceDisplay}</td>
-                            <td>NT$ ${item.subtotal}</td>
-                        </tr>`;
-    } else {
-      // 一般商品項目
-      let priceDisplay = `NT$ ${item.unitPrice}`;
-      if (item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice) {
-        priceDisplay = `<span class="original-price">NT$ ${item.originalPrice}</span> <span class="special-price-text">特價 NT$ ${item.unitPrice}</span>`;
-      }
-      itemsHtml += `
-                        <tr>
-                            <td>${escapeHtml(item.productName)}</td>
-                            <td>${item.quantity}</td>
-                            <td>${priceDisplay}</td>
-                            <td>NT$ ${item.subtotal}</td>
-                        </tr>`;
-    }
-  });
-  // 建立狀態按鈕的邏輯
-  let statusButtons = '';
-  // 只有在未完成的情況下才顯示完成按鈕
-  // 支援所有付款狀態：已確認、已付訂金、已付清、已付款（舊版）
-  const canEditOrders = document.body.dataset.shopRole !== 'viewer';
-  if (canEditOrders && details.status !== '完成') {
-    statusButtons += `<button class="btn btn-success" onclick="showStatusConfirm('${escapeHandlerArgument(details.orderId)}', '完成'); this.closest('.modal').remove();">完成</button>`;
-  }
-  detailModal.innerHTML = `<div class="modal-content" onclick="event.stopPropagation()">
+      const specialPrice = item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice;
+      const price = specialPrice
+        ? `<span class="original-price">${money(item.originalPrice)}</span><span class="special-price-text">特價 ${money(item.unitPrice)}</span>`
+        : money(item.unitPrice);
+      return `<tr role="row">
+      <td role="cell" class="order-detail-product"><strong>${escapeHtml(item.productName)}</strong>${giftContents}</td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">數量</span>${escapeHtml(item.quantity)}</td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">單價</span>${price}</td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">小計</span><strong>${money(item.subtotal)}</strong></td>
+    </tr>`;
+    })
+    .join('');
+  detailModal.innerHTML = `<div class="modal-content gj-pos-dialog order-detail-dialog" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h3>訂單詳情 - ${details.orderId}</h3>
-                    <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
+                    <div class="order-detail-heading">
+                      <h2>訂單詳情</h2>
+                      <span class="order-detail-id">訂單編號 ${escapeHtml(orderId)}</span>
+                    </div>
+                    <span class="status-pill ${getStatusPillClass(details.status)}">${escapeHtml(details.status || '未設定')}</span>
+                    <button type="button" class="close-btn" aria-label="關閉訂單詳情" onclick="this.closest('.modal').remove()">×</button>
                 </div>
                 <div class="modal-body">
-                    <div class="order-info-grid">
-                        <div class="order-info-item">
-                            <span class="order-info-label">客戶</span>
-                            <span class="order-info-value">${escapeHtml(details.customerName)} (${escapeHtml(details.customerContactType === 'line' || details.customerLineId ? 'LINE' : details.customerContactValue || details.customerPhone || '-')})</span>
+                    <dl class="order-detail-overview" aria-label="交貨與收款摘要">
+                      <div><dt>交貨日期</dt><dd>${escapeHtml(formatDisplayDate(details.deliveryDate))}</dd></div>
+                      <div><dt>配送方式</dt><dd>${escapeHtml(details.deliveryType || '外送')}</dd></div>
+                      <div><dt>${remainingAmount > 0 ? '待收金額' : '剩餘金額'}</dt><dd class="order-detail-balance ${remainingAmount > 0 ? 'is-outstanding' : 'is-paid'}">${money(remainingAmount)}</dd></div>
+                    </dl>
+                    <div class="order-detail-layout">
+                      <section class="order-detail-items" aria-label="訂單明細">
+                        <div class="order-detail-section-heading"><h3>訂單明細</h3><span>${items.length} 項</span></div>
+                        <div class="table-responsive">
+                          <table class="table gj-table order-detail-table" role="table" aria-label="訂購商品">
+                            <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">商品</th><th role="columnheader" scope="col">數量</th><th role="columnheader" scope="col">單價</th><th role="columnheader" scope="col">小計</th></tr></thead>
+                            <tbody role="rowgroup">${itemsHtml || '<tr role="row" class="order-detail-empty"><td role="cell" colspan="4">此訂單沒有商品明細</td></tr>'}</tbody>
+                          </table>
                         </div>
-                        ${
-                          (details.recipientName || details.recipientPhone) && details.deliveryType !== '自取'
-                            ? `
-                        <div class="order-info-item">
-                            <span class="order-info-label">收件人</span>
-                            <span class="order-info-value">${escapeHtml(details.recipientName || '-')} ${details.recipientPhone ? `(${escapeHtml(details.recipientPhone)})` : ''}</span>
-                        </div>`
-                            : ''
-                        }
-                        <div class="order-info-item">
-                            <span class="order-info-label">地址</span>
-                            <span class="order-info-value">${escapeHtml(details.customerAddress || '未提供')}</span>
-                        </div>
-                        <div class="order-info-item">
-                            <span class="order-info-label">配送方式</span>
-                            <span class="order-info-value delivery-badge">${escapeHtml(details.deliveryType || '外送')}</span>
-                        </div>
-                        ${
-                          details.isCompanyCustomer
-                            ? `<div class="order-info-item">
-                            <span class="order-info-label">客戶類型</span>
-                            <span class="order-info-value" style="color: #4f46e5; font-weight: 600;">企業客戶</span>
-                        </div>`
-                            : ''
-                        }
-                        <div class="order-info-item">
-                            <span class="order-info-label">交貨日期</span>
-                            <span class="order-info-value">${formatDisplayDate(details.deliveryDate)}</span>
-                        </div>
-                        <div class="order-info-item">
-                            <span class="order-info-label">訂單狀態</span>
-                            <span class="status-pill ${getStatusPillClass(details.status)}">${escapeHtml(details.status)}</span>
-                        </div>
-                    </div>
-
-                    <h4>訂單明細</h4>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead><tr><th>商品</th><th>數量</th><th>單價</th><th>小計</th></tr></thead>
-                            <tbody>${itemsHtml}</tbody>
-                        </table>
-                    </div>
-
-                    <div class="payment-status-box">
-                        <h4>付款狀態</h4>
-                        <div class="payment-grid">
-                            <div class="payment-item">
-                                <span class="payment-label">總金額</span>
-                                <span class="payment-value primary">NT$ ${Math.round(details.totalAmount).toLocaleString()}</span>
-                            </div>
-                            <div class="payment-item">
-                                <span class="payment-label">已付訂金</span>
-                                <span class="payment-value ${details.depositAmount > 0 ? 'success' : ''}">NT$ ${details.depositAmount || 0}</span>
-                            </div>
-                            <div class="payment-item">
-                                <span class="payment-label">剩餘金額</span>
-                                <span class="payment-value ${details.remainingAmount > 0 ? 'danger' : 'success'}">NT$ ${details.remainingAmount ?? details.totalAmount}</span>
-                            </div>
-                            ${
-                              details.shippingFee > 0 || details.shippingNotes
-                                ? `
-                            <div class="payment-item">
-                                <span class="payment-label">運費</span>
-                                <span class="payment-value info">${details.shippingFee > 0 ? `NT$ ${details.shippingFee}` : '免運'}</span>
-                            </div>`
-                                : ''
-                            }
-                        </div>
-                        ${
-                          canEditOrders && details.status !== '完成'
-                            ? `
-                        <div class="deposit-action">
-                            <button class="btn btn-deposit" onclick="showDepositModal('${escapeHandlerArgument(details.orderId)}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();">
-                                <i class="fas fa-coins"></i> 設定訂金
-                            </button>
-                        </div>`
-                            : ''
-                        }
-                    </div>
-
-                    <div class="order-total">
-                        <span>總計</span>
-                        <span class="total-amount">NT$ ${details.totalAmount}</span>
+                      </section>
+                      <div class="order-detail-sidebar">
+                        <section aria-label="客戶與配送">
+                          <div class="order-detail-section-heading"><h3>客戶與配送</h3></div>
+                          <dl class="order-detail-facts">
+                            <div><dt>客戶</dt><dd>${escapeHtml(details.customerName || '未提供')}${details.isCompanyCustomer ? '<span class="order-detail-company">企業客戶</span>' : ''}</dd></div>
+                            <div><dt>${isLine ? 'LINE ID' : '聯絡電話'}</dt><dd>${escapeHtml(contact || '未提供')}</dd></div>
+                            ${(details.recipientName || details.recipientPhone) && details.deliveryType !== '自取' ? `<div><dt>收件人</dt><dd>${escapeHtml(details.recipientName || '未提供')}${details.recipientPhone ? `<br>${escapeHtml(details.recipientPhone)}` : ''}</dd></div>` : ''}
+                            ${details.customerAddress || details.deliveryType !== '自取' ? `<div><dt>${details.deliveryType === '自取' ? '客戶地址' : '配送地址'}</dt><dd>${escapeHtml(details.customerAddress || '未提供')}</dd></div>` : ''}
+                          </dl>
+                          ${details.shippingNotes ? `<div class="order-detail-note"><span>配送備註</span><p>${escapeHtml(details.shippingNotes)}</p></div>` : ''}
+                        </section>
+                        <section class="order-detail-payment" aria-label="付款資訊">
+                          <div class="order-detail-section-heading"><h3>付款資訊</h3></div>
+                          <dl class="order-detail-facts order-detail-payment-facts">
+                            <div><dt>總金額</dt><dd>${money(details.totalAmount)}</dd></div>
+                            <div><dt>已付訂金</dt><dd>${money(details.depositAmount)}</dd></div>
+                            ${details.shippingFee > 0 || details.shippingNotes ? `<div><dt>運費（已含於總金額）</dt><dd>${details.shippingFee > 0 ? money(details.shippingFee) : '免運'}</dd></div>` : ''}
+                            <div class="order-detail-payment-balance"><dt>剩餘金額</dt><dd class="order-detail-balance ${remainingAmount > 0 ? 'is-outstanding' : 'is-paid'}">${money(remainingAmount)}</dd></div>
+                          </dl>
+                          ${canUpdate ? `<button type="button" class="gj-btn order-detail-deposit" onclick="showDepositModal('${handlerId}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();"><i class="fas fa-coins" aria-hidden="true"></i> 設定訂金</button>` : ''}
+                        </section>
+                      </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    ${canEditOrders ? `<button class="btn btn-edit requires-editor" onclick="editOrder('${escapeHandlerArgument(details.orderId)}'); this.closest('.modal').remove();"><i class="fas fa-edit"></i> 編輯</button>` : ''}
-                    ${statusButtons}
-                    <button class="btn btn-close-modal" onclick="this.closest('.modal').remove()">關閉</button>
+                    <div class="order-detail-secondary-actions">
+                      ${canEditOrders ? `<button type="button" class="gj-btn requires-editor" onclick="editOrder('${handlerId}'); this.closest('.modal').remove();"><i class="fas fa-edit" aria-hidden="true"></i> 編輯訂單</button>` : ''}
+                    </div>
+                    <div class="order-detail-primary-actions">
+                      <button type="button" class="gj-btn gj-btn--quiet" onclick="this.closest('.modal').remove()">關閉</button>
+                      ${canUpdate ? `<button type="button" class="gj-btn gj-btn--primary" onclick="showStatusConfirm('${handlerId}', '完成'); this.closest('.modal').remove();">標記完成</button>` : ''}
+                    </div>
                 </div>
             </div>`;
   document.body.appendChild(detailModal);
-  addOrderPrintButton(detailModal.querySelector('.modal-footer'), details.orderId || details.id);
+  const actions = detailModal.querySelector('.order-detail-secondary-actions');
+  addOrderPrintButton(actions, orderId);
+  const printButton = actions.querySelector('[data-printer-order]');
+  if (printButton) printButton.className = 'gj-btn';
   // 確保動態創建的modal有正確的關閉處理器
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }

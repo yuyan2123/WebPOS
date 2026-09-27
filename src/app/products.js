@@ -168,17 +168,18 @@ export function renderProductCards() {
         p.giftBoxEnabled === '是'
           ? '<span class="status-badge yes"><i class="fas fa-gift"></i> 可裝禮盒</span>'
           : '';
+      const money = (value) => `NT$ ${Number(value || 0).toLocaleString('zh-TW')}`;
       const specialPriceDisplay =
         p.specialPrice && p.specialPrice !== ''
-          ? `<span class="price-special">NT$ ${p.specialPrice}</span>`
-          : '<span class="price-none">--</span>';
+          ? `<span class="price-special">${money(p.specialPrice)}</span>`
+          : '<span class="price-none">未設定</span>';
       const companyPriceDisplay =
         p.companyPrice && p.companyPrice !== ''
-          ? `<span class="price-value" style="color: #4f46e5;">NT$ ${p.companyPrice}</span>`
-          : '<span class="price-none">--</span>';
-      return `<div class="product-card">
+          ? `<span class="price-value">${money(p.companyPrice)}</span>`
+          : '<span class="price-none">未設定</span>';
+      return `<div class="product-card gj-pos-card">
                     <div class="product-card-header">
-                        <span class="product-name">${escapeHtml(p.productName)}</span>
+                        <h3 class="product-name">${escapeHtml(p.productName)}</h3>
                         <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${p.status}</span>
                     </div>
                     <div class="product-card-tags">
@@ -188,7 +189,7 @@ export function renderProductCards() {
                     <div class="product-card-prices">
                         <div class="price-row">
                             <span class="price-label">售價</span>
-                            <span class="price-value">NT$ ${p.price}</span>
+                            <span class="price-value">${money(p.price)}</span>
                         </div>
                         <div class="price-row">
                             <span class="price-label">特價</span>

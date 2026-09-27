@@ -281,7 +281,7 @@ function createPreview() {
   modal.setAttribute('aria-label', '列印預覽');
   // Keep background clicks from discarding a preview or hiding an in-flight job.
   modal.onclick = () => {};
-  modal.innerHTML = `<div class="modal-content printer-dialog">
+  modal.innerHTML = `<div class="modal-content printer-dialog gj-pos-dialog">
     <div class="modal-header"><h3>列印預覽</h3><button type="button" class="close-btn" aria-label="關閉列印預覽">×</button></div>
     <div class="modal-body"><p>每次列印一份。送出後無法撤回；補印前請先確認紙張。</p>
       <div class="receipt-preview" aria-label="單據預覽"></div>

@@ -94,13 +94,13 @@ export function selectCalendarDate(day) {
   const weekDay = new Date(state.calendarState.currYear, state.calendarState.currMonth, day).getDay();
   const weekStr = ['日', '一', '二', '三', '四', '五', '六'][weekDay];
   document.getElementById('selected-date-display').innerHTML =
-    `已選擇：<span class="text-blue-600 font-bold text-xl">${state.calendarState.currYear}/${state.calendarState.currMonth + 1}/${day} (週${weekStr})</span>`;
+    `已選擇：<span class="text-md-primary font-bold text-xl">${state.calendarState.currYear}/${state.calendarState.currMonth + 1}/${day} (週${weekStr})</span>`;
   // 同步到隱藏的原生日期選擇器
   document.getElementById('deliveryDate').value = state.calendarState.selectedDateStr;
   const btn = document.getElementById('btn-confirm-date');
   btn.disabled = false;
-  btn.classList.remove('bg-gray-300', 'cursor-not-allowed');
-  btn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'shadow-lg');
+  btn.classList.remove('bg-md-surface-container', 'cursor-not-allowed');
+  btn.classList.add('bg-md-primary', 'hover:bg-md-primary', 'shadow-lg');
   btn.innerHTML = `確認日期 <i class="fas fa-check ml-2"></i>`;
 }
 

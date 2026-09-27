@@ -20,13 +20,24 @@ const components = readdirSync('src/styles/components')
 writeFileSync(
   'public/css/app.css',
   [
+    readFileSync('src/styles/ui-kit/tokens.css', 'utf8'),
+    readFileSync('src/styles/ui-kit/components.css', 'utf8'),
     ...components,
     ...['surfaces', 'responsive', 'resilience', 'workspace', 'alerts'].map((name) =>
       readFileSync(`src/styles/${name}.css`, 'utf8'),
     ),
+    readFileSync('src/styles/pos.css', 'utf8'),
   ].join('\n'),
 );
 
+await build({
+  entryPoints: ['src/ui/theme.js'],
+  outfile: 'public/js/theme.js',
+  bundle: true,
+  format: 'iife',
+  target: ['safari15', 'chrome100', 'firefox100'],
+  logLevel: 'info',
+});
 await build({
   entryPoints: ['src/main.js'],
   outfile: 'public/js/app.js',
@@ -44,6 +55,10 @@ await build({
   target: ['safari15', 'chrome100', 'firefox100'],
   logLevel: 'info',
 });
+writeFileSync(
+  'public/css/ui-kit.css',
+  ['tokens', 'components'].map((name) => readFileSync(`src/styles/ui-kit/${name}.css`, 'utf8')).join('\n'),
+);
 cpSync('src/styles/scrollbars.css', 'public/css/scrollbars.css');
 // The worker caches exactly the generated local shell; no account data or API responses.
 const worker = readFileSync('public/sw.js', 'utf8');
@@ -55,19 +70,25 @@ const html = readFileSync('public/index.html', 'utf8');
 const releaseHash = createHash('sha256');
 for (const path of shell) {
   const content = readFileSync('public' + (path === '/' ? '/index.html' : path));
-  releaseHash.update(path === '/' || path === '/index.html'
-    ? content.toString().replace(/(<meta name="app-(?:version|updated-at)" content=")[^"]*/g, '$1')
-    : content);
+  releaseHash.update(
+    path === '/' || path === '/index.html'
+      ? content.toString().replace(/(<meta name="app-(?:version|updated-at)" content=")[^"]*/g, '$1')
+      : content,
+  );
 }
 releaseHash.update(worker.replace(/const CACHE_VERSION = .*;/, ''));
-const version = `0.14.1+${releaseHash.digest('hex').slice(0, 12)}`;
+const version = `0.15.0+${releaseHash.digest('hex').slice(0, 12)}`;
 const previousVersion = html.match(/name="app-version" content="([^"]*)"/)[1];
-const updatedAt = previousVersion === version
-  ? html.match(/name="app-updated-at" content="([^"]*)"/)[1]
-  : new Date().toISOString();
-writeFileSync('public/index.html', html
-  .replace(/(name="app-version" content=")[^"]*/, `$1${version}`)
-  .replace(/(name="app-updated-at" content=")[^"]*/, `$1${updatedAt}`));
+const updatedAt =
+  previousVersion === version
+    ? html.match(/name="app-updated-at" content="([^"]*)"/)[1]
+    : new Date().toISOString();
+writeFileSync(
+  'public/index.html',
+  html
+    .replace(/(name="app-version" content=")[^"]*/, `$1${version}`)
+    .replace(/(name="app-updated-at" content=")[^"]*/, `$1${updatedAt}`),
+);
 for (const path of shell) revision.update(readFileSync('public' + (path === '/' ? '/index.html' : path)));
 writeFileSync(
   'public/sw.js',
