@@ -71,6 +71,13 @@ export function renderCalendar(skipCapacityLoad) {
       applyCapacityIndicators,
     );
   }
+  // Keep the next two pickup months ready; the loader reuses cached/in-flight requests.
+  if (!skipCapacityLoad) {
+    for (let offset = 1; offset <= 2; offset++) {
+      const month = new Date(state.calendarState.currYear, state.calendarState.currMonth + offset, 1);
+      loadMonthCapacity(month.getFullYear(), month.getMonth() + 1);
+    }
+  }
 }
 
 export function changeMonth(offset) {

@@ -1,10 +1,21 @@
 import { state } from './state.js';
 
+export function createDatepicker(el, options) {
+  const mobile = window.matchMedia('(max-width: 899px), (pointer: coarse)');
+  const picker = new AirDatepicker(el, {
+    ...options,
+    isMobile: mobile.matches,
+    buttons: [...(options.buttons || []), { content: '關閉', onClick: (dp) => dp.hide() }],
+  });
+  mobile.addEventListener('change', () => picker.update({ isMobile: mobile.matches }));
+  return picker;
+}
+
 export function initSearchDatepicker() {
   if (state.searchDatepickerInstance) return;
   const el = document.getElementById('searchDate');
   if (!el) return;
-  state.searchDatepickerInstance = new AirDatepicker(el, {
+  state.searchDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     dateFormat: 'yyyy-MM-dd',
     autoClose: true,
@@ -29,7 +40,7 @@ export function initOverrideDatepicker() {
   if (state.overrideDatepickerInstance) return;
   var el = document.getElementById('overrideDate');
   if (!el) return;
-  state.overrideDatepickerInstance = new AirDatepicker(el, {
+  state.overrideDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     range: true,
     dateFormat: 'yyyy-MM-dd',
@@ -57,7 +68,7 @@ export function initDemandDatepicker() {
   if (state.demandDatepickerInstance) return;
   const el = document.getElementById('demandDatePicker');
   if (!el) return;
-  state.demandDatepickerInstance = new AirDatepicker(el, {
+  state.demandDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     range: true,
     dateFormat: 'yyyy-MM-dd',

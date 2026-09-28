@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#006973">
-    <meta name="app-version" content="0.15.0+3a1dbd673137">
-    <meta name="app-updated-at" content="2026-09-27T23:22:11.353Z">
+    <meta name="app-version" content="0.15.1+2e1e8f2700c8">
+    <meta name="app-updated-at" content="2026-09-28T09:27:00.067Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -466,8 +466,9 @@
                         <div id="printer-page-print" class="printer-page">
                             <section class="printer-card gj-pos-card">
                                 <h3>出單方式</h3>
-                                <label class="printer-toggle-row" for="printer-enabled"><span><strong>啟用列印</strong><small>訂單成立後，自動列印一份。</small></span><input id="printer-enabled" type="checkbox" role="switch"></label>
-                                <p>列印失敗不會重送，訂單仍會保留。</p>
+                                <label class="printer-toggle-row" for="printer-enabled"><span><strong>啟用出單機</strong><small>允許此裝置連線及列印訂單。</small></span><input id="printer-enabled" type="checkbox" role="switch"></label>
+                                <label class="printer-toggle-row" for="printer-autoPrint"><span><strong>訂單成立後自動列印</strong><small>每筆新訂單成立後，自動列印一份。</small></span><input id="printer-autoPrint" type="checkbox" role="switch" aria-describedby="printer-autoPrint-help"></label>
+                                <p id="printer-autoPrint-help">關閉時，可從訂單詳情手動列印。列印失敗不會自動重送，訂單仍會保留。</p>
                             </section>
                             <section class="printer-card gj-pos-card">
                                 <h3>單據選項</h3>
@@ -508,8 +509,9 @@
                 </div>
             </div>
             <!-- 裝置資訊 -->
-            <div id="settingsSystem" class="settings-panel" hidden>
-                <div class="settings-panel-title"><i class="fas fa-sync-alt"></i> 系統資訊</div>
+            <div id="settingsDevice" class="settings-section" style="display: none;">
+            <section id="settingsSystem" class="settings-panel" aria-labelledby="system-info-heading">
+                <h2 id="system-info-heading" class="settings-panel-title"><i class="fas fa-sync-alt" aria-hidden="true"></i> 系統資訊</h2>
                 <div class="device-info-grid">
                     <div class="device-info-item gj-pos-card">
                         <label for="systemVersion">系統版本</label>
@@ -522,20 +524,22 @@
                 </div>
                 <button id="systemCheckUpdate" type="button" class="btn-generate-report gj-btn gj-btn--primary">檢查更新</button>
                 <p id="systemUpdateStatus" role="status" aria-live="polite"></p>
-            <div class="theme-settings"><div><span class="theme-settings-label">外觀</span><span id="themeToggleStatus" role="status">目前：跟隨系統</span></div>
+            </section>
+            <section id="settingsAppearance" class="settings-panel" aria-labelledby="appearance-heading">
+                <h2 id="appearance-heading" class="settings-panel-title">外觀</h2>
+            <div class="theme-settings"><div><span class="theme-settings-label">色彩模式</span><span id="themeToggleStatus" role="status">目前：跟隨系統</span></div>
         <button id="themeToggle" type="button" class="gj-theme-toggle" aria-label="切換至淺色模式" aria-describedby="themeToggleStatus" title="目前：跟隨系統；切換至淺色模式">
           <svg class="gj-icon theme-icon-auto" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.5 2.5H18V8l2.5 4-2.5 4v3.5h-3.5L12 22l-2.5-2.5H6V16l-2.5-4L6 8V4.5h3.5Z"/><path d="m9 15 3-7 3 7m-5-2h4"/></svg>
           <svg class="gj-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
           <svg class="gj-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
         </button>
             </div>
-            </div>
-            <div id="settingsDevice" class="settings-section" style="display: none;">
-                <div class="settings-panel">
-                    <div class="settings-panel-title" style="margin-bottom: 20px;">
-                        <i class="fas fa-info-circle"></i>
+            </section>
+                <section id="settingsDeviceInfo" class="settings-panel" aria-labelledby="device-info-heading">
+                    <h2 id="device-info-heading" class="settings-panel-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle" aria-hidden="true"></i>
                         裝置資訊
-                    </div>
+                    </h2>
                     <div class="device-info-grid">
                         <div class="device-info-item gj-pos-card">
                             <label><i class="fas fa-desktop"></i> 作業系統</label>
@@ -550,14 +554,14 @@
                             <textarea id="fullUserAgent" readonly rows="4" class="gj-input"></textarea>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </section>
 
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version 0.15.0</p>
+            <p>Website content edited by yuyan2123. Version 0.15.1</p>
         </footer>
 
     </main>

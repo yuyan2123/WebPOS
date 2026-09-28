@@ -26,7 +26,7 @@ const panelSubtitles = {
   capacity: '星期預設與日期上限',
   demand: '依交貨日期統計商品數量',
   reports: '依交貨日期統計營收與銷量',
-  device: '版本、更新與瀏覽器資訊',
+  device: '系統資訊、外觀與裝置資訊',
   printer: '列印設定與裝置連線',
 };
 let restoring = false;

@@ -8,6 +8,7 @@ import { showAlert } from './feedback.js';
 
 const defaults = {
   enabled: false,
+  autoPrint: false,
   url: 'wss://xprinter.local/ws',
   title: '',
   width: 576,
@@ -90,7 +91,9 @@ function selectPrinterPage(name) {
 
 function readConfig() {
   try {
-    const config = { ...defaults, ...JSON.parse(localStorage.getItem(key()) || '{}') };
+    const saved = JSON.parse(localStorage.getItem(key()) || '{}');
+    // Older setups used enablement for both manual and automatic printing.
+    const config = { ...defaults, ...saved, autoPrint: saved.autoPrint ?? Boolean(saved.enabled) };
     if (config.url === 'wss://xiao-printer.local/ws') config.url = defaults.url;
     config.token = config.remember ? config.token : sessionStorage.getItem(key()) || '';
     return config;
@@ -102,7 +105,17 @@ function readConfig() {
 function loadSettings() {
   clearBridgeConfig();
   const config = readConfig();
-  for (const field of ['enabled', 'url', 'title', 'width', 'fontSize', 'cut', 'token', 'remember']) {
+  for (const field of [
+    'enabled',
+    'autoPrint',
+    'url',
+    'title',
+    'width',
+    'fontSize',
+    'cut',
+    'token',
+    'remember',
+  ]) {
     const input = element('printer-' + field);
     if (input.type === 'checkbox') input.checked = Boolean(config[field]);
     else input.value = config[field];
@@ -126,9 +139,13 @@ function updateControls() {
       control.disabled =
         !canPrint() ||
         Boolean(active) ||
+        (control.id === 'printer-autoPrint' && !element('printer-enabled').checked) ||
         (control.id === 'printer-send' && control.dataset.ready !== 'true') ||
         (bridgeFields.includes(control.id) && (!bridgeConfig || bridgeConfig.wifiState === 'testing'));
     });
+  element('printer-autoPrint-help').textContent = element('printer-enabled').checked
+    ? '關閉時，可從訂單詳情手動列印。列印失敗不會自動重送，訂單仍會保留。'
+    : '需先啟用出單機。停用期間不會自動列印，原本的自動列印選擇會保留。';
 }
 
 function clearBridgeConfig() {
@@ -211,7 +228,17 @@ async function configureBridge(type) {
 function saveSettings() {
   if (!canPrint() || active) throw new Error('目前無法變更印表機設定');
   const config = {};
-  for (const field of ['enabled', 'url', 'title', 'width', 'fontSize', 'cut', 'token', 'remember']) {
+  for (const field of [
+    'enabled',
+    'autoPrint',
+    'url',
+    'title',
+    'width',
+    'fontSize',
+    'cut',
+    'token',
+    'remember',
+  ]) {
     const input = element('printer-' + field);
     config[field] = input.type === 'checkbox' ? input.checked : input.value.trim();
   }
@@ -402,7 +429,8 @@ export function offerOrderPrint(orderId) {
   };
   banner.append(close);
   banner.hidden = false;
-  if (readConfig().enabled) void autoPrintOrder(orderId, banner);
+  const config = readConfig();
+  if (config.enabled && config.autoPrint) void autoPrintOrder(orderId, banner);
 }
 
 async function autoPrintOrder(orderId, banner) {
@@ -497,6 +525,7 @@ export function initializePrinter() {
   });
   for (const name of ['print', 'device'])
     element('printer-tab-' + name).addEventListener('click', () => selectPrinterPage(name));
+  element('printer-enabled').addEventListener('change', updateControls);
   new MutationObserver(syncContext).observe(document.body, {
     attributes: true,
     attributeFilter: ['data-user-id', 'data-shop-id', 'data-shop-role'],

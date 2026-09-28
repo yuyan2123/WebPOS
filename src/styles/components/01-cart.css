@@ -496,7 +496,8 @@ button.loading {
   opacity: 0;
 }
 
-button.loading::after {
+/* Loading labels replace the press-state layer and inherit the action's ink. */
+button.loading[data-loading-text]:not([data-loading-text=""])::after {
   content: attr(data-loading-text);
   position: absolute;
   inset: 0;
@@ -506,19 +507,26 @@ button.loading::after {
   background: inherit;
   border-radius: inherit;
   font-size: 0.9em;
-  color: var(--gj-primary);
+  color: inherit;
+  opacity: 1;
+  transition: none;
   font-weight: 500;
+}
+
+/* Keep progress readable instead of fading it like an unavailable action. */
+.gj-ui button.loading {
+  opacity: 1;
 }
 
 /* 禮盒規格按鈕的 loading 狀態 - 顯示 spinner overlay */
 
-#giftboxStep1 button.loading::after {
+#giftboxStep1 button.loading[data-loading-text]::after {
   content: "";
   position: absolute;
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(31, 111, 95, 0.2);
-  border-top-color: var(--gj-primary);
+  border: 3px solid transparent;
+  border-top-color: currentColor;
   border-radius: 50%;
   left: 50%;
   top: 50%;

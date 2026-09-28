@@ -1431,7 +1431,8 @@ button.loading {
   opacity: 0;
 }
 
-button.loading::after {
+/* Loading labels replace the press-state layer and inherit the action's ink. */
+button.loading[data-loading-text]:not([data-loading-text=""])::after {
   content: attr(data-loading-text);
   position: absolute;
   inset: 0;
@@ -1441,19 +1442,26 @@ button.loading::after {
   background: inherit;
   border-radius: inherit;
   font-size: 0.9em;
-  color: var(--gj-primary);
+  color: inherit;
+  opacity: 1;
+  transition: none;
   font-weight: 500;
+}
+
+/* Keep progress readable instead of fading it like an unavailable action. */
+.gj-ui button.loading {
+  opacity: 1;
 }
 
 /* 禮盒規格按鈕的 loading 狀態 - 顯示 spinner overlay */
 
-#giftboxStep1 button.loading::after {
+#giftboxStep1 button.loading[data-loading-text]::after {
   content: "";
   position: absolute;
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(31, 111, 95, 0.2);
-  border-top-color: var(--gj-primary);
+  border: 3px solid transparent;
+  border-top-color: currentColor;
   border-radius: 50%;
   left: 50%;
   top: 50%;
@@ -3413,10 +3421,8 @@ button.loading::after {
 
 /* 裝置資訊區塊 */
 
-#settingsSystem[hidden] {
-  display: none;
-}
-#settingsSystem {
+#settingsSystem,
+#settingsAppearance {
   margin-bottom: 20px;
 }
 #settingsSystem .device-info-grid {
@@ -4350,6 +4356,9 @@ button.loading::after {
 .printer-toggle-row span {
   display: grid;
   gap: 7px;
+}
+.printer-toggle-row + .printer-toggle-row {
+  border-top: 1px solid var(--gj-border);
 }
 .printer-toggle-row strong {
   font-size: 15px;
@@ -7282,9 +7291,11 @@ body #firebasePrinterStatus:not([hidden]) {
   align-items: center;
   justify-content: center;
   position: relative;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   cursor: pointer;
   color: var(--pos-muted);
@@ -7342,9 +7353,11 @@ body #firebaseAccountToggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -8497,6 +8510,19 @@ body.gj-ui #firebaseGoogleSignIn.gj-social-button {
 }
 .gj-ui .air-datepicker-cell.-selected- {
   color: var(--gj-on-primary);
+}
+
+/* Mobile calendars sit above navigation and scroll within short viewports. */
+.gj-ui .air-datepicker.-is-mobile- {
+  z-index: 1101;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.gj-ui .air-datepicker-overlay {
+  --adp-overlay-z-index: 1100;
+  --adp-overlay-background-color: var(--gj-backdrop);
 }
 
 /* Reserve enough room for two 48px actions without increasing row height. */
@@ -9679,15 +9705,14 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
   }
 }
 
-/* Appearance settings live beside system version and update controls. */
+/* Appearance is its own category within device settings. */
 .gj-ui .theme-settings {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-top: 12px;
-  padding: 12px 8px 4px;
-  border-top: 1px solid var(--gj-border);
+  padding: 12px 0 4px;
 }
 .gj-ui .theme-settings-label { display: block; font-size: 14px; font-weight: 600; }
 .gj-ui #themeToggleStatus { display: block; font-size: 12px; color: var(--gj-muted); }

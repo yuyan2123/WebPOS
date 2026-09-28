@@ -3577,6 +3577,12 @@ function renderCalendar(skipCapacityLoad) {
       applyCapacityIndicators
     );
   }
+  if (!skipCapacityLoad) {
+    for (let offset = 1; offset <= 2; offset++) {
+      const month = new Date(state.calendarState.currYear, state.calendarState.currMonth + offset, 1);
+      loadMonthCapacity(month.getFullYear(), month.getMonth() + 1);
+    }
+  }
 }
 function changeMonth(offset) {
   state.calendarState.currMonth += offset;
@@ -5373,11 +5379,21 @@ function backToStep2() {
 }
 
 // src/app/date-pickers.js
+function createDatepicker(el, options) {
+  const mobile = window.matchMedia("(max-width: 899px), (pointer: coarse)");
+  const picker = new AirDatepicker(el, {
+    ...options,
+    isMobile: mobile.matches,
+    buttons: [...options.buttons || [], { content: "\u95DC\u9589", onClick: (dp) => dp.hide() }]
+  });
+  mobile.addEventListener("change", () => picker.update({ isMobile: mobile.matches }));
+  return picker;
+}
 function initSearchDatepicker() {
   if (state.searchDatepickerInstance) return;
   const el = document.getElementById("searchDate");
   if (!el) return;
-  state.searchDatepickerInstance = new AirDatepicker(el, {
+  state.searchDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     dateFormat: "yyyy-MM-dd",
     autoClose: true,
@@ -5401,7 +5417,7 @@ function initOverrideDatepicker() {
   if (state.overrideDatepickerInstance) return;
   var el = document.getElementById("overrideDate");
   if (!el) return;
-  state.overrideDatepickerInstance = new AirDatepicker(el, {
+  state.overrideDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     range: true,
     dateFormat: "yyyy-MM-dd",
@@ -5428,7 +5444,7 @@ function initDemandDatepicker() {
   if (state.demandDatepickerInstance) return;
   const el = document.getElementById("demandDatePicker");
   if (!el) return;
-  state.demandDatepickerInstance = new AirDatepicker(el, {
+  state.demandDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     range: true,
     dateFormat: "yyyy-MM-dd",
@@ -5457,7 +5473,7 @@ function initReportDatepicker() {
   if (state.reportDatepickerInstance) return;
   const el = document.getElementById("reportDatePicker");
   if (!el) return;
-  state.reportDatepickerInstance = new AirDatepicker(el, {
+  state.reportDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     range: true,
     dateFormat: "yyyy-MM-dd",
@@ -5656,7 +5672,6 @@ function showSettingsSection(sectionName, navElement) {
   });
   target.classList.add("active");
   target.style.display = "";
-  document.getElementById("settingsSystem").hidden = sectionName !== "device";
   showSection("settings", navElement || document.getElementById("nav-" + sectionName), sectionName);
   if (sectionName === "demand") {
     initDemandDatepicker();
@@ -6399,6 +6414,7 @@ async function renderReceipt(order, config, products = []) {
 // src/app/printer.js
 var defaults = {
   enabled: false,
+  autoPrint: false,
   url: "wss://xprinter.local/ws",
   title: "",
   width: 576,
@@ -6468,7 +6484,8 @@ function selectPrinterPage(name) {
 }
 function readConfig() {
   try {
-    const config = { ...defaults, ...JSON.parse(localStorage.getItem(key()) || "{}") };
+    const saved = JSON.parse(localStorage.getItem(key()) || "{}");
+    const config = { ...defaults, ...saved, autoPrint: saved.autoPrint ?? Boolean(saved.enabled) };
     if (config.url === "wss://xiao-printer.local/ws") config.url = defaults.url;
     config.token = config.remember ? config.token : sessionStorage.getItem(key()) || "";
     return config;
@@ -6479,7 +6496,17 @@ function readConfig() {
 function loadSettings() {
   clearBridgeConfig();
   const config = readConfig();
-  for (const field of ["enabled", "url", "title", "width", "fontSize", "cut", "token", "remember"]) {
+  for (const field of [
+    "enabled",
+    "autoPrint",
+    "url",
+    "title",
+    "width",
+    "fontSize",
+    "cut",
+    "token",
+    "remember"
+  ]) {
     const input = element("printer-" + field);
     if (input.type === "checkbox") input.checked = Boolean(config[field]);
     else input.value = config[field];
@@ -6497,8 +6524,9 @@ function updateControls() {
   document.querySelectorAll(
     "#printer-settings input, #printer-settings select, #printer-settings button, [data-printer-order], #printer-send"
   ).forEach((control) => {
-    control.disabled = !canPrint() || Boolean(active) || control.id === "printer-send" && control.dataset.ready !== "true" || bridgeFields.includes(control.id) && (!bridgeConfig || bridgeConfig.wifiState === "testing");
+    control.disabled = !canPrint() || Boolean(active) || control.id === "printer-autoPrint" && !element("printer-enabled").checked || control.id === "printer-send" && control.dataset.ready !== "true" || bridgeFields.includes(control.id) && (!bridgeConfig || bridgeConfig.wifiState === "testing");
   });
+  element("printer-autoPrint-help").textContent = element("printer-enabled").checked ? "\u95DC\u9589\u6642\uFF0C\u53EF\u5F9E\u8A02\u55AE\u8A73\u60C5\u624B\u52D5\u5217\u5370\u3002\u5217\u5370\u5931\u6557\u4E0D\u6703\u81EA\u52D5\u91CD\u9001\uFF0C\u8A02\u55AE\u4ECD\u6703\u4FDD\u7559\u3002" : "\u9700\u5148\u555F\u7528\u51FA\u55AE\u6A5F\u3002\u505C\u7528\u671F\u9593\u4E0D\u6703\u81EA\u52D5\u5217\u5370\uFF0C\u539F\u672C\u7684\u81EA\u52D5\u5217\u5370\u9078\u64C7\u6703\u4FDD\u7559\u3002";
 }
 function clearBridgeConfig() {
   bridgeConfig = null;
@@ -6568,7 +6596,17 @@ async function configureBridge(type) {
 function saveSettings() {
   if (!canPrint() || active) throw new Error("\u76EE\u524D\u7121\u6CD5\u8B8A\u66F4\u5370\u8868\u6A5F\u8A2D\u5B9A");
   const config = {};
-  for (const field of ["enabled", "url", "title", "width", "fontSize", "cut", "token", "remember"]) {
+  for (const field of [
+    "enabled",
+    "autoPrint",
+    "url",
+    "title",
+    "width",
+    "fontSize",
+    "cut",
+    "token",
+    "remember"
+  ]) {
     const input = element("printer-" + field);
     config[field] = input.type === "checkbox" ? input.checked : input.value.trim();
   }
@@ -6742,7 +6780,8 @@ function offerOrderPrint(orderId) {
   };
   banner.append(close2);
   banner.hidden = false;
-  if (readConfig().enabled) void autoPrintOrder(orderId, banner);
+  const config = readConfig();
+  if (config.enabled && config.autoPrint) void autoPrintOrder(orderId, banner);
 }
 async function autoPrintOrder(orderId, banner) {
   const identity = `${generation}:${orderId}`;
@@ -6834,6 +6873,7 @@ function initializePrinter() {
   });
   for (const name of ["print", "device"])
     element("printer-tab-" + name).addEventListener("click", () => selectPrinterPage(name));
+  element("printer-enabled").addEventListener("change", updateControls);
   new MutationObserver(syncContext).observe(document.body, {
     attributes: true,
     attributeFilter: ["data-user-id", "data-shop-id", "data-shop-role"]
@@ -7731,7 +7771,7 @@ var panelSubtitles = {
   capacity: "\u661F\u671F\u9810\u8A2D\u8207\u65E5\u671F\u4E0A\u9650",
   demand: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u7D71\u8A08\u5546\u54C1\u6578\u91CF",
   reports: "\u4F9D\u4EA4\u8CA8\u65E5\u671F\u7D71\u8A08\u71DF\u6536\u8207\u92B7\u91CF",
-  device: "\u7248\u672C\u3001\u66F4\u65B0\u8207\u700F\u89BD\u5668\u8CC7\u8A0A",
+  device: "\u7CFB\u7D71\u8CC7\u8A0A\u3001\u5916\u89C0\u8207\u88DD\u7F6E\u8CC7\u8A0A",
   printer: "\u5217\u5370\u8A2D\u5B9A\u8207\u88DD\u7F6E\u9023\u7DDA"
 };
 var restoring = false;

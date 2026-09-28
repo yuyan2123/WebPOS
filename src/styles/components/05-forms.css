@@ -130,10 +130,8 @@
 
 /* 裝置資訊區塊 */
 
-#settingsSystem[hidden] {
-  display: none;
-}
-#settingsSystem {
+#settingsSystem,
+#settingsAppearance {
   margin-bottom: 20px;
 }
 #settingsSystem .device-info-grid {

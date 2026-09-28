@@ -2,12 +2,13 @@ import { escapeHtml } from './customers.js';
 import { rpc, isConnected } from '../platform/rpc.js';
 import { state } from './state.js';
 import { showAlert, setButtonLoading, handleError } from './feedback.js';
+import { createDatepicker } from './date-pickers.js';
 
 export function initReportDatepicker() {
   if (state.reportDatepickerInstance) return;
   const el = document.getElementById('reportDatePicker');
   if (!el) return;
-  state.reportDatepickerInstance = new AirDatepicker(el, {
+  state.reportDatepickerInstance = createDatepicker(el, {
     locale: state.demandDateLocaleZh,
     range: true,
     dateFormat: 'yyyy-MM-dd',

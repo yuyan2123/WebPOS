@@ -7,6 +7,55 @@ async function openThemeControls(page) {
   await page.locator('#themeToggle').scrollIntoViewIfNeeded();
 }
 
+test('mobile date pickers remain inside the viewport above navigation', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 740 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openWorkspace(page);
+  for (const [panel, input] of [
+    ['search', 'searchDate'],
+    ['reports', 'reportDatePicker'],
+    ['demand', 'demandDatePicker'],
+    ['capacity', 'overrideDate'],
+  ]) {
+    if (panel === 'search') await page.locator('#nav-search').click();
+    else await openManagementPanel(page, panel);
+    for (const size of [
+      { width: 375, height: 740 },
+      { width: 667, height: 375 },
+    ]) {
+      await page.setViewportSize(size);
+      await page.locator('#' + input).click();
+      const calendar = page.locator('.air-datepicker.-active-');
+      await expect(calendar).toHaveClass(/-is-mobile-/);
+      await expect(page.locator('.air-datepicker-overlay')).toHaveClass(/-active-/);
+      await expect
+        .poll(async () => {
+          const box = await calendar.boundingBox();
+          return (
+            box &&
+            box.x >= 0 &&
+            box.y >= 0 &&
+            box.x + box.width <= size.width &&
+            box.y + box.height <= size.height
+          );
+        })
+        .toBe(true);
+      if (panel === 'search' && size.width === 375) {
+        await page.screenshot({ path: testInfo.outputPath('mobile-calendar.png') });
+        await calendar
+          .locator('.air-datepicker-cell.-day-:not(.-other-month-)')
+          .filter({ hasText: /^15$/ })
+          .click();
+        await expect(page.locator('#searchDate')).toHaveValue(/\d{4}-\d{2}-15/);
+      } else {
+        await calendar.getByRole('button', { name: '關閉', exact: true }).click();
+      }
+      await expect(page.locator('.air-datepicker.-active-')).toHaveCount(0);
+    }
+    await page.setViewportSize({ width: 375, height: 740 });
+  }
+});
+
 test('theme toggle defaults to auto, follows the device and persists manual choices', async ({
   page,
 }, testInfo) => {
@@ -306,7 +355,7 @@ async function openWorkspace(page, role = 'owner') {
     window.posApi = {call:async (method,args) => {
       window.__calls.push({method,args});
       if (window.__fail === method) throw new Error('測試連線中斷');
-      if (method === 'getShopBootstrap') return {products,capacityMonth:{key:'2026-9',data:{}},capacitySettings:{weekday:{'1':{dayOfWeek:1,maxQuantity:120,enabled:true}},dateOverrides:[{id:'2027-01-02',date:'2027-01-02',maxQuantity:45,enabled:true}]}};
+      if (method === 'getShopBootstrap') return {products,capacityMonth:{key:args[0] + '-' + args[1],data:{}},capacitySettings:{weekday:{'1':{dayOfWeek:1,maxQuantity:120,enabled:true}},dateOverrides:[{id:'2027-01-02',date:'2027-01-02',maxQuantity:45,enabled:true}]}};
       if (method === 'getProducts') return products;
       if (method === 'saveProductOrder') {
         if (window.__orderConflict) throw new Error('商品清單或順序已被其他人修改，請重新載入後再調整。');
@@ -364,6 +413,47 @@ async function openManagementPanel(page, panel) {
   if (await toggle.isVisible()) await toggle.click();
   await page.locator('#nav-' + panel).click();
   if (panel === 'printer') await page.locator('#printer-tab-device').click();
+}
+
+for (const month of [9, 11]) {
+  test(`pickup capacity preloads three months from month ${month}`, async ({ page }) => {
+    await page.clock.setFixedTime(new Date(2026, month - 1, 15, 12));
+    const errors = await openWorkspace(page);
+    const upcoming = [1, 2].map((offset) => {
+      const date = new Date(2026, month - 1 + offset, 1);
+      return [date.getFullYear(), date.getMonth() + 1];
+    });
+    await page.evaluate(() => {
+      const original = window.posApi.call;
+      window.posApi.call = async (method, args) => {
+        if (method !== 'getMonthCapacityStatus') return original(method, args);
+        window.__calls.push({ method, args });
+        const date = `${args[0]}-${String(args[1]).padStart(2, '0')}-01`;
+        return { [date]: { hasLimit: true, currentQuantity: 25, limit: 100, usageRate: 25 } };
+      };
+      window.showSection('date');
+    });
+    const requests = () =>
+      page.evaluate(() =>
+        window.__calls.filter((call) => call.method === 'getMonthCapacityStatus').map((call) => call.args),
+      );
+    // The current month comes from bootstrap; both upcoming months load on opening.
+    await expect.poll(requests).toEqual(upcoming);
+    for (const [year, nextMonth] of upcoming) {
+      await page.evaluate(() => window.changeMonth(1));
+      const date = `${year}-${String(nextMonth).padStart(2, '0')}-01`;
+      await expect(page.locator(`[data-date="${date}"] .cap-indicator`)).toHaveText('25/100');
+    }
+    await page.evaluate(() => {
+      window.changeMonth(-1);
+      window.changeMonth(-1);
+    });
+    const calls = await requests();
+    for (const args of upcoming) {
+      expect(calls.filter((call) => call[0] === args[0] && call[1] === args[1])).toHaveLength(1);
+    }
+    expect(errors).toEqual([]);
+  });
 }
 
 test('order details reflow, disclose gift contents and keep actions accessible', async ({
@@ -2475,8 +2565,11 @@ for (const result of ['current', 'available', 'failed']) {
     await expect(page.locator('#systemVersion')).toHaveValue(`v${releaseVersion}`);
     await expect(page.locator('#systemUpdatedAt')).not.toHaveValue('未知');
     const systemBox = await page.locator('#settingsSystem').boundingBox();
-    const deviceBox = await page.locator('#settingsDevice').boundingBox();
-    expect(systemBox.y + systemBox.height).toBeLessThanOrEqual(deviceBox.y);
+    const appearanceBox = await page.locator('#settingsAppearance').boundingBox();
+    const deviceBox = await page.locator('#settingsDeviceInfo').boundingBox();
+    expect(systemBox.y + systemBox.height).toBeLessThanOrEqual(appearanceBox.y);
+    expect(appearanceBox.y + appearanceBox.height).toBeLessThanOrEqual(deviceBox.y);
+    await expect(page.locator('#settingsAppearance #themeToggle')).toBeVisible();
     await page.locator('#systemCheckUpdate').click();
     await expect(page.locator('#systemUpdateStatus')).toHaveText(
       {
@@ -2501,6 +2594,7 @@ for (const result of ['current', 'available', 'failed']) {
     }
     await openManagementPanel(page, 'products');
     await expect(page.locator('#settingsSystem')).toBeHidden();
+    await expect(page.locator('#settingsAppearance')).toBeHidden();
     expect(errors).toEqual([]);
   });
 }
@@ -2726,13 +2820,48 @@ test('printer page defaults to print settings with accessible switching and comp
   expect(results.violations).toEqual([]);
 });
 
-for (const mode of ['enabled', 'disabled', 'disconnect']) {
+test('printer enablement and automatic printing are independent saved choices', async ({ page }) => {
+  await mockPrinter(page);
+  await openWorkspace(page);
+  await configurePrinter(page);
+  const automatic = page.locator('#printer-autoPrint');
+  await expect(automatic).not.toBeChecked();
+  await expect(automatic).toBeEnabled();
+  await automatic.check();
+  await page.locator('#printer-enabled').uncheck();
+  await expect(automatic).toBeDisabled();
+  await expect(automatic).toBeChecked();
+  await page.locator('#printer-settings').evaluate((form) => form.requestSubmit());
+  await page.reload();
+  await expect(page.locator('#startupStatus')).toBeHidden({ timeout: 20000 });
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-tab-print').click();
+  await expect(page.locator('#printer-enabled')).not.toBeChecked();
+  await expect(automatic).toBeChecked();
+  await expect(automatic).toBeDisabled();
+  await page.locator('#printer-enabled').check();
+  await expect(automatic).toBeEnabled();
+  await automatic.uncheck();
+  await page.locator('#printer-tab-device').click();
+  await page.locator('#printer-token').fill('test-secret');
+  await page.locator('#printer-tab-print').click();
+  await page.locator('#printer-test').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  await page.locator('#printer-send').click();
+  await expect(page.locator('#printer-result')).toContainText('已傳送');
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('ginJiaPos.printer.test-user:test-shop'))),
+  ).toMatchObject({ enabled: true, autoPrint: false });
+});
+
+for (const mode of ['enabled', 'disabled', 'disconnect', 'manual', 'disabled-auto']) {
   test(`new order automatic printing: ${mode}`, async ({ page }) => {
     await page.addInitScript((mode) => {
       localStorage.setItem(
         'ginJiaPos.printer.test-user:test-shop',
         JSON.stringify({
-          enabled: mode !== 'disabled',
+          enabled: !mode.startsWith('disabled'),
+          ...(mode === 'manual' ? { autoPrint: false } : mode === 'disabled-auto' ? { autoPrint: true } : {}),
           token: 'test-secret',
           remember: true,
         }),
@@ -2755,7 +2884,7 @@ for (const mode of ['enabled', 'disabled', 'disconnect']) {
     await page.locator('#workspaceCart').click();
     await page.locator('#checkoutBtn').click();
     await expect(page.locator('#printer-last-order')).toContainText('訂單 O-test 已建立');
-    if (mode !== 'disabled') {
+    if (mode === 'enabled' || mode === 'disconnect') {
       await expect(page.locator('#printer-last-order')).toContainText(
         mode === 'disconnect' ? '可能已部分列印' : '已傳送',
       );

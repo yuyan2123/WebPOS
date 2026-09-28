@@ -69,7 +69,6 @@ export function showSettingsSection(sectionName, navElement) {
   });
   target.classList.add('active');
   target.style.display = '';
-  document.getElementById('settingsSystem').hidden = sectionName !== 'device';
   showSection('settings', navElement || document.getElementById('nav-' + sectionName), sectionName);
   if (sectionName === 'demand') {
     initDemandDatepicker();
