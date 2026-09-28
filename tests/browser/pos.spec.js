@@ -1019,7 +1019,8 @@ test('account badge shows printer connectivity without clipping on narrow phones
           const rect = icon.getBoundingClientRect();
           const badge = icon.parentElement.getBoundingClientRect();
           return (
-            rect.width === 28 &&
+            rect.width === 48 &&
+            rect.height === 48 &&
             rect.left >= 0 &&
             rect.right <= innerWidth &&
             badge.left >= 0 &&

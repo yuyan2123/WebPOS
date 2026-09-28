@@ -233,7 +233,7 @@ export function applyDraft(draft) {
     state.calendarState.selectedDateStr = state.currentDeliveryDate;
   }
   updateCartDisplay();
-  renderCalendar();
+  renderCalendar(true);
   state.suppressDraftSave = false;
   document.body.dataset.draftDirty = 'true';
   showAlert('已恢復上次未完成的訂單草稿', 'success');

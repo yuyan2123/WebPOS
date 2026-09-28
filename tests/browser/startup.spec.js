@@ -75,7 +75,11 @@ test('one session request keeps real progress pending until data and draft resto
   ]);
   await page.locator('#nav-date').click();
   await expect(page.locator('.calendar-day').first()).toBeVisible();
-  expect(await page.evaluate(() => window.startupCalls.length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
+    'initializeSession',
+    'getMonthCapacityStatus',
+    'getMonthCapacityStatus',
+  ]);
 });
 
 for (const savedShop of [null, 'unavailable-shop']) {

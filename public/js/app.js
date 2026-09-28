@@ -4657,7 +4657,7 @@ function applyDraft(draft) {
     state.calendarState.selectedDateStr = state.currentDeliveryDate;
   }
   updateCartDisplay();
-  renderCalendar();
+  renderCalendar(true);
   state.suppressDraftSave = false;
   document.body.dataset.draftDirty = "true";
   showAlert("\u5DF2\u6062\u5FA9\u4E0A\u6B21\u672A\u5B8C\u6210\u7684\u8A02\u55AE\u8349\u7A3F", "success");
