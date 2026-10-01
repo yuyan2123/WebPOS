@@ -68,7 +68,7 @@ async function loginPage(
       export class GoogleAuthProvider {}
       export const signInWithRedirect = async () => {
         window.__authCalls.push('redirect');
-        if (window.__authScenario.failure) throw new Error(window.__authScenario.failure);
+        if (window.__authScenario.failure) throw Object.assign(new Error(window.__authScenario.failure), { code: window.__authScenario.failureCode });
         sessionStorage.setItem('oauth-return', 'yes');
         location.reload();
       };
@@ -94,11 +94,153 @@ async function loginPage(
         listener = callback;
         callback(auth.currentUser);
       };
+      const emailAction = async (method, email, password) => {
+        window.__authCalls.push(method);
+        window.__emailInputs = { email, password };
+        if (window.__authScenario.pending) {
+          await new Promise(resolve => { window.__finishEmailAction = resolve; });
+        }
+        if (window.__authScenario.failure) throw Object.assign(new Error(window.__authScenario.failure), { code: window.__authScenario.failureCode });
+      };
+      export const signInWithEmailAndPassword = async (_, email, password) => {
+        await emailAction('email-signin', email, password);
+        auth.currentUser = user;
+        listener(user);
+        return { user };
+      };
+      export const sendPasswordResetEmail = (_, email) => emailAction('reset', email);
     `,
     }),
   );
   await page.goto(`https://${host}/?source=pwa`);
 }
+
+test('email authentication retains field errors, submits with Enter and prevents overlapping actions', async ({
+  page,
+}, testInfo) => {
+  if (testInfo.project.name === 'desktop') await page.setViewportSize({ width: 375, height: 812 });
+  await loginPage(page, { styled: true });
+  const email = page.getByLabel('Email', { exact: true });
+  const password = page.getByLabel('密碼', { exact: true });
+  const signIn = page.locator('#firebaseEmailSignIn');
+  await signIn.click();
+  await expect(page.locator('#firebaseAuthValidation')).toBeFocused();
+  await expect(email).toHaveAttribute('aria-invalid', 'true');
+  await expect(password).toHaveAttribute('aria-invalid', 'true');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    const scan = await new (require('@axe-core/playwright').default)({ page })
+      .include('#firebaseAuthOverlay')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+    expect(scan.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-email-validation.png`) });
+  }
+  await page.getByRole('link', { name: '請填寫 Email。', exact: true }).click();
+  await expect(email).toBeFocused();
+  await email.fill('invalid');
+  await expect(page.locator('#firebaseAuthEmailError')).toContainText('完整的 Email');
+  await email.fill('test@example.test');
+  await expect(email).not.toHaveAttribute('aria-invalid');
+  await expect(password).toHaveAttribute('aria-invalid', 'true');
+  await password.fill('secret-pass');
+  await expect(page.locator('#firebaseAuthValidation')).toBeHidden();
+  await page.getByRole('button', { name: '顯示密碼', exact: true }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: '隱藏密碼', exact: true }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.evaluate(() => {
+    window.__authScenario.pending = true;
+    window.__authScenario.failure = '暫時無法連線，請稍後重試';
+  });
+  await password.press('Enter');
+  await expect(page.locator('#firebaseEmailAuth')).toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('#firebaseGoogleSignIn')).toBeDisabled();
+  await expect(page.locator('#firebaseEmailRegister')).toBeDisabled();
+  await expect(email).toBeDisabled();
+  await expect(signIn).toHaveText('登入中…');
+  await page.evaluate(() => {
+    document.getElementById('firebaseEmailAuth').dispatchEvent(new Event('submit', { cancelable: true }));
+  });
+  expect(await page.evaluate(() => window.__authCalls.filter((call) => call === 'email-signin').length)).toBe(
+    1,
+  );
+  await expect.poll(() => page.evaluate(() => typeof window.__finishEmailAction)).toBe('function');
+  await page.evaluate(() => window.__finishEmailAction());
+  await expect(page.locator('#firebaseAuthError')).toContainText('暫時無法連線');
+  await expect(email).toHaveValue('test@example.test');
+  await expect(password).toHaveValue('secret-pass');
+  await expect(signIn).toBeEnabled();
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    const scan = await new (require('@axe-core/playwright').default)({ page })
+      .include('#firebaseAuthOverlay')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+    expect(scan.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-email-retry.png`) });
+  }
+  await page.evaluate(() => {
+    window.__authScenario.pending = false;
+    window.__authScenario.failure = '';
+  });
+  await password.press('Enter');
+  await expect(page.locator('#firebaseAuthOverlay')).toBeHidden();
+  await expect(password).toHaveValue('');
+});
+
+test('password reset validates only Email and login stays operable on a short viewport', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await loginPage(page, { styled: true });
+  const reset = page.locator('#firebaseResetPassword');
+  const email = page.getByLabel('Email', { exact: true });
+  await email.fill('invalid');
+  await reset.click();
+  await expect(email).toBeFocused();
+  await expect(email).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('#firebaseAuthPassword')).not.toHaveAttribute('aria-invalid');
+  expect(await page.evaluate(() => window.__authCalls.includes('reset'))).toBe(false);
+  await email.fill('test@example.test');
+  await reset.click();
+  await expect(page.locator('#firebaseAuthError')).toContainText('如果此帳號存在');
+  expect(await page.evaluate(() => window.__authCalls.includes('reset'))).toBe(true);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    await page.locator('#firebaseGoogleSignIn').scrollIntoViewIfNeeded();
+    await expect(page.locator('#firebaseGoogleSignIn')).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-landscape-auth.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
+test('authentication errors explain recovery in Chinese and keep entered credentials', async ({ page }) => {
+  await loginPage(page, { styled: true });
+  await page.locator('#firebaseAuthEmail').fill('test@example.test');
+  await page.locator('#firebaseAuthPassword').fill('secret-pass');
+  for (const [code, message] of [
+    ['auth/invalid-credential', 'Email 或密碼不正確，請確認後再試。'],
+    ['auth/network-request-failed', '目前無法連線，請檢查網路後重試。'],
+    ['auth/too-many-requests', '嘗試次數過多，請稍後再試。'],
+  ]) {
+    await page.evaluate((code) => {
+      window.__authScenario.failureCode = code;
+      window.__authScenario.failure = `Firebase: Error (${code}).`;
+    }, code);
+    await page.locator('#firebaseEmailSignIn').click();
+    await expect(page.locator('#firebaseAuthError')).toHaveText(message);
+    await expect(page.locator('#firebaseAuthPassword')).toHaveValue('secret-pass');
+    await expect(page.locator('#firebaseGoogleSignIn')).toBeEnabled();
+  }
+});
 
 test('labeled Google button loads its local logo and stays readable in both themes', async ({
   page,

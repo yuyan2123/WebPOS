@@ -3956,6 +3956,33 @@ function addToCartDirectly(productId) {
 }
 
 // src/app/cart.js
+function updateCheckoutReadiness(totalCount, orderTotals) {
+  const missing = [];
+  if (!state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone)
+    missing.push({ label: "\u5BA2\u6236\u8CC7\u6599", action: "\u586B\u5BEB\u5BA2\u6236\u8CC7\u6599", route: "customer" });
+  if (!state.currentDeliveryDate) missing.push({ label: "\u4EA4\u8CA8\u65E5\u671F", action: "\u9078\u64C7\u4EA4\u8CA8\u65E5\u671F", route: "date" });
+  if (!totalCount) missing.push({ label: "\u5546\u54C1", action: "\u958B\u59CB\u9078\u8CFC\u5546\u54C1", route: "gift" });
+  const viewer = document.body.dataset.shopRole === "viewer";
+  const offline = !navigator.onLine;
+  const hint = document.getElementById("checkoutHint");
+  const message = viewer ? "\u6B64\u5E33\u865F\u70BA\u50C5\u6AA2\u8996\uFF0C\u7121\u6CD5\u5EFA\u7ACB\u6216\u4FEE\u6539\u8A02\u55AE\u3002" : offline ? "\u76EE\u524D\u96E2\u7DDA\uFF0C\u8349\u7A3F\u6703\u4FDD\u7559\uFF1B\u6062\u5FA9\u9023\u7DDA\u5F8C\u53EF\u9001\u51FA\u3002" : missing.length ? `\u9001\u51FA\u524D\u8ACB\u5B8C\u6210\uFF1A${missing.map((item) => item.label).join("\u3001")}\u3002` : `\u8CC7\u6599\u5DF2\u5099\u59A5\uFF0C\u53EF\u4EE5${state.isEditingOrder ? "\u66F4\u65B0" : "\u5EFA\u7ACB"}\u8A02\u55AE\u3002`;
+  if (hint.textContent !== message) hint.textContent = message;
+  const nextStep = document.getElementById("checkoutNextStep");
+  nextStep.hidden = viewer || offline || !missing.length;
+  if (!nextStep.hidden) {
+    const next = missing[0];
+    nextStep.textContent = next.action;
+    nextStep.onclick = () => {
+      closeCartModal();
+      showSectionById(next.route);
+    };
+  }
+  const breakdown = document.getElementById("cartTotalBreakdown");
+  breakdown.hidden = !(orderTotals.shippingFee > 0);
+  document.getElementById("checkoutItemsTotal").textContent = `NT$ ${orderTotals.itemsTotal.toLocaleString("zh-TW")}`;
+  document.getElementById("checkoutShippingTotal").textContent = `NT$ ${orderTotals.shippingFee.toLocaleString("zh-TW")}`;
+  return viewer || offline || missing.length > 0;
+}
 function updateOrderTotal() {
   const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
   const itemsTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -4049,7 +4076,7 @@ function updateCartDisplay() {
   }
   document.getElementById("cartTotalAmount").textContent = orderTotals.totalAmount.toLocaleString("zh-TW");
   const checkoutBtn = document.getElementById("checkoutBtn");
-  const notReady = totalCount === 0 || !state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone || !state.currentDeliveryDate || !navigator.onLine || document.body.dataset.shopRole === "viewer";
+  const notReady = updateCheckoutReadiness(totalCount, orderTotals);
   checkoutBtn.classList.toggle("checkout-not-ready", notReady);
   if (state.isEditingOrder) {
     checkoutBtn.textContent = "\u66F4\u65B0\u8A02\u55AE";
@@ -4288,6 +4315,89 @@ function getTaipeiDate() {
 }
 
 // src/app/products.js
+var productFieldIds = ["productName", "productCategory", "productPrice"];
+var productErrors = /* @__PURE__ */ new Map();
+var productSavePending = false;
+var productEditorVersion = 0;
+function productFieldError(id) {
+  const value = document.getElementById(id).value.trim();
+  if (id === "productName") return value ? "" : "\u8ACB\u586B\u5BEB\u5546\u54C1\u540D\u7A31\u3002";
+  if (id === "productCategory") return value ? "" : "\u8ACB\u586B\u5BEB\u6216\u9078\u64C7\u5546\u54C1\u985E\u5225\u3002";
+  if (!value) return "\u8ACB\u586B\u5BEB\u5546\u54C1\u50F9\u683C\u3002";
+  const price = Number(value);
+  return Number.isInteger(price) && price > 0 && price <= 1e7 ? "" : "\u8ACB\u8F38\u5165 1 \u81F3 10,000,000 \u4E4B\u9593\u7684\u6574\u6578\u50F9\u683C\u3002";
+}
+function renderProductFeedback(serverMessage = "") {
+  for (const id of productFieldIds) {
+    const input = document.getElementById(id);
+    const error = document.getElementById(id + "Error");
+    const message = productErrors.get(id) || "";
+    error.textContent = message;
+    error.hidden = !message;
+    if (message) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
+    input.closest(".gj-combobox")?.classList.toggle("gj-invalid", Boolean(message));
+    const descriptions = [id === "productCategory" ? "productCategoryHint" : "", message ? error.id : ""].filter(Boolean).join(" ");
+    if (descriptions) input.setAttribute("aria-describedby", descriptions);
+    else input.removeAttribute("aria-describedby");
+  }
+  const summary = document.getElementById("productFormFeedback");
+  summary.replaceChildren();
+  summary.hidden = !productErrors.size && !serverMessage;
+  if (summary.hidden) return;
+  const title = document.createElement("h4");
+  title.id = "productFormFeedbackTitle";
+  title.textContent = serverMessage ? "\u5546\u54C1\u5C1A\u672A\u5132\u5B58" : "\u8ACB\u78BA\u8A8D\u4EE5\u4E0B\u6B04\u4F4D";
+  summary.append(title);
+  if (serverMessage) {
+    const message = document.createElement("p");
+    message.textContent = serverMessage;
+    const retry = document.createElement("p");
+    retry.textContent = "\u8CC7\u6599\u5DF2\u4FDD\u7559\uFF0C\u8ACB\u78BA\u8A8D\u5F8C\u518D\u6B21\u5132\u5B58\u3002";
+    summary.append(message, retry);
+  } else {
+    const list = document.createElement("ul");
+    for (const [id, message] of productErrors) {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = "#" + id;
+      link.textContent = message;
+      link.onclick = (event) => {
+        event.preventDefault();
+        document.getElementById(id).focus();
+      };
+      item.append(link);
+      list.append(item);
+    }
+    summary.append(list);
+  }
+}
+function resetProductFeedback() {
+  productErrors.clear();
+  renderProductFeedback();
+  setProductFieldsDisabled(false);
+  const modal = document.getElementById("productEditModal");
+  if (modal.dataset.feedbackInitialized) return;
+  modal.dataset.feedbackInitialized = "true";
+  for (const id of productFieldIds) {
+    const update = () => {
+      if (!productErrors.has(id)) return;
+      const message = productFieldError(id);
+      if (message) productErrors.set(id, message);
+      else productErrors.delete(id);
+      renderProductFeedback();
+    };
+    document.getElementById(id).addEventListener("input", update);
+    document.getElementById(id).addEventListener("change", update);
+  }
+}
+function setProductFieldsDisabled(disabled) {
+  document.querySelectorAll(
+    '#productEditModal .overflow-y-auto :is(input:not([type="hidden"]), textarea, select, button)'
+  ).forEach((control) => {
+    control.disabled = disabled;
+  });
+}
 function closeCategoryOptions() {
   document.getElementById("productCategoryOptions").hidden = true;
   document.getElementById("productCategoryToggle").setAttribute("aria-expanded", "false");
@@ -4304,6 +4414,7 @@ function renderCategoryOptions(filter = "") {
       button.setAttribute("aria-pressed", String(category === input.value));
       button.onclick = () => {
         input.value = category;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
         closeCategoryOptions();
         document.getElementById("productCategoryToggle").focus();
       };
@@ -4400,6 +4511,7 @@ function initializeCategoryPicker() {
 function renderProductCards() {
   const grid = document.getElementById("productsCardGrid");
   const tabsContainer = document.getElementById("productsFilterTabs");
+  const focusedFilter = tabsContainer.contains(document.activeElement) ? document.activeElement.dataset.filter : null;
   renderCategoryOptions();
   if (state.currentProductFilter !== null && !state.allProducts.some((p) => p.category === state.currentProductFilter))
     state.currentProductFilter = null;
@@ -4413,16 +4525,21 @@ function renderProductCards() {
       const button = document.createElement("button");
       button.type = "button";
       button.classList.toggle("active", category === state.currentProductFilter);
+      button.dataset.filter = category === null ? "all" : "category:" + category;
+      button.setAttribute("aria-pressed", String(category === state.currentProductFilter));
       button.textContent = `${category === null ? "\u5168\u90E8" : category} (${category === null ? state.allProducts.length : categoryCounts[category]})`;
       button.onclick = () => filterProductsByCategory(category);
       return button;
     })
   );
+  if (focusedFilter !== null) {
+    ([...tabsContainer.children].find((button) => button.dataset.filter === focusedFilter) || tabsContainer.querySelector(".active"))?.focus({ preventScroll: true });
+  }
   const filtered = state.currentProductFilter === null ? state.allProducts : state.allProducts.filter((p) => p.category === state.currentProductFilter);
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="products-empty" style="grid-column: 1/-1;">
-                    <i class="fas fa-box-open"></i>
-                    <p>\u5C1A\u7121\u5546\u54C1\u8CC7\u6599</p>
+    grid.innerHTML = `<div class="products-empty workspace-empty" style="grid-column: 1/-1;" role="status">
+                    <h3>\u5C1A\u672A\u5EFA\u7ACB\u5546\u54C1</h3>
+                    <p>${document.body.dataset.shopRole === "viewer" ? "\u8ACB\u806F\u7D61\u5E97\u92EA\u64C1\u6709\u8005\u6216\u53EF\u7DE8\u8F2F\u6210\u54E1\u65B0\u589E\u5546\u54C1\u3002" : "\u4F7F\u7528\u4E0A\u65B9\u300C\u65B0\u589E\u5546\u54C1\u300D\u8A2D\u5B9A\u54C1\u540D\u3001\u985E\u5225\u8207\u50F9\u683C\uFF0C\u5373\u53EF\u958B\u59CB\u5EFA\u7ACB\u8A02\u55AE\u3002"}</p>
                 </div>`;
     return;
   }
@@ -4484,6 +4601,8 @@ function syncProductOptionButtons(inputId) {
 }
 function showAddProduct() {
   initializeCategoryPicker();
+  productEditorVersion++;
+  resetProductFeedback();
   document.getElementById("productEditModalTitle").textContent = "\u65B0\u589E\u5546\u54C1";
   document.getElementById("editProductId").value = "";
   document.getElementById("productName").value = "";
@@ -4500,11 +4619,24 @@ function showAddProduct() {
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }
 function closeProductEditModal() {
+  productEditorVersion++;
   closeCategoryOptions();
   document.getElementById("productEditModal").classList.remove("active");
 }
 function saveProduct() {
-  const saveBtn = window.event?.currentTarget || window.event?.target;
+  if (productSavePending) return;
+  const saveBtn = document.getElementById("productSaveButton");
+  closeCategoryOptions();
+  productErrors.clear();
+  for (const id of productFieldIds) {
+    const message = productFieldError(id);
+    if (message) productErrors.set(id, message);
+  }
+  renderProductFeedback();
+  if (productErrors.size) {
+    (productErrors.size > 1 ? document.getElementById("productFormFeedback") : document.getElementById(productErrors.keys().next().value)).focus();
+    return;
+  }
   const specialPriceValue = document.getElementById("productSpecialPrice").value.trim();
   const data = {
     productId: document.getElementById("editProductId").value,
@@ -4517,24 +4649,26 @@ function saveProduct() {
     specialPrice: specialPriceValue ? parseInt(specialPriceValue) : "",
     companyPrice: document.getElementById("productCompanyPrice").value.trim() ? parseInt(document.getElementById("productCompanyPrice").value.trim()) : ""
   };
-  if (!data.category) {
-    showAlert("\u8ACB\u586B\u5BEB\u5546\u54C1\u985E\u5225", "error");
-    return;
-  }
-  if (!data.productName || !data.price) {
-    showAlert("\u8ACB\u586B\u5BEB\u5546\u54C1\u540D\u7A31\u548C\u50F9\u683C", "error");
-    return;
-  }
+  const editorVersion = productEditorVersion;
+  productSavePending = true;
+  setProductFieldsDisabled(true);
   setButtonLoading(saveBtn, true, "\u5132\u5B58\u4E2D...");
   rpc.withSuccessHandler(function(result) {
+    productSavePending = false;
+    setProductFieldsDisabled(false);
     setButtonLoading(saveBtn, false);
-    handleProductSaved(result);
+    handleProductSaved(result, editorVersion === productEditorVersion);
   }).withFailureHandler(function(error) {
+    productSavePending = false;
+    setProductFieldsDisabled(false);
     setButtonLoading(saveBtn, false);
-    handleError(error);
+    if (editorVersion === productEditorVersion) {
+      renderProductFeedback(error?.message || "\u7121\u6CD5\u9023\u7DDA");
+      document.getElementById("productFormFeedback").focus();
+    } else handleError(error);
   }).saveProduct(data);
 }
-function handleProductSaved(result) {
+function handleProductSaved(result, closeEditor = true) {
   if (result?.product) {
     const index = state.allProducts.findIndex((p) => p.productId === result.product.productId);
     if (index >= 0) state.allProducts[index] = { ...state.allProducts[index], ...result.product };
@@ -4545,12 +4679,14 @@ function handleProductSaved(result) {
     updateNavVisibility();
   }
   showAlert("\u5546\u54C1\u5DF2\u5132\u5B58", "success");
-  closeProductEditModal();
+  if (closeEditor) closeProductEditModal();
 }
 function editProduct(productId) {
   const p = state.allProducts.find((p2) => p2.productId === productId);
   if (!p) return;
   initializeCategoryPicker();
+  productEditorVersion++;
+  resetProductFeedback();
   document.getElementById("productEditModalTitle").textContent = "\u7DE8\u8F2F\u5546\u54C1";
   document.getElementById("editProductId").value = p.productId;
   document.getElementById("productName").value = p.productName;
@@ -6470,7 +6606,16 @@ async function renderReceipt(order, config, products = []) {
   const bandLines = Math.max(1, Math.floor(238 / lineHeight));
   await document.fonts.ready;
   const measure = document.createElement("canvas").getContext("2d");
-  measure.font = `${fontSize}px system-ui, sans-serif`;
+  const styles = {
+    body: { size: fontSize, weight: 400 },
+    detail: { size: Math.round(fontSize * 0.9), weight: 400 },
+    strong: { size: fontSize, weight: 700 },
+    title: { size: Math.round(fontSize * 1.15), weight: 700, align: "center" },
+    total: { size: Math.round(fontSize * 1.1), weight: 700 }
+  };
+  const fontFamily = getComputedStyle(document.documentElement).getPropertyValue("--gj-font").trim() || '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif';
+  const font = (style) => `${style.weight} ${style.size}px ${fontFamily}`;
+  measure.font = font(styles.body);
   const lines = [];
   const orderId = String(order.orderId || order.id || "\u6E2C\u8A66\u55AE");
   const modules = import_qrcode.default.create(orderId, { errorCorrectionLevel: "M" }).modules;
@@ -6490,56 +6635,120 @@ async function renderReceipt(order, config, products = []) {
     if (byteLengthFor(lines.length + 1) > MAX_PRINT_BYTES) throw new Error("\u55AE\u64DA\u8D85\u904E 8 MiB\uFF0C\u8ACB\u7E2E\u77ED\u5167\u5BB9");
     lines.push(line);
   }
-  function add(value = "") {
+  function add(value = "", style = styles.body, indent = 0) {
     const text = clean(value);
     let line = "";
+    const pushText = () => {
+      pushLine({ text: line, segments: [{ text: line, style, indent }] });
+      line = "";
+    };
+    const firstRow = lines.length;
+    const closing = /[，。！？；：、）》」』】〕〉,.!?;:)\]％%”’]/u;
+    measure.font = font(style);
     for (const char of text) {
-      if (measure.measureText(line + char).width > textWidth() && line) {
-        pushLine(line);
-        line = "";
+      if (measure.measureText(line + char).width > textWidth() - indent && line) {
+        const chars = Array.from(line);
+        let carry = "";
+        if (closing.test(char) && chars.length > 1) {
+          carry = chars.pop();
+          while (chars.length > 1 && closing.test(Array.from(carry)[0])) carry = chars.pop() + carry;
+        }
+        if (chars.length > 1 && /[（《「『【〔〈(\[“‘]/u.test(chars.at(-1))) carry = chars.pop() + carry;
+        line = chars.join("");
+        pushText();
+        line = carry;
       }
       line += char;
     }
-    pushLine(line);
+    const finalContent = Array.from(line.trim()).filter((char) => !closing.test(char)).join("");
+    if (new RegExp("^\\p{Script=Han}$", "u").test(finalContent) && lines.length > firstRow) {
+      const previous = lines.at(-1);
+      const chars = Array.from(previous.text);
+      let carry = chars.pop() || "";
+      while (chars.length > 2 && (/^\s/u.test(carry) || closing.test(Array.from(carry)[0])))
+        carry = chars.pop() + carry;
+      if (chars.length >= 2 && measure.measureText(carry + line).width <= textWidth() - indent) {
+        previous.text = chars.join("");
+        previous.segments[0].text = previous.text;
+        line = carry + line;
+      }
+    }
+    pushText();
   }
-  if (config.title) add(config.title);
-  add("\u8A02\u55AE\u660E\u7D30\u55AE");
+  function addPair(left, right, leftStyle = styles.detail, rightStyle = styles.body, separator = "\uFF1A") {
+    const label = clean(left);
+    const value = clean(right);
+    measure.font = font(leftStyle);
+    const leftWidth = measure.measureText(label).width;
+    measure.font = font(rightStyle);
+    const rightWidth = measure.measureText(value).width;
+    if (leftWidth + rightWidth + 16 <= textWidth()) {
+      pushLine({
+        text: `${label}${separator}${value}`,
+        segments: [
+          { text: label, style: leftStyle },
+          { text: value, style: { ...rightStyle, align: "right" } }
+        ]
+      });
+    } else {
+      add(label, leftStyle);
+      add(value, { ...rightStyle, align: "right" });
+    }
+  }
+  if (config.title) add(config.title, styles.title);
+  add("\u8A02\u55AE\u660E\u7D30\u55AE", config.title ? { ...styles.detail, align: "center" } : styles.title);
   qrTop = lines.length * lineHeight + 4;
-  add(`\u8A02\u55AE\uFF1A${orderId}`);
-  add(`\u5217\u5370\uFF1A${(/* @__PURE__ */ new Date()).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}`);
-  add(`\u5BA2\u6236\uFF1A${order.customerName || "-"}`);
-  if (order.customerContactType === "line" || order.customerLineId) add("\u806F\u7D61\u65B9\u5F0F\uFF1ALINE");
+  add(`\u8A02\u55AE\uFF1A${orderId}`, styles.detail);
+  add(`\u4EA4\u8CA8\uFF1A${order.deliveryDate || "-"} / ${order.deliveryType || "-"}`, styles.strong);
+  add(`\u5BA2\u6236\uFF1A${order.customerName || "-"}`, styles.strong);
+  if (order.customerContactType === "line" || order.customerLineId) add("\u806F\u7D61\u65B9\u5F0F\uFF1ALINE", styles.detail);
   else if (order.customerContactValue || order.customerPhone)
-    add(`\u96FB\u8A71\uFF1A${order.customerContactValue || order.customerPhone}`);
-  add(`\u4EA4\u8CA8\uFF1A${order.deliveryDate || "-"} / ${order.deliveryType || "-"}`);
+    add(`\u96FB\u8A71\uFF1A${order.customerContactValue || order.customerPhone}`, styles.detail);
   if (order.deliveryType !== "\u81EA\u53D6") {
     if (order.recipientName || order.recipientPhone)
-      add(`\u6536\u4EF6\u4EBA\uFF1A${order.recipientName || ""} ${order.recipientPhone || ""}`);
-    if (order.customerAddress) add(`\u5730\u5740\uFF1A${order.customerAddress}`);
+      add(`\u6536\u4EF6\u4EBA\uFF1A${order.recipientName || ""} ${order.recipientPhone || ""}`, styles.detail);
+    if (order.customerAddress) add(`\u5730\u5740\uFF1A${order.customerAddress}`, styles.detail);
   }
-  add(`\u72C0\u614B\uFF1A${order.status || "-"}`);
+  add(`\u72C0\u614B\uFF1A${order.status || "-"}`, styles.detail);
   while (lines.length * lineHeight < qrTop + qrSize) add();
   pushLine(null);
-  order.items.forEach((item) => {
-    add(item.productName || "\u672A\u547D\u540D\u5546\u54C1");
-    add(`${item.quantity} \xD7 ${money2(item.unitPrice)} = ${money2(item.subtotal)}`);
+  addPair("\u5546\u54C1\u660E\u7D30", "\u5C0F\u8A08", styles.strong, styles.detail, "\u3000");
+  if (!order.items.length) add("\u6B64\u8A02\u55AE\u6C92\u6709\u5546\u54C1\u660E\u7D30", styles.detail);
+  order.items.forEach((item, index) => {
+    if (index) add();
+    add(item.productName || "\u672A\u547D\u540D\u5546\u54C1", styles.strong);
+    addPair(
+      `${item.quantity}${item.isGiftBox ? "\u76D2" : "\u4EF6"} \xD7 ${money2(item.unitPrice)}`,
+      money2(item.subtotal),
+      styles.detail,
+      styles.strong,
+      " = "
+    );
     if (item.isGiftBox && item.giftBoxDetails) {
+      const indent = Math.round(fontSize * 0.65);
+      if (Object.keys(item.giftBoxDetails.products || {}).length) add("\u79AE\u76D2\u5167\u5BB9", styles.detail, indent);
       for (const [id, quantity] of Object.entries(item.giftBoxDetails.products || {})) {
         const name = products.find((product) => product.productId === id)?.productName || `\u5546\u54C1 ${id}`;
-        add(`  ${name}\uFF1A\u6BCF\u76D2 ${quantity} \u500B`);
+        add(`${name}\uFF1A\u6BCF\u76D2 ${quantity} \u500B`, styles.detail, indent);
       }
-      if (item.giftBoxDetails.notes) add(`\u5099\u8A3B\uFF1A${item.giftBoxDetails.notes}`);
+      if (item.giftBoxDetails.notes) add(`\u5099\u8A3B\uFF1A${item.giftBoxDetails.notes}`, styles.detail, indent);
     }
-    if (item.notes) add(`\u5099\u8A3B\uFF1A${item.notes}`);
+    if (item.notes && item.notes !== item.giftBoxDetails?.notes)
+      add(`\u5099\u8A3B\uFF1A${item.notes}`, styles.detail, Math.round(fontSize * 0.65));
   });
   pushLine(null);
-  add(`\u904B\u8CBB\uFF1A${money2(order.shippingFee)}`);
-  if (order.shippingNotes) add(order.shippingNotes);
-  add(`\u7E3D\u91D1\u984D\uFF1A${money2(order.totalAmount)}`);
-  add(`\u5DF2\u4ED8\u8A02\u91D1\uFF1A${money2(order.depositAmount)}`);
-  add(`\u5269\u9918\u91D1\u984D\uFF1A${money2(order.remainingAmount ?? order.totalAmount)}`);
-  if (order.notes) add(`\u5099\u8A3B\uFF1A${order.notes}`);
-  add("\u6B64\u55AE\u70BA\u8A02\u55AE\u660E\u7D30\uFF0C\u975E\u7D71\u4E00\u767C\u7968");
+  addPair("\u904B\u8CBB", money2(order.shippingFee));
+  if (order.shippingNotes) add(order.shippingNotes, styles.detail);
+  addPair("\u7E3D\u91D1\u984D", money2(order.totalAmount), styles.strong, styles.total);
+  addPair("\u5DF2\u4ED8\u8A02\u91D1", money2(order.depositAmount));
+  addPair("\u5269\u9918\u91D1\u984D", money2(order.remainingAmount ?? order.totalAmount), styles.strong, styles.strong);
+  if (order.notes) add(`\u5099\u8A3B\uFF1A${order.notes}`, styles.detail);
+  add();
+  add(
+    `\u5217\u5370\uFF1A${(/* @__PURE__ */ new Date()).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}`,
+    styles.detail
+  );
+  add("\u6B64\u55AE\u70BA\u8A02\u55AE\u660E\u7D30\uFF0C\u975E\u7D71\u4E00\u767C\u7968", { ...styles.detail, align: "center" });
   function drawBand(start) {
     const group = lines.slice(start, start + bandLines);
     const trim = start === 0 ? topTrim : 0;
@@ -6551,12 +6760,22 @@ async function renderReceipt(order, config, products = []) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, width, canvas.height);
     ctx.fillStyle = "#000";
-    ctx.font = measure.font;
-    ctx.textBaseline = "top";
+    ctx.font = font(styles.body);
+    ctx.textBaseline = "alphabetic";
     group.forEach((line, index) => {
       if (line === null)
         ctx.fillRect(16, index * lineHeight + Math.floor(lineHeight / 2) - trim, width - 32, 2);
-      else ctx.fillText(line, 16, index * lineHeight + 4 - trim);
+      else {
+        for (const segment of line.segments) {
+          ctx.save();
+          ctx.font = font(segment.style);
+          ctx.textAlign = segment.style.align || "left";
+          const x = segment.style.align === "center" ? width / 2 : segment.style.align === "right" ? width - 16 : 16 + (segment.indent || 0);
+          const ascent = ctx.measureText(segment.text).actualBoundingBoxAscent;
+          ctx.fillText(segment.text, x, index * lineHeight + 4 - trim + ascent);
+          ctx.restore();
+        }
+      }
     });
     const qrBandTop = qrTop - start * lineHeight - trim;
     for (let row = 0; row < modules.size; row++) {
@@ -6570,7 +6789,7 @@ async function renderReceipt(order, config, products = []) {
   }
   return {
     byteLength: byteLengthFor(lines.length),
-    text: lines.map((line) => line ?? "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500").join("\n"),
+    text: lines.map((line) => line?.text ?? "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500").join("\n"),
     pageCount: Math.ceil(lines.length / (bandLines * PAGE_BANDS)),
     previewPage(page) {
       const start = page * bandLines * PAGE_BANDS;
@@ -6871,7 +7090,7 @@ async function previewOrder(orderId, test = false) {
   const output = modal.querySelector("#printer-result");
   try {
     let showPage2 = function() {
-      modal.querySelector(".receipt-preview").replaceChildren(...receipt.previewPage(page));
+      paper.replaceChildren(...receipt.previewPage(page));
       modal.querySelector(".receipt-page-label").textContent = `${page + 1} / ${receipt.pageCount} \u9801\uFF08\u5217\u5370\u6703\u9023\u7E8C\u8F38\u51FA\u6574\u5F35\u55AE\uFF09`;
       modal.querySelector(".receipt-previous").disabled = page === 0;
       modal.querySelector(".receipt-next").disabled = page === receipt.pageCount - 1;
@@ -6896,6 +7115,8 @@ async function previewOrder(orderId, test = false) {
     assertContext(expectedScope, expectedGeneration);
     if (!modal.isConnected) return;
     let page = 0;
+    const paper = modal.querySelector(".receipt-preview");
+    paper.style.width = `min(100%, ${config.width}px)`;
     modal.querySelector(".receipt-pages").hidden = receipt.pageCount === 1;
     modal.querySelector(".receipt-previous").onclick = () => {
       page--;
@@ -7340,6 +7561,30 @@ function doSubmitOrder(orderData) {
 }
 
 // src/app/payments.js
+var depositUpdatePending = false;
+var depositEditorVersion = 0;
+function depositAmountError() {
+  const input = document.getElementById("depositAmountInput");
+  const value = parseFloat(input.value) || 0;
+  if (input.validity.badInput || !Number.isFinite(value)) return "\u8ACB\u8F38\u5165\u6709\u6548\u7684\u8A02\u91D1\u91D1\u984D\u3002";
+  if (value < 0) return "\u8A02\u91D1\u4E0D\u53EF\u5C0F\u65BC 0\u3002";
+  if (value > state.currentDepositTotalAmount)
+    return `\u8A02\u91D1\u4E0D\u80FD\u8D85\u904E\u8A02\u55AE\u7E3D\u984D NT$ ${Number(state.currentDepositTotalAmount).toLocaleString("zh-TW")}\u3002`;
+  return "";
+}
+function setDepositFieldError(message) {
+  const input = document.getElementById("depositAmountInput");
+  const error = document.getElementById("depositAmountError");
+  if (error.textContent !== message) error.textContent = message;
+  error.hidden = !message;
+  if (message) input.setAttribute("aria-invalid", "true");
+  else input.removeAttribute("aria-invalid");
+  input.setAttribute("aria-describedby", "depositAmountHint" + (message ? " depositAmountError" : ""));
+}
+function setDepositFieldsDisabled(disabled) {
+  document.getElementById("depositAmountInput").disabled = disabled;
+  document.getElementById("paymentNotesInput").disabled = disabled;
+}
 function initConfirmSlider(thumbId, progressId, onConfirm) {
   const thumb = document.getElementById(thumbId);
   const progressBar = document.getElementById(progressId);
@@ -7474,6 +7719,9 @@ function closeDeleteConfirmModal() {
   state.deleteOrderId = null;
 }
 function showDepositModal(orderId, totalAmount, depositAmount) {
+  depositEditorVersion++;
+  setDepositFieldsDisabled(false);
+  document.getElementById("depositSaveError").hidden = true;
   state.currentDepositOrderId = orderId;
   state.currentDepositTotalAmount = totalAmount;
   state.currentDepositAmount = depositAmount;
@@ -7481,10 +7729,12 @@ function showDepositModal(orderId, totalAmount, depositAmount) {
 \u7E3D\u91D1\u984D\uFF1ANT$ ${Number(totalAmount).toLocaleString("zh-TW")}`;
   document.getElementById("depositAmountInput").value = depositAmount || "";
   document.getElementById("paymentNotesInput").value = "";
+  document.getElementById("depositAmountHint").textContent = `\u8A02\u91D1\u4E0D\u53EF\u8D85\u904E NT$ ${Number(totalAmount).toLocaleString("zh-TW")}\uFF1B\u7559\u7A7A\u6216 0 \u8868\u793A\u672A\u4ED8\u8A02\u91D1\u3002`;
   updateDepositCalculation();
   document.getElementById("depositModal").classList.add("active");
 }
 function closeDepositModal() {
+  depositEditorVersion++;
   document.getElementById("depositModal").classList.remove("active");
   state.currentDepositOrderId = null;
   state.currentDepositTotalAmount = 0;
@@ -7494,12 +7744,11 @@ function updateDepositCalculation() {
   const depositInput = document.getElementById("depositAmountInput");
   const newDepositAmount = parseFloat(depositInput.value) || 0;
   const calculationResult = document.getElementById("depositCalculationResult");
-  if (newDepositAmount < 0 || newDepositAmount > state.currentDepositTotalAmount) {
-    depositInput.style.borderColor = "var(--gj-danger)";
+  const error = depositAmountError();
+  setDepositFieldError(error);
+  if (error) {
     calculationResult.style.display = "none";
     return;
-  } else {
-    depositInput.style.borderColor = "var(--gj-border)";
   }
   if (newDepositAmount > 0) {
     calculationResult.style.display = "block";
@@ -7520,19 +7769,28 @@ function updateDepositCalculation() {
   }
 }
 function confirmDepositUpdate() {
+  if (depositUpdatePending) return;
   const depositAmount = parseFloat(document.getElementById("depositAmountInput").value) || 0;
   const paymentNotes = document.getElementById("paymentNotesInput").value.trim();
   if (!state.currentDepositOrderId) {
     showAlert("\u8A02\u55AE\u8CC7\u8A0A\u932F\u8AA4", "error");
     return;
   }
-  if (depositAmount > state.currentDepositTotalAmount) {
-    showAlert("\u8A02\u91D1\u4E0D\u80FD\u8D85\u904E\u7E3D\u91D1\u984D", "error");
+  const error = depositAmountError();
+  setDepositFieldError(error);
+  if (error) {
+    document.getElementById("depositAmountInput").focus();
     return;
   }
   const confirmBtn = document.getElementById("confirmDepositBtn");
+  const editorVersion = depositEditorVersion;
+  depositUpdatePending = true;
+  document.getElementById("depositSaveError").hidden = true;
+  setDepositFieldsDisabled(true);
   setButtonLoading(confirmBtn, true, "\u8A2D\u5B9A\u4E2D...");
   rpc.withSuccessHandler(function(result) {
+    depositUpdatePending = false;
+    setDepositFieldsDisabled(false);
     setButtonLoading(confirmBtn, false);
     const cachedOrder = state.currentSearchOrders.find(
       (order) => (order.id || order.orderId) === result.orderId
@@ -7542,11 +7800,18 @@ function confirmDepositUpdate() {
       cachedOrder.remainingAmount = result.remainingAmount;
     }
     showAlert(`\u8A02\u91D1\u5DF2\u8A2D\u5B9A\uFF1ANT$ ${result.depositAmount}\uFF0C\u72C0\u614B\u66F4\u65B0\u70BA\uFF1A${result.newStatus}`, "success");
-    closeDepositModal();
+    if (editorVersion === depositEditorVersion) closeDepositModal();
     refreshOrderDisplays(result.orderId, result.newStatus);
-  }).withFailureHandler(function(error) {
+  }).withFailureHandler(function(error2) {
+    depositUpdatePending = false;
+    setDepositFieldsDisabled(false);
     setButtonLoading(confirmBtn, false);
-    handleError(error);
+    if (editorVersion === depositEditorVersion) {
+      document.getElementById("depositSaveErrorMessage").textContent = error2?.message || "\u7121\u6CD5\u9023\u7DDA";
+      const feedback = document.getElementById("depositSaveError");
+      feedback.hidden = false;
+      feedback.focus();
+    } else handleError(error2);
   }).updateOrderDeposit(state.currentDepositOrderId, depositAmount, paymentNotes);
 }
 function executeDelete() {
@@ -8077,6 +8342,7 @@ var selector = ".modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverla
 var focusable = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 var close = {
   productOrderModal: closeProductOrder,
+  productEditModal: closeProductEditModal,
   cartModal: closeCartModal,
   capacityWarningModal: closeCapacityWarningModal,
   deleteConfirmModal: closeDeleteConfirmModal,

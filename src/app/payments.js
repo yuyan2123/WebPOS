@@ -4,6 +4,34 @@ import { updateOrderStatus, refreshOrderDisplays } from './order-status.js';
 import { showAlert, setButtonLoading, handleError } from './feedback.js';
 import { domain } from '../platform/domain.js';
 
+let depositUpdatePending = false;
+let depositEditorVersion = 0;
+
+function depositAmountError() {
+  const input = document.getElementById('depositAmountInput');
+  const value = parseFloat(input.value) || 0;
+  if (input.validity.badInput || !Number.isFinite(value)) return '請輸入有效的訂金金額。';
+  if (value < 0) return '訂金不可小於 0。';
+  if (value > state.currentDepositTotalAmount)
+    return `訂金不能超過訂單總額 NT$ ${Number(state.currentDepositTotalAmount).toLocaleString('zh-TW')}。`;
+  return '';
+}
+
+function setDepositFieldError(message) {
+  const input = document.getElementById('depositAmountInput');
+  const error = document.getElementById('depositAmountError');
+  if (error.textContent !== message) error.textContent = message;
+  error.hidden = !message;
+  if (message) input.setAttribute('aria-invalid', 'true');
+  else input.removeAttribute('aria-invalid');
+  input.setAttribute('aria-describedby', 'depositAmountHint' + (message ? ' depositAmountError' : ''));
+}
+
+function setDepositFieldsDisabled(disabled) {
+  document.getElementById('depositAmountInput').disabled = disabled;
+  document.getElementById('paymentNotesInput').disabled = disabled;
+}
+
 // 統一的滑動確認元件：滑到底放開即執行 onConfirm（Pointer Events 同時支援滑鼠與觸控）
 export function initConfirmSlider(thumbId, progressId, onConfirm) {
   const thumb = document.getElementById(thumbId);
@@ -161,6 +189,9 @@ export function closeDeleteConfirmModal() {
 //        訂金Modal適配器
 // ==========================================
 export function showDepositModal(orderId, totalAmount, depositAmount) {
+  depositEditorVersion++;
+  setDepositFieldsDisabled(false);
+  document.getElementById('depositSaveError').hidden = true;
   state.currentDepositOrderId = orderId;
   state.currentDepositTotalAmount = totalAmount;
   state.currentDepositAmount = depositAmount;
@@ -168,11 +199,14 @@ export function showDepositModal(orderId, totalAmount, depositAmount) {
     `訂單編號：${orderId}\n總金額：NT$ ${Number(totalAmount).toLocaleString('zh-TW')}`;
   document.getElementById('depositAmountInput').value = depositAmount || '';
   document.getElementById('paymentNotesInput').value = '';
+  document.getElementById('depositAmountHint').textContent =
+    `訂金不可超過 NT$ ${Number(totalAmount).toLocaleString('zh-TW')}；留空或 0 表示未付訂金。`;
   updateDepositCalculation();
   document.getElementById('depositModal').classList.add('active');
 }
 
 export function closeDepositModal() {
+  depositEditorVersion++;
   document.getElementById('depositModal').classList.remove('active');
   state.currentDepositOrderId = null;
   state.currentDepositTotalAmount = 0;
@@ -183,12 +217,11 @@ export function updateDepositCalculation() {
   const depositInput = document.getElementById('depositAmountInput');
   const newDepositAmount = parseFloat(depositInput.value) || 0;
   const calculationResult = document.getElementById('depositCalculationResult');
-  if (newDepositAmount < 0 || newDepositAmount > state.currentDepositTotalAmount) {
-    depositInput.style.borderColor = 'var(--gj-danger)';
+  const error = depositAmountError();
+  setDepositFieldError(error);
+  if (error) {
     calculationResult.style.display = 'none';
     return;
-  } else {
-    depositInput.style.borderColor = 'var(--gj-border)';
   }
   if (newDepositAmount > 0) {
     calculationResult.style.display = 'block';
@@ -213,20 +246,29 @@ export function updateDepositCalculation() {
 }
 
 export function confirmDepositUpdate() {
+  if (depositUpdatePending) return;
   const depositAmount = parseFloat(document.getElementById('depositAmountInput').value) || 0;
   const paymentNotes = document.getElementById('paymentNotesInput').value.trim();
   if (!state.currentDepositOrderId) {
     showAlert('訂單資訊錯誤', 'error');
     return;
   }
-  if (depositAmount > state.currentDepositTotalAmount) {
-    showAlert('訂金不能超過總金額', 'error');
+  const error = depositAmountError();
+  setDepositFieldError(error);
+  if (error) {
+    document.getElementById('depositAmountInput').focus();
     return;
   }
   const confirmBtn = document.getElementById('confirmDepositBtn');
+  const editorVersion = depositEditorVersion;
+  depositUpdatePending = true;
+  document.getElementById('depositSaveError').hidden = true;
+  setDepositFieldsDisabled(true);
   setButtonLoading(confirmBtn, true, '設定中...');
   rpc
     .withSuccessHandler(function (result) {
+      depositUpdatePending = false;
+      setDepositFieldsDisabled(false);
       setButtonLoading(confirmBtn, false);
       const cachedOrder = state.currentSearchOrders.find(
         (order) => (order.id || order.orderId) === result.orderId,
@@ -236,13 +278,20 @@ export function confirmDepositUpdate() {
         cachedOrder.remainingAmount = result.remainingAmount;
       }
       showAlert(`訂金已設定：NT$ ${result.depositAmount}，狀態更新為：${result.newStatus}`, 'success');
-      closeDepositModal();
+      if (editorVersion === depositEditorVersion) closeDepositModal();
       // 刷新頁面顯示
       refreshOrderDisplays(result.orderId, result.newStatus);
     })
     .withFailureHandler(function (error) {
+      depositUpdatePending = false;
+      setDepositFieldsDisabled(false);
       setButtonLoading(confirmBtn, false);
-      handleError(error);
+      if (editorVersion === depositEditorVersion) {
+        document.getElementById('depositSaveErrorMessage').textContent = error?.message || '無法連線';
+        const feedback = document.getElementById('depositSaveError');
+        feedback.hidden = false;
+        feedback.focus();
+      } else handleError(error);
     })
     .updateOrderDeposit(state.currentDepositOrderId, depositAmount, paymentNotes);
 }

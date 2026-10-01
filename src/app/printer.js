@@ -353,8 +353,10 @@ export async function previewOrder(orderId, test = false) {
     assertContext(expectedScope, expectedGeneration);
     if (!modal.isConnected) return;
     let page = 0;
+    const paper = modal.querySelector('.receipt-preview');
+    paper.style.width = `min(100%, ${config.width}px)`;
     function showPage() {
-      modal.querySelector('.receipt-preview').replaceChildren(...receipt.previewPage(page));
+      paper.replaceChildren(...receipt.previewPage(page));
       modal.querySelector('.receipt-page-label').textContent =
         `${page + 1} / ${receipt.pageCount} 頁（列印會連續輸出整張單）`;
       modal.querySelector('.receipt-previous').disabled = page === 0;

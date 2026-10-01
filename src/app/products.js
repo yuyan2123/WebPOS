@@ -7,6 +7,100 @@ import { showAlert, setButtonLoading, handleError } from './feedback.js';
 import { updateProductDisplays, updateNavVisibility, cacheProducts } from './catalog.js';
 import { showConfirmModal, closeConfirmModal } from './dialogs.js';
 
+const productFieldIds = ['productName', 'productCategory', 'productPrice'];
+const productErrors = new Map();
+let productSavePending = false;
+let productEditorVersion = 0;
+
+function productFieldError(id) {
+  const value = document.getElementById(id).value.trim();
+  if (id === 'productName') return value ? '' : '請填寫商品名稱。';
+  if (id === 'productCategory') return value ? '' : '請填寫或選擇商品類別。';
+  if (!value) return '請填寫商品價格。';
+  const price = Number(value);
+  return Number.isInteger(price) && price > 0 && price <= 10000000
+    ? ''
+    : '請輸入 1 至 10,000,000 之間的整數價格。';
+}
+
+function renderProductFeedback(serverMessage = '') {
+  for (const id of productFieldIds) {
+    const input = document.getElementById(id);
+    const error = document.getElementById(id + 'Error');
+    const message = productErrors.get(id) || '';
+    error.textContent = message;
+    error.hidden = !message;
+    if (message) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+    input.closest('.gj-combobox')?.classList.toggle('gj-invalid', Boolean(message));
+    const descriptions = [id === 'productCategory' ? 'productCategoryHint' : '', message ? error.id : '']
+      .filter(Boolean)
+      .join(' ');
+    if (descriptions) input.setAttribute('aria-describedby', descriptions);
+    else input.removeAttribute('aria-describedby');
+  }
+  const summary = document.getElementById('productFormFeedback');
+  summary.replaceChildren();
+  summary.hidden = !productErrors.size && !serverMessage;
+  if (summary.hidden) return;
+  const title = document.createElement('h4');
+  title.id = 'productFormFeedbackTitle';
+  title.textContent = serverMessage ? '商品尚未儲存' : '請確認以下欄位';
+  summary.append(title);
+  if (serverMessage) {
+    const message = document.createElement('p');
+    message.textContent = serverMessage;
+    const retry = document.createElement('p');
+    retry.textContent = '資料已保留，請確認後再次儲存。';
+    summary.append(message, retry);
+  } else {
+    const list = document.createElement('ul');
+    for (const [id, message] of productErrors) {
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = '#' + id;
+      link.textContent = message;
+      link.onclick = (event) => {
+        event.preventDefault();
+        document.getElementById(id).focus();
+      };
+      item.append(link);
+      list.append(item);
+    }
+    summary.append(list);
+  }
+}
+
+function resetProductFeedback() {
+  productErrors.clear();
+  renderProductFeedback();
+  setProductFieldsDisabled(false);
+  const modal = document.getElementById('productEditModal');
+  if (modal.dataset.feedbackInitialized) return;
+  modal.dataset.feedbackInitialized = 'true';
+  for (const id of productFieldIds) {
+    const update = () => {
+      if (!productErrors.has(id)) return;
+      const message = productFieldError(id);
+      if (message) productErrors.set(id, message);
+      else productErrors.delete(id);
+      renderProductFeedback();
+    };
+    document.getElementById(id).addEventListener('input', update);
+    document.getElementById(id).addEventListener('change', update);
+  }
+}
+
+function setProductFieldsDisabled(disabled) {
+  document
+    .querySelectorAll(
+      '#productEditModal .overflow-y-auto :is(input:not([type="hidden"]), textarea, select, button)',
+    )
+    .forEach((control) => {
+      control.disabled = disabled;
+    });
+}
+
 export function closeCategoryOptions() {
   document.getElementById('productCategoryOptions').hidden = true;
   document.getElementById('productCategoryToggle').setAttribute('aria-expanded', 'false');
@@ -26,6 +120,7 @@ function renderCategoryOptions(filter = '') {
         button.setAttribute('aria-pressed', String(category === input.value));
         button.onclick = () => {
           input.value = category;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
           closeCategoryOptions();
           document.getElementById('productCategoryToggle').focus();
         };
@@ -126,6 +221,9 @@ function initializeCategoryPicker() {
 export function renderProductCards() {
   const grid = document.getElementById('productsCardGrid');
   const tabsContainer = document.getElementById('productsFilterTabs');
+  const focusedFilter = tabsContainer.contains(document.activeElement)
+    ? document.activeElement.dataset.filter
+    : null;
   renderCategoryOptions();
   if (
     state.currentProductFilter !== null &&
@@ -143,20 +241,28 @@ export function renderProductCards() {
       const button = document.createElement('button');
       button.type = 'button';
       button.classList.toggle('active', category === state.currentProductFilter);
+      button.dataset.filter = category === null ? 'all' : 'category:' + category;
+      button.setAttribute('aria-pressed', String(category === state.currentProductFilter));
       button.textContent = `${category === null ? '全部' : category} (${category === null ? state.allProducts.length : categoryCounts[category]})`;
       button.onclick = () => filterProductsByCategory(category);
       return button;
     }),
   );
+  if (focusedFilter !== null) {
+    (
+      [...tabsContainer.children].find((button) => button.dataset.filter === focusedFilter) ||
+      tabsContainer.querySelector('.active')
+    )?.focus({ preventScroll: true });
+  }
   // 篩選商品
   const filtered =
     state.currentProductFilter === null
       ? state.allProducts
       : state.allProducts.filter((p) => p.category === state.currentProductFilter);
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="products-empty" style="grid-column: 1/-1;">
-                    <i class="fas fa-box-open"></i>
-                    <p>尚無商品資料</p>
+    grid.innerHTML = `<div class="products-empty workspace-empty" style="grid-column: 1/-1;" role="status">
+                    <h3>尚未建立商品</h3>
+                    <p>${document.body.dataset.shopRole === 'viewer' ? '請聯絡店鋪擁有者或可編輯成員新增商品。' : '使用上方「新增商品」設定品名、類別與價格，即可開始建立訂單。'}</p>
                 </div>`;
     return;
   }
@@ -239,6 +345,8 @@ export function syncProductOptionButtons(inputId) {
 
 export function showAddProduct() {
   initializeCategoryPicker();
+  productEditorVersion++;
+  resetProductFeedback();
   document.getElementById('productEditModalTitle').textContent = '新增商品';
   document.getElementById('editProductId').value = '';
   document.getElementById('productName').value = '';
@@ -257,12 +365,28 @@ export function showAddProduct() {
 }
 
 export function closeProductEditModal() {
+  productEditorVersion++;
   closeCategoryOptions();
   document.getElementById('productEditModal').classList.remove('active');
 }
 
 export function saveProduct() {
-  const saveBtn = window.event?.currentTarget || window.event?.target;
+  if (productSavePending) return;
+  const saveBtn = document.getElementById('productSaveButton');
+  closeCategoryOptions();
+  productErrors.clear();
+  for (const id of productFieldIds) {
+    const message = productFieldError(id);
+    if (message) productErrors.set(id, message);
+  }
+  renderProductFeedback();
+  if (productErrors.size) {
+    (productErrors.size > 1
+      ? document.getElementById('productFormFeedback')
+      : document.getElementById(productErrors.keys().next().value)
+    ).focus();
+    return;
+  }
   const specialPriceValue = document.getElementById('productSpecialPrice').value.trim();
   const data = {
     productId: document.getElementById('editProductId').value,
@@ -277,28 +401,30 @@ export function saveProduct() {
       ? parseInt(document.getElementById('productCompanyPrice').value.trim())
       : '',
   };
-  if (!data.category) {
-    showAlert('請填寫商品類別', 'error');
-    return;
-  }
-  if (!data.productName || !data.price) {
-    showAlert('請填寫商品名稱和價格', 'error');
-    return;
-  }
+  const editorVersion = productEditorVersion;
+  productSavePending = true;
+  setProductFieldsDisabled(true);
   setButtonLoading(saveBtn, true, '儲存中...');
   rpc
     .withSuccessHandler(function (result) {
+      productSavePending = false;
+      setProductFieldsDisabled(false);
       setButtonLoading(saveBtn, false);
-      handleProductSaved(result);
+      handleProductSaved(result, editorVersion === productEditorVersion);
     })
     .withFailureHandler(function (error) {
+      productSavePending = false;
+      setProductFieldsDisabled(false);
       setButtonLoading(saveBtn, false);
-      handleError(error);
+      if (editorVersion === productEditorVersion) {
+        renderProductFeedback(error?.message || '無法連線');
+        document.getElementById('productFormFeedback').focus();
+      } else handleError(error);
     })
     .saveProduct(data);
 }
 
-export function handleProductSaved(result) {
+export function handleProductSaved(result, closeEditor = true) {
   if (result?.product) {
     const index = state.allProducts.findIndex((p) => p.productId === result.product.productId);
     if (index >= 0) state.allProducts[index] = { ...state.allProducts[index], ...result.product };
@@ -309,13 +435,15 @@ export function handleProductSaved(result) {
     updateNavVisibility();
   }
   showAlert('商品已儲存', 'success');
-  closeProductEditModal();
+  if (closeEditor) closeProductEditModal();
 }
 
 export function editProduct(productId) {
   const p = state.allProducts.find((p) => p.productId === productId);
   if (!p) return;
   initializeCategoryPicker();
+  productEditorVersion++;
+  resetProductFeedback();
   document.getElementById('productEditModalTitle').textContent = '編輯商品';
   document.getElementById('editProductId').value = p.productId;
   document.getElementById('productName').value = p.productName;

@@ -2,7 +2,7 @@ import { closeCartModal } from '../app/cart.js';
 import { closeCapacityWarningModal } from '../app/checkout.js';
 import { closeDeleteConfirmModal, closeStatusConfirmModal, closeDepositModal } from '../app/payments.js';
 import { closeConfirmModal } from '../app/dialogs.js';
-import { closeCategoryOptions } from '../app/products.js';
+import { closeCategoryOptions, closeProductEditModal } from '../app/products.js';
 import { closeProductOrder } from '../app/product-order.js';
 
 const selector = '.modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverlay';
@@ -10,6 +10,7 @@ const focusable =
   'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 const close = {
   productOrderModal: closeProductOrder,
+  productEditModal: closeProductEditModal,
   cartModal: closeCartModal,
   capacityWarningModal: closeCapacityWarningModal,
   deleteConfirmModal: closeDeleteConfirmModal,

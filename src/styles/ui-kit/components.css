@@ -194,3 +194,16 @@ body.gj-ui .gj-combobox .gj-input:focus-visible { outline: 0 !important; box-sha
 [data-theme-preference="light"] .gj-theme-toggle .theme-icon-light,
 [data-theme-preference="dark"] .gj-theme-toggle .theme-icon-dark { display: inline-block; }
 @media (prefers-reduced-motion: reduce) { .gj-theme-toggle::before { transition: none; } }
+
+/* Persistent form feedback shares the field rhythm and semantic error color. */
+.gj-field { min-width: 0; text-align: left; }
+.gj-field-label { display: block; margin-bottom: 8px; color: var(--gj-muted); font-size: 14px; font-weight: 600; }
+.gj-ui .gj-field-error { margin: 8px 0 0; color: var(--gj-danger); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.gj-ui .gj-form-feedback { margin: 0 0 16px; padding: 16px; border: 1px solid var(--gj-danger); border-radius: var(--gj-radius-sm); color: var(--gj-text); background: var(--gj-surface); text-align: left; overflow-wrap: anywhere; }
+.gj-ui .gj-form-feedback h4 { margin: 0; font-size: 16px; line-height: 1.6; }
+.gj-ui .gj-form-feedback p { margin: 8px 0 0; color: inherit; font-size: 14px; }
+.gj-ui .gj-form-feedback ul { margin: 8px 0 0; padding-left: 20px; }
+.gj-ui .gj-form-feedback li + li { margin-top: 4px; }
+.gj-ui .gj-form-feedback a { display: inline-block; padding-block: 4px; color: var(--gj-danger); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.gj-ui :is(.gj-field-error, .gj-form-feedback)[hidden] { display: none; }
+.gj-ui .gj-combobox.gj-invalid { border-color: var(--gj-danger); }

@@ -2,6 +2,233 @@ const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const jsQR = require('jsqr');
 
+test('product form keeps linked errors, preserves failed drafts and filters retain keyboard focus', async ({
+  page,
+}, testInfo) => {
+  if (testInfo.project.name === 'desktop') await page.setViewportSize({ width: 375, height: 812 });
+  await openWorkspace(page);
+  await openManagementPanel(page, 'products');
+  const categoryFilter = page
+    .locator('#productsFilterTabs')
+    .getByRole('button', { name: '伴手禮 (1)', exact: true });
+  await categoryFilter.focus();
+  await categoryFilter.press('Enter');
+  await expect(categoryFilter).toBeFocused();
+  await expect(categoryFilter).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '新增商品', exact: true }).click();
+  await page.locator('#productSaveButton').click();
+  await expect(page.locator('#productFormFeedback')).toBeFocused();
+  await expect(page.locator('#productFormFeedback a')).toHaveCount(3);
+  await page.getByRole('link', { name: '請填寫商品名稱。', exact: true }).click();
+  await expect(page.locator('#productName')).toBeFocused();
+  await page.locator('#productName').fill('新商品');
+  await expect(page.locator('#productName')).not.toHaveAttribute('aria-invalid');
+  await expect(page.locator('#productCategory')).toHaveAttribute('aria-invalid', 'true');
+  await page.locator('#productCategoryToggle').click();
+  await page.locator('#productCategoryOptions').getByRole('button', { name: '伴手禮', exact: true }).click();
+  await expect(page.locator('#productCategory')).not.toHaveAttribute('aria-invalid');
+  await expect(page.locator('#productCategory')).toHaveAttribute('aria-describedby', 'productCategoryHint');
+  await page.locator('#productPrice').fill('50');
+  await expect(page.locator('#productFormFeedback')).toBeHidden();
+  await page.evaluate(() => {
+    window.__fail = 'saveProduct';
+  });
+  await page.locator('#productSaveButton').click();
+  await expect(page.locator('#productFormFeedback')).toBeFocused();
+  await expect(page.locator('#productFormFeedback')).toContainText('資料已保留');
+  await expect(page.locator('#productName')).toHaveValue('新商品');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    await settleUI(page);
+    const scan = await new AxeBuilder({ page }).include('#productEditModal').analyze();
+    expect(scan.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-product-retry.png`) });
+  }
+  await page.evaluate(() => {
+    window.__fail = '';
+  });
+  await page.locator('#productSaveButton').click();
+  await expect(page.locator('#productEditModal')).toBeHidden();
+  await expect(page.locator('#productsCardGrid')).toContainText('新商品');
+});
+
+test('a delayed product save cannot close a newly opened editor or discard its fields', async ({ page }) => {
+  await openWorkspace(page);
+  await openManagementPanel(page, 'products');
+  await page.getByRole('button', { name: '新增商品', exact: true }).click();
+  await page.locator('#productName').fill('第一份商品');
+  await page.locator('#productCategory').fill('伴手禮');
+  await page.locator('#productPrice').fill('50');
+  await page.evaluate(() => {
+    const original = window.posApi.call;
+    window.posApi.call = (method, args) =>
+      method === 'saveProduct'
+        ? new Promise((resolve) => {
+            window.__finishProductSave = () => resolve({ product: { ...args[0], productId: 'P-new' } });
+          })
+        : original(method, args);
+  });
+  await page.locator('#productSaveButton').click();
+  await expect(page.locator('#productSaveButton')).toBeDisabled();
+  await expect(page.locator('#productName')).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '新增商品', exact: true }).click();
+  await page.locator('#productName').fill('另一份未完成商品');
+  await page.evaluate(() => window.__finishProductSave());
+  await expect(page.locator('#productSaveButton')).toBeEnabled();
+  await expect(page.locator('#productEditModal')).toBeVisible();
+  await expect(page.locator('#productName')).toHaveValue('另一份未完成商品');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#productsCardGrid')).toContainText('第一份商品');
+});
+
+test('checkout exposes missing steps and separates freight without changing order totals', async ({
+  page,
+}, testInfo) => {
+  await openWorkspace(page);
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#checkoutHint')).toContainText('客戶資料、交貨日期、商品');
+  await page.locator('#checkoutNextStep').click();
+  await expect(page.locator('#customer')).toBeVisible();
+  await page.locator('#customerName').fill('配送客戶');
+  await page.getByRole('button', { name: '收取運費', exact: true }).click();
+  await page.locator('#shippingFee').fill('100');
+  await page.getByRole('button', { name: '儲存並下一步' }).click();
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#checkoutNextStep')).toHaveText('選擇交貨日期');
+  await page.locator('#checkoutNextStep').click();
+  await page.locator('.calendar-day:not(:disabled)').first().click();
+  await page.locator('#btn-confirm-date').click();
+  await page.locator('#giftProducts button').last().click();
+  await page.locator('#workspaceCart').click();
+  await expect(page.locator('#checkoutHint')).toContainText('資料已備妥');
+  await expect(page.locator('#checkoutNextStep')).toBeHidden();
+  await expect(page.locator('#cartTotalBreakdown')).toBeVisible();
+  await expect(page.locator('#checkoutItemsTotal')).toHaveText('NT$ 100');
+  await expect(page.locator('#checkoutShippingTotal')).toHaveText('NT$ 100');
+  await expect(page.locator('#cartTotalAmount')).toHaveText('200');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    await settleUI(page);
+    for (const size of [
+      { width: 375, height: 812 },
+      { width: 667, height: 375 },
+    ]) {
+      await page.setViewportSize(size);
+      await settleUI(page);
+      const scan = await new AxeBuilder({ page }).include('#cartModal').analyze();
+      expect(scan.violations).toEqual([]);
+      await expect(page.locator('#checkoutBtn')).toBeInViewport();
+      if (size.height <= 500) {
+        expect((await page.locator('#cartModalBody').boundingBox()).height).toBeGreaterThanOrEqual(160);
+        await expect(page.locator('.cart-qty-btn').first()).toBeInViewport({ ratio: 1 });
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath(`${theme}-checkout-ready-${size.width}.png`) });
+    }
+  }
+  await page.locator('#checkoutBtn').click();
+  await expect
+    .poll(() => page.evaluate(() => window.__calls.filter((call) => call.method === 'submitOrder').length))
+    .toBe(1);
+  expect(
+    await page.evaluate(
+      () => window.__calls.find((call) => call.method === 'submitOrder').args[0].totalAmount,
+    ),
+  ).toBe(200);
+});
+
+test('deposit errors explain the amount limit, retain payment notes and allow a safe retry', async ({
+  page,
+}, testInfo) => {
+  await openWorkspace(page);
+  await page.evaluate(() => window.showDepositModal('O-test', 100, 0));
+  const amount = page.locator('#depositAmountInput');
+  await amount.fill('150');
+  await expect(amount).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('#depositAmountError')).toContainText('NT$ 100');
+  await expect(page.locator('#depositCalculationResult')).toBeHidden();
+  await page.locator('#confirmDepositBtn').click();
+  await expect(amount).toBeFocused();
+  expect(await page.evaluate(() => window.__calls.some((call) => call.method === 'updateOrderDeposit'))).toBe(
+    false,
+  );
+  await page.evaluate(() => {
+    document.getElementById('depositAmountInput').value = '-1';
+    window.updateDepositCalculation();
+    window.confirmDepositUpdate();
+  });
+  await expect(page.locator('#depositAmountError')).toContainText('不可小於 0');
+  expect(await page.evaluate(() => window.__calls.some((call) => call.method === 'updateOrderDeposit'))).toBe(
+    false,
+  );
+  await amount.fill('40');
+  await expect(amount).not.toHaveAttribute('aria-invalid');
+  await expect(amount).toHaveAttribute('aria-describedby', 'depositAmountHint');
+  await expect(page.locator('#remainingAmountText')).toHaveText('NT$ 60');
+  await page.locator('#paymentNotesInput').fill('已匯款，保留此備註');
+  await page.evaluate(() => {
+    window.__fail = 'updateOrderDeposit';
+  });
+  await page.locator('#confirmDepositBtn').click();
+  await expect(page.locator('#depositSaveError')).toBeFocused();
+  await expect(page.locator('#depositSaveError')).toContainText('金額與備註已保留');
+  await expect(amount).toHaveValue('40');
+  await expect(page.locator('#paymentNotesInput')).toHaveValue('已匯款，保留此備註');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    await settleUI(page);
+    const scan = await new AxeBuilder({ page }).include('#depositModal').analyze();
+    expect(scan.violations).toEqual([]);
+    await expect(page.locator('#confirmDepositBtn')).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-deposit-retry.png`) });
+  }
+  await page.evaluate(() => {
+    window.__fail = '';
+  });
+  await page.locator('#confirmDepositBtn').click();
+  await expect(page.locator('#depositModal')).toBeHidden();
+  expect(
+    await page.evaluate(() => window.__calls.filter((call) => call.method === 'updateOrderDeposit').length),
+  ).toBe(2);
+});
+
+test('a delayed deposit update cannot close another order payment dialog', async ({ page }) => {
+  await openWorkspace(page);
+  await page.evaluate(() => {
+    window.showDepositModal('O-test', 100, 0);
+    const original = window.posApi.call;
+    window.posApi.call = (method, args) =>
+      method === 'updateOrderDeposit'
+        ? new Promise((resolve) => {
+            window.__finishDeposit = () =>
+              resolve({
+                orderId: args[0],
+                depositAmount: args[1],
+                remainingAmount: 100 - args[1],
+                newStatus: '已付訂金',
+              });
+          })
+        : original(method, args);
+  });
+  await page.locator('#depositAmountInput').fill('40');
+  await page.locator('#confirmDepositBtn').click();
+  await expect(page.locator('#depositAmountInput')).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.showDepositModal('O-another', 1000, 50));
+  await page.evaluate(() => window.__finishDeposit());
+  await expect(page.locator('#confirmDepositBtn')).toBeEnabled();
+  await expect(page.locator('#depositModal')).toBeVisible();
+  await expect(page.locator('#depositOrderInfo')).toContainText('O-another');
+  await expect(page.locator('#depositAmountInput')).toHaveValue('50');
+});
+
 async function openThemeControls(page) {
   if (!(await page.locator('#settingsSystem').isVisible())) await openManagementPanel(page, 'device');
   await page.locator('#themeToggle').scrollIntoViewIfNeeded();
@@ -2290,7 +2517,12 @@ async function observeCollapseCompletion(page) {
         },
       );
     });
-    observer.observe(document.getElementById('searchResults'), { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.getElementById('searchResults'), {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
   });
 }
 
@@ -2395,7 +2627,9 @@ for (const width of [1366, 1180, 1024, 820, 530, 390]) {
 }
 
 for (const reducedMotion of ['no-preference', 'reduce']) {
-  test(`order expansion preserves the list and handles rapid clicks with motion ${reducedMotion}`, async ({ page }) => {
+  test(`order expansion preserves the list and handles rapid clicks with motion ${reducedMotion}`, async ({
+    page,
+  }) => {
     const errors = await openWorkspace(page);
     await page.emulateMedia({ reducedMotion });
     await page.locator('#nav-search').click();
@@ -2430,7 +2664,12 @@ for (const reducedMotion of ['no-preference', 'reduce']) {
         tablePreserved: table === document.querySelector('#searchResults > .table-responsive'),
       };
     });
-    expect(result).toEqual({ focusPreserved: true, secondOpenedImmediately: true, rowsPreserved: true, tablePreserved: true });
+    expect(result).toEqual({
+      focusPreserved: true,
+      secondOpenedImmediately: true,
+      rowsPreserved: true,
+      tablePreserved: true,
+    });
     await expect(page.locator('.order-items-row')).toHaveCount(1);
     const first = page.locator('.order-items-toggle').first();
     await expect(first).toHaveAttribute('aria-expanded', 'true');
@@ -3350,6 +3589,104 @@ for (const width of [384, 512, 576]) {
       expect(counts.filter((n) => n > 0)).toEqual([width - 32, width - 32]);
     }
     await expect(page.locator('.receipt-text')).toContainText('原味餅');
+  });
+}
+
+for (const width of [384, 512, 576]) {
+  test(`receipt hierarchy, gift contents and money stay readable within ${width} dots`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.addInitScript(() => {
+      const fill = CanvasRenderingContext2D.prototype.fillText;
+      window.__receiptTextDraws = [];
+      CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...args) {
+        const metrics = this.measureText(text);
+        window.__receiptTextDraws.push({
+          text,
+          x,
+          y,
+          width: metrics.width,
+          font: this.font,
+          align: this.textAlign,
+          paperWidth: this.canvas.width,
+        });
+        return fill.call(this, text, x, y, ...args);
+      };
+    });
+    await mockPrinter(page);
+    await openWorkspace(page);
+    await configurePrinter(page);
+    await page.locator('#printer-width').selectOption(String(width));
+    const orderId = 'O-receipt-layout';
+    await page.evaluate((orderId) => {
+      window.__orderDetails = {
+        orderId,
+        customerName: '收據客戶',
+        customerPhone: '0912345678',
+        deliveryDate: '2026-10-18',
+        deliveryType: '外送',
+        customerAddress: '配送地址'.repeat(10),
+        status: '已付訂金',
+        totalAmount: 1800,
+        shippingFee: 100,
+        depositAmount: 600,
+        remainingAmount: 1200,
+        notes: '請交給管理室，與其他訂單分開包裝。',
+        items: [
+          { productName: '原味餅', quantity: 10, unitPrice: 50, subtotal: 500 },
+          {
+            productName: '經典雙口味伴手禮盒・附提袋',
+            quantity: 2,
+            unitPrice: 600,
+            subtotal: 1200,
+            isGiftBox: true,
+            giftBoxDetails: { products: { P1: 3 }, notes: '不要花生。' },
+            notes: '不要花生。',
+          },
+        ],
+      };
+    }, orderId);
+    for (const size of [24, 28, 32, 40]) {
+      await page.locator('#printer-fontSize').selectOption(String(size));
+      await page.getByRole('button', { name: '儲存列印設定', exact: true }).click();
+      await page.evaluate(() => {
+        window.__receiptTextDraws = [];
+        window.viewOrderDetails('O-receipt-layout');
+      });
+      await page.locator('[data-printer-order="O-receipt-layout"]').click();
+      await expect(page.locator('#printer-send')).toBeEnabled();
+      expect((await page.locator('.receipt-preview').boundingBox()).width).toBeLessThanOrEqual(width);
+      const text = await page.locator('.receipt-text').textContent();
+      expect((text.match(/不要花生/g) || []).length).toBe(1);
+      expect(text.indexOf('交貨：')).toBeLessThan(text.indexOf('商品明細'));
+      expect(text.indexOf('列印：')).toBeGreaterThan(text.indexOf('剩餘金額'));
+      expect(text.split('\n').some((line) => /^[，。！？；：、）》」』】〕〉]/u.test(line))).toBe(false);
+      expect(
+        text.split('\n').some((line) => /^\p{Script=Han}[，。！？；：、）》」』】〕〉]*$/u.test(line.trim())),
+      ).toBe(false);
+      // Inspect every preview page, including totals after long item lists.
+      const next = page.locator('.receipt-next');
+      while ((await next.isVisible()) && (await next.isEnabled())) await next.click();
+      const draws = await page.evaluate(() => window.__receiptTextDraws);
+      expect(draws.some((draw) => draw.text.includes('原味餅') && /^(bold|700)\b/u.test(draw.font))).toBe(
+        true,
+      );
+      expect(draws.some((draw) => draw.text.includes('每盒') && draw.x > 16)).toBe(true);
+      expect(draws.some((draw) => draw.text.includes('NT$') && draw.align === 'right')).toBe(true);
+      for (const draw of draws) {
+        expect(draw.paperWidth).toBe(width);
+        const left =
+          draw.align === 'right'
+            ? draw.x - draw.width
+            : draw.align === 'center'
+              ? draw.x - draw.width / 2
+              : draw.x;
+        const right = left + draw.width;
+        expect(left, draw.text).toBeGreaterThanOrEqual(15.99);
+        expect(right, draw.text).toBeLessThanOrEqual(width - 15.99);
+      }
+      await page.locator('#printer-preview .printer-close').click();
+      await page.keyboard.press('Escape');
+    }
   });
 }
 

@@ -6,6 +6,43 @@ import { updateProductSpecialPrice, closeProductModal } from './product-detail.j
 import { scheduleDraftSave } from './drafts.js';
 import { escapeHtml } from './customers.js';
 import { updateCatalogQuantities } from './catalog.js';
+import { showSectionById } from './platform.js';
+
+function updateCheckoutReadiness(totalCount, orderTotals) {
+  const missing = [];
+  if (!state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone)
+    missing.push({ label: '客戶資料', action: '填寫客戶資料', route: 'customer' });
+  if (!state.currentDeliveryDate) missing.push({ label: '交貨日期', action: '選擇交貨日期', route: 'date' });
+  if (!totalCount) missing.push({ label: '商品', action: '開始選購商品', route: 'gift' });
+  const viewer = document.body.dataset.shopRole === 'viewer';
+  const offline = !navigator.onLine;
+  const hint = document.getElementById('checkoutHint');
+  const message = viewer
+    ? '此帳號為僅檢視，無法建立或修改訂單。'
+    : offline
+      ? '目前離線，草稿會保留；恢復連線後可送出。'
+      : missing.length
+        ? `送出前請完成：${missing.map((item) => item.label).join('、')}。`
+        : `資料已備妥，可以${state.isEditingOrder ? '更新' : '建立'}訂單。`;
+  if (hint.textContent !== message) hint.textContent = message;
+  const nextStep = document.getElementById('checkoutNextStep');
+  nextStep.hidden = viewer || offline || !missing.length;
+  if (!nextStep.hidden) {
+    const next = missing[0];
+    nextStep.textContent = next.action;
+    nextStep.onclick = () => {
+      closeCartModal();
+      showSectionById(next.route);
+    };
+  }
+  const breakdown = document.getElementById('cartTotalBreakdown');
+  breakdown.hidden = !(orderTotals.shippingFee > 0);
+  document.getElementById('checkoutItemsTotal').textContent =
+    `NT$ ${orderTotals.itemsTotal.toLocaleString('zh-TW')}`;
+  document.getElementById('checkoutShippingTotal').textContent =
+    `NT$ ${orderTotals.shippingFee.toLocaleString('zh-TW')}`;
+  return viewer || offline || missing.length > 0;
+}
 
 // 計算商品總金額
 export function updateOrderTotal() {
@@ -116,12 +153,7 @@ export function updateCartDisplay() {
   // 更新建立訂單按鈕：不使用 disabled（disabled 不會觸發 click，無法提示缺少什麼），
   // 改用樣式 class 標記，點擊時由 submitOrder 顯示具體原因
   const checkoutBtn = document.getElementById('checkoutBtn');
-  const notReady =
-    totalCount === 0 ||
-    (!state.currentCustomer.name && !state.currentCustomer.contactValue && !state.currentCustomer.phone) ||
-    !state.currentDeliveryDate ||
-    !navigator.onLine ||
-    document.body.dataset.shopRole === 'viewer';
+  const notReady = updateCheckoutReadiness(totalCount, orderTotals);
   checkoutBtn.classList.toggle('checkout-not-ready', notReady);
   // 根據是否為編輯模式更新按鈕文字
   if (state.isEditingOrder) {

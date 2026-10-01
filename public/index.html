@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#006973">
-    <meta name="app-version" content="0.15.3+abb5a43c3fe7">
-    <meta name="app-updated-at" content="2026-10-01T10:58:43.083Z">
+    <meta name="app-version" content="0.15.4+42b096e9de82">
+    <meta name="app-updated-at" content="2026-10-01T21:04:18.871Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -369,7 +369,7 @@
                             新增商品
                         </button>
                     </div>
-                    <div id="productsFilterTabs" class="products-filter-tabs"></div>
+                    <div id="productsFilterTabs" class="products-filter-tabs" role="group" aria-label="商品管理類別篩選"></div>
                     <div id="productsCardGrid" class="products-card-grid"></div>
                 </div>
             </div>
@@ -563,7 +563,7 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version 0.15.3</p>
+            <p>Website content edited by yuyan2123. Version 0.15.4</p>
         </footer>
 
     </main>
@@ -590,11 +590,21 @@
             </div>
         </div>
         <div class="border-t p-6">
-            <div class="flex justify-between text-xl font-bold mb-4 text-md-on-surface">
-                <span>總計</span>
-                <span>NT$ <span id="cartTotalAmount">0</span></span>
+            <div id="checkoutReadiness" class="cart-readiness" role="status" aria-live="polite">
+                <p id="checkoutHint">送出前請完成客戶資料、交貨日期與商品。</p>
+                <button id="checkoutNextStep" type="button" class="gj-btn gj-btn--quiet" hidden></button>
             </div>
-            <button id="checkoutBtn" onclick="submitOrder()" class="checkout-not-ready w-full py-4 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg hover:bg-md-primary shadow-lg gj-btn gj-btn--primary">建立訂單</button>
+            <dl id="cartTotalBreakdown" class="cart-total-breakdown" hidden>
+                <div><dt>商品小計</dt><dd id="checkoutItemsTotal">NT$ 0</dd></div>
+                <div><dt>運費</dt><dd id="checkoutShippingTotal">NT$ 0</dd></div>
+            </dl>
+            <div class="cart-checkout-actions">
+                <div class="flex justify-between text-xl font-bold mb-4 text-md-on-surface">
+                    <span>總計</span>
+                    <span>NT$ <span id="cartTotalAmount">0</span></span>
+                </div>
+                <button id="checkoutBtn" aria-describedby="checkoutHint" onclick="submitOrder()" class="checkout-not-ready w-full py-4 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg hover:bg-md-primary shadow-lg gj-btn gj-btn--primary">建立訂單</button>
+            </div>
         </div>
     </div>
 
@@ -671,28 +681,32 @@
             </div>
             <div class="p-6 overflow-y-auto">
                 <input type="hidden" id="editProductId">
+                <div id="productFormFeedback" class="gj-form-feedback" role="alert" tabindex="-1" aria-labelledby="productFormFeedbackTitle" hidden></div>
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">商品名稱</label>
-                            <input type="text" id="productName" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
+                            <label for="productName" class="block text-sm font-medium text-md-on-surface-variant mb-2">商品名稱</label>
+                            <input type="text" id="productName" required maxlength="200" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
+                            <p id="productNameError" class="gj-field-error" hidden></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">類別</label>
+                            <label for="productCategory" class="block text-sm font-medium text-md-on-surface-variant mb-2">類別</label>
                             <div id="productCategoryPicker" class="product-category-picker">
                                 <div class="product-category-control gj-combobox">
-                                    <input type="text" id="productCategory" aria-label="類別" autocomplete="off" maxlength="60" placeholder="輸入或選擇類別" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
+                                    <input type="text" id="productCategory" required aria-describedby="productCategoryHint" autocomplete="off" maxlength="60" placeholder="輸入或選擇類別" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
                                     <button type="button" id="productCategoryToggle" aria-label="選擇商品類別" aria-expanded="false" aria-controls="productCategoryOptions"><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
                                 </div>
                                 <div id="productCategoryOptions" class="product-category-options gj-combobox-menu" role="group" aria-label="商品類別選項" hidden></div>
                             </div>
-                            <p class="text-sm text-md-on-surface-variant">可自行輸入新類別，儲存後即可用於商品篩選。</p>
+                            <p id="productCategoryError" class="gj-field-error" hidden></p>
+                            <p id="productCategoryHint" class="text-sm text-md-on-surface-variant">可自行輸入新類別，儲存後即可用於商品篩選。</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-md-on-surface-variant mb-2">價格</label>
-                            <input type="number" inputmode="numeric" step="1" id="productPrice" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
+                            <label for="productPrice" class="block text-sm font-medium text-md-on-surface-variant mb-2">價格（NT$）</label>
+                            <input type="number" inputmode="numeric" step="1" min="1" max="10000000" required id="productPrice" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input">
+                            <p id="productPriceError" class="gj-field-error" hidden></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-md-on-surface-variant mb-2">特價</label>
@@ -729,7 +743,7 @@
             </div>
             <div class="p-6 border-t flex gap-3">
                 <button onclick="closeProductEditModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
-                <button onclick="saveProduct()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-lg font-medium hover:bg-md-primary gj-btn gj-btn--primary">儲存</button>
+                <button id="productSaveButton" onclick="saveProduct()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-lg font-medium hover:bg-md-primary gj-btn gj-btn--primary">儲存</button>
             </div>
         </div>
     </div>
@@ -814,12 +828,19 @@
                 <h3 id="depositModalTitle" class="text-2xl font-bold text-md-on-surface">設定訂金</h3>
             </div>
             <div class="deposit-dialog-body">
+                <div id="depositSaveError" class="gj-form-feedback" role="alert" tabindex="-1" aria-labelledby="depositSaveErrorTitle" hidden>
+                    <h4 id="depositSaveErrorTitle">訂金尚未更新</h4>
+                    <p id="depositSaveErrorMessage"></p>
+                    <p>金額與備註已保留，請確認後再次設定。</p>
+                </div>
                 <div class="mb-4">
                     <span id="depositOrderInfo" class="text-md-on-surface-variant">訂單編號 - 總金額</span>
                 </div>
                 <div class="mb-4">
                     <label for="depositAmountInput" class="block text-sm font-medium text-md-on-surface-variant mb-2">訂金金額（NT$）</label>
-                    <input type="number" inputmode="decimal" step="any" id="depositAmountInput" placeholder="請輸入訂金金額" min="0" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input" oninput="updateDepositCalculation()">
+                    <input type="number" inputmode="decimal" step="any" id="depositAmountInput" aria-describedby="depositAmountHint" placeholder="請輸入訂金金額" min="0" class="w-full p-3 border border-md-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-md-primary gj-input" oninput="updateDepositCalculation()">
+                    <p id="depositAmountError" class="gj-field-error" role="alert" hidden></p>
+                    <p id="depositAmountHint" class="text-sm text-md-on-surface-variant mt-2"></p>
                 </div>
                 <div class="mb-4">
                     <label for="paymentNotesInput" class="block text-sm font-medium text-md-on-surface-variant mb-2">付款備註（選填）</label>
