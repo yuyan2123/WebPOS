@@ -16,15 +16,20 @@ record pickup or delivery orders, track deposits and payments, search orders, an
 daily reports and capacity. Customer entry accepts a name or contact information, with
 phone and LINE contact modes. Server-side authorization controls editing and member management.
 
-商品管理的「調整順序」會開啟排序視窗，支援拖曳、上移／下移與鍵盤方向鍵。
-按「儲存順序」後，同一店家的商品管理與 POS 共用順序；其他裝置重新載入後更新。
-新商品排最後，編輯不改變位置。只有 owner/editor 可儲存；多人修改衝突時保留草稿，
-可按「重新載入（捨棄調整）」取得最新清單。排序儲存在 `settings/productOrder`，
-支援最多 5,000 項商品，無需遷移既有資料。上線時需一併部署 Functions 與 Hosting。
+In product management, "Adjust order" opens a sorting dialog that supports drag and drop,
+move-up/move-down controls, and keyboard arrow keys. After clicking "Save order", product
+management and the POS share the same order within the shop; other devices pick up the changes
+after reloading. New products appear last, and editing a product does not change its position.
+Only owners and editors can save. If concurrent edits conflict, the draft is preserved; click
+"Reload (discard changes)" to fetch the latest list. The order is stored in `settings/productOrder`
+and supports up to 5,000 products without migrating existing data. Deploy Functions and Hosting
+together when releasing this feature.
 
-全站捲動區域使用不佔版面空間的懸浮捲軸，支援拖曳、滾輪、觸控及鍵盤。
-共用控制器 `src/ui/overlay-scrollbars.js` 自動處理動態視窗、巢狀區域與橫向表格，
-並套用到獨立憑證頁；原有捲動容器與尺寸維持不變。
+Scrollable areas throughout the app use overlay scrollbars that take up no layout space and
+support dragging, mouse wheels, touch, and keyboard input. The shared controller,
+`src/ui/overlay-scrollbars.js`, automatically handles dynamic dialogs, nested scroll regions,
+and horizontal tables. It also applies to the standalone certificate page while preserving
+the existing scroll containers and their dimensions.
 
 ## Build and work locally
 

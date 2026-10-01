@@ -59,9 +59,15 @@ for (const reducedMotion of ['reduce', 'no-preference']) {
     await expect(second).toHaveAttribute('aria-expanded', 'true');
     await expect(first).toHaveAttribute('aria-expanded', 'false');
     await expect(second).toBeFocused();
-    await expect(page.locator('.order-items-empty')).toHaveText('此訂單沒有商品明細');
-    await expect(page.locator('.order-items-empty')).toBeVisible();
-    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    // The outgoing row can still be collapsing while the selected row opens.
+    // Follow the disclosure's accessible association instead of a global match.
+    const secondDetail = page.locator('#' + (await second.getAttribute('aria-controls')));
+    await expect(secondDetail.locator('.order-items-empty')).toHaveText('此訂單沒有商品明細');
+    await expect(secondDetail.locator('.order-items-empty')).toBeVisible();
+    await expect(secondDetail.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    await expect(page.locator('.order-items-row')).toHaveCount(1);
+    await expect(secondDetail).toBeVisible();
+    await expect(first).not.toHaveAttribute('aria-controls');
     for (const theme of ['light', 'dark']) {
       await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
       await settleUI(page);
