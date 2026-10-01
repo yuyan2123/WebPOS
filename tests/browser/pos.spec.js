@@ -2325,6 +2325,17 @@ for (const width of [1366, 1180, 1024, 820, 530, 390]) {
       expect(summary.height).toBeLessThanOrEqual(width <= 600 ? 160 : 100);
     }
     const wrapper = page.locator('#searchResults > .table-responsive');
+    if (width === 390) {
+      // Wider fallback glyphs reproduce the Linux WebKit deposit-label wrap
+      // even on Windows. Keep the original row-height contract unchanged.
+      const widerFont = await page.addStyleTag({ content: '.gj-ui { --gj-font: monospace; }' });
+      const row = page.locator('#searchResults .order-summary-row');
+      expect((await row.boundingBox()).height).toBeLessThanOrEqual(160);
+      for (const field of ['.td-fee', '.td-deposit']) {
+        expect(await row.locator(field).evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      }
+      await widerFont.evaluate((el) => el.remove());
+    }
     expect(await wrapper.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     for (const action of ['詳情', '刪除']) {
       const button = page.getByRole('button', { name: action, exact: true });

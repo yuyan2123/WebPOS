@@ -8543,6 +8543,15 @@ body.gj-ui #firebaseGoogleSignIn.gj-social-button {
 @media (max-width: 600px) {
   .gj-ui #searchResults .table > tbody > tr:not(.order-items-row) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 104px;
+    grid-template-areas:
+      "name name actions"
+      "contact date actions"
+      "total remaining status"
+      "fee deposit deposit";
+  }
+  .gj-ui #searchResults td[data-label="逾期天數"] {
+    grid-area: auto;
+    grid-column: 1 / -1;
   }
 }
 
