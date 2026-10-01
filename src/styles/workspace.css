@@ -485,7 +485,7 @@ body[data-section="settings"] .fab-cart {
 }
 /* A quiet end to the content on phones and tablets, matching the cart button. */
 @media (max-width: 899px), (any-pointer: coarse) {
-  body .workspace-main > .footer {
+  body:not([data-section="settings"][data-panel="device"]) .workspace-main > .footer {
     display: block !important;
     flex: 0 0 var(--pos-cart-button-size);
     height: var(--pos-cart-button-size);
@@ -495,7 +495,7 @@ body[data-section="settings"] .fab-cart {
     border: 0;
     background: var(--pos-bg);
   }
-  .workspace-main > .footer > * {
+  body:not([data-section="settings"][data-panel="device"]) .workspace-main > .footer > * {
     display: none;
   }
 }
@@ -791,7 +791,8 @@ body #firebaseSignOut { flex-shrink: 0; }
   }
   .workspace-heading {
     padding-right: 0;
-    margin-top: 52px;
+    /* Account controls already reserve 74px on main; leave only a small gap. */
+    margin-top: 16px;
   }
   body:not(.account-badge-visible) .workspace-heading {
     margin-top: 0;

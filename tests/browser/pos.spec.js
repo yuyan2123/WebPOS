@@ -2284,7 +2284,7 @@ async function observeCollapseCompletion(page) {
         },
       );
     });
-    observer.observe(document.getElementById('searchResults'), { childList: true, subtree: true });
+    observer.observe(document.getElementById('searchResults'), { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   });
 }
 
@@ -2384,6 +2384,54 @@ for (const width of [1366, 1180, 1024, 820, 530, 390]) {
     await page.getByRole('button', { name: '刪除', exact: true }).click();
     await expect(page.locator('#deleteConfirmModal')).toHaveClass(/active/);
     await page.keyboard.press('Escape');
+    expect(errors).toEqual([]);
+  });
+}
+
+for (const reducedMotion of ['no-preference', 'reduce']) {
+  test(`order expansion preserves the list and handles rapid clicks with motion ${reducedMotion}`, async ({ page }) => {
+    const errors = await openWorkspace(page);
+    await page.emulateMedia({ reducedMotion });
+    await page.locator('#nav-search').click();
+    await page.evaluate(() => {
+      window.__orders = Array.from({ length: 30 }, (_, index) => ({
+        orderId: `O-fast-${index}`,
+        customerName: `測試客戶 ${index}`,
+        deliveryDate: '2026-09-30',
+        totalAmount: 50,
+        status: '已確認',
+        items: [{ productName: '測試商品', quantity: 1, unitPrice: 50, subtotal: 50 }],
+      }));
+    });
+    await page.locator('#searchName').fill('測試');
+    await page.locator('.btn-search').click();
+    await expect(page.locator('.order-items-toggle')).toHaveCount(30);
+    const result = await page.evaluate(() => {
+      const table = document.querySelector('#searchResults > .table-responsive');
+      const buttons = [...table.querySelectorAll('.order-items-toggle')];
+      const rows = buttons.map((button) => button.closest('tr'));
+      buttons[0].focus();
+      buttons[0].click();
+      const focusPreserved = document.activeElement === buttons[0];
+      buttons[1].click();
+      const secondOpenedImmediately = buttons[1].getAttribute('aria-expanded') === 'true';
+      buttons[1].click();
+      buttons[0].click();
+      return {
+        focusPreserved,
+        secondOpenedImmediately,
+        rowsPreserved: rows.every((row) => row.isConnected),
+        tablePreserved: table === document.querySelector('#searchResults > .table-responsive'),
+      };
+    });
+    expect(result).toEqual({ focusPreserved: true, secondOpenedImmediately: true, rowsPreserved: true, tablePreserved: true });
+    await expect(page.locator('.order-items-row')).toHaveCount(1);
+    const first = page.locator('.order-items-toggle').first();
+    await expect(first).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    await first.click();
+    await expect(page.locator('.order-items-row')).toHaveCount(0);
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
     expect(errors).toEqual([]);
   });
 }

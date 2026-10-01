@@ -3145,30 +3145,60 @@ function displayOrderTable(orders, containerId, type = "search") {
   }
 }
 function toggleOrderItems(orderId) {
-  if (state.orderItemsTransition) return;
-  const nextOrderId = state.expandedSearchOrderId === orderId ? null : orderId;
-  if (!state.expandedSearchOrderId) {
-    state.expandedSearchOrderId = nextOrderId;
-    displayOrderTable(state.currentSearchOrders, "searchResults", "search");
-    return;
-  }
-  state.collapsingSearchOrderId = state.expandedSearchOrderId;
-  state.expandedSearchOrderId = null;
-  displayOrderTable(state.currentSearchOrders, "searchResults", "search");
-  const animation = document.querySelector("#searchResults .is-collapsing .order-items-expand");
-  const transition = {};
-  state.orderItemsTransition = transition;
-  const effects = animation?.getAnimations() || [];
-  Promise.allSettled(effects.map((effect) => effect.finished)).then(() => {
-    requestAnimationFrame(() => {
-      if (state.orderItemsTransition !== transition) return;
-      state.orderItemsTransition = null;
-      state.collapsingSearchOrderId = null;
-      if (!animation?.isConnected) return;
-      state.expandedSearchOrderId = nextOrderId;
-      displayOrderTable(state.currentSearchOrders, "searchResults", "search");
-    });
+  if (state.currentOrderTableType !== "search") return;
+  const container = document.getElementById("searchResults");
+  const toggles = [...container.querySelectorAll(".order-items-toggle")];
+  const button = toggles.find((toggle) => toggle.dataset.oid === orderId);
+  const orderIndex = state.currentSearchOrders.findIndex((order2) => (order2.id || order2.orderId) === orderId);
+  const order = state.currentSearchOrders[orderIndex];
+  if (!button || !Array.isArray(order?.items)) return;
+  state.orderItemsTransition = null;
+  state.collapsingSearchOrderId = null;
+  container.querySelectorAll(".order-items-row.is-collapsing").forEach((row) => {
+    toggles.find((toggle) => toggle.getAttribute("aria-controls") === row.id)?.removeAttribute("aria-controls");
+    row.remove();
   });
+  const nextOrderId = state.expandedSearchOrderId === orderId ? null : orderId;
+  const previousButton = toggles.find((toggle) => toggle.dataset.oid === state.expandedSearchOrderId);
+  if (previousButton) {
+    const summary = previousButton.closest(".order-summary-row");
+    const detail = summary.nextElementSibling;
+    summary.classList.remove("is-expanded");
+    previousButton.setAttribute("aria-expanded", "false");
+    previousButton.setAttribute(
+      "aria-label",
+      previousButton.getAttribute("aria-label").replace(/^收合/, "\u5C55\u958B")
+    );
+    if (detail?.classList.contains("order-items-row")) {
+      detail.classList.add("is-collapsing");
+      const animation = detail.querySelector(".order-items-expand");
+      const transition = {};
+      state.orderItemsTransition = transition;
+      state.collapsingSearchOrderId = state.expandedSearchOrderId;
+      Promise.allSettled(animation.getAnimations().map((effect) => effect.finished)).then(() => {
+        requestAnimationFrame(() => {
+          if (state.orderItemsTransition !== transition) return;
+          state.orderItemsTransition = null;
+          state.collapsingSearchOrderId = null;
+          previousButton.removeAttribute("aria-controls");
+          detail.remove();
+        });
+      });
+    }
+  }
+  state.expandedSearchOrderId = nextOrderId;
+  if (nextOrderId) {
+    const summary = button.closest(".order-summary-row");
+    const detailId = `searchResults-items-${orderIndex}`;
+    summary.insertAdjacentHTML(
+      "afterend",
+      renderExpandedOrderItems(order.items, summary.cells.length, false, detailId)
+    );
+    summary.classList.add("is-expanded");
+    button.setAttribute("aria-expanded", "true");
+    button.setAttribute("aria-controls", detailId);
+    button.setAttribute("aria-label", button.getAttribute("aria-label").replace(/^展開/, "\u6536\u5408"));
+  }
 }
 function renderExpandedOrderItems(items, columnCount, isCollapsing = false, detailId = "") {
   const collapsingClass = isCollapsing ? " is-collapsing" : "";

@@ -513,13 +513,13 @@
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  animation: order-items-expand 0.5s ease forwards;
+  animation: order-items-expand 0.28s ease-out forwards;
 }
 
 .order-items-row.is-collapsing .order-items-expand {
   grid-template-rows: 1fr;
   opacity: 1;
-  animation: order-items-collapse 0.5s ease forwards;
+  animation: order-items-collapse 0.22s ease-in forwards;
 }
 
 .order-items-scroll {
