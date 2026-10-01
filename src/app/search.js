@@ -1,9 +1,46 @@
 import { rpc, isConnected } from '../platform/rpc.js';
 import { state } from './state.js';
-import { showAlert, setButtonLoading, handleError } from './feedback.js';
+import { showAlert, setButtonLoading } from './feedback.js';
 import { escapeHtml, escapeAttr, selectSearchContactMethod } from './customers.js';
 import { escapeHandlerArgument } from '../platform/markup.js';
 import { getStatusPillClass } from './order-status.js';
+
+let searchRevision = 0;
+let searchMode = 'search';
+const money = (value) => Number(value ?? 0).toLocaleString('zh-TW');
+
+function resetSearchRequest() {
+  searchRevision++;
+  state.isLoadingMoreOrders = false;
+  state.searchNextCursor = null;
+  state.currentSearchOrders = [];
+  state.orderItemsTransition = null;
+  state.collapsingSearchOrderId = null;
+  state.expandedSearchOrderId = null;
+  for (const selector of ['.btn-search', '.btn-overdue'])
+    setButtonLoading(document.querySelector(selector), false);
+  document.getElementById('searchResults').removeAttribute('aria-busy');
+  return searchRevision;
+}
+
+function beginSearch(mode, button) {
+  const results = document.getElementById('searchResults');
+  if (results.contains(document.activeElement)) results.focus({ preventScroll: true });
+  const revision = resetSearchRequest();
+  searchMode = mode;
+  state.lastSearchCriteria = null;
+  setButtonLoading(button, true, '搜尋中…');
+  document.getElementById('searchResults').setAttribute('aria-busy', 'true');
+  document.getElementById('searchResults').innerHTML =
+    '<div class="result-banner neutral"><i class="fas fa-search" aria-hidden="true"></i><span>正在查詢訂單，請稍候…</span></div>';
+  document.getElementById('searchAnnouncement').textContent = '正在查詢訂單';
+  return revision;
+}
+
+function finishSearch(button) {
+  setButtonLoading(button, false);
+  document.getElementById('searchResults').removeAttribute('aria-busy');
+}
 
 export function searchOrders() {
   const searchBtn = document.querySelector('.btn-search');
@@ -22,49 +59,61 @@ export function searchOrders() {
   };
   if (!criteria.contact && !criteria.name && !criteria.date) {
     showAlert('請至少提供一個搜尋條件', 'error');
+    document.getElementById('searchName').focus();
     return;
   }
+  const revision = beginSearch('search', searchBtn);
   state.lastSearchCriteria = criteria;
-  state.searchNextCursor = null;
-  setButtonLoading(searchBtn, true, '搜尋中...');
   if (isConnected()) {
     rpc
       .withSuccessHandler(function (result) {
-        setButtonLoading(searchBtn, false);
+        if (revision !== searchRevision) return;
+        finishSearch(searchBtn);
         const page = Array.isArray(result) ? { orders: result, pagination: {} } : result;
         state.searchNextCursor = page?.pagination?.nextCursor || null;
         handleSearchResults(page?.orders || []);
       })
       .withFailureHandler(function (error) {
-        setButtonLoading(searchBtn, false);
+        if (revision !== searchRevision) return;
+        finishSearch(searchBtn);
         renderSearchError(error);
       })
       .searchOrders(criteria);
   } else {
-    setButtonLoading(searchBtn, false);
+    finishSearch(searchBtn);
     renderSearchError(new Error('尚未連接 Firebase'));
   }
 }
 
 export function renderSearchError(error) {
+  document.getElementById('searchAnnouncement').textContent = '';
   document.getElementById('searchResults').innerHTML =
-    `<div class="search-error" role="alert"><i class="fas fa-wifi"></i><strong>無法取得訂單</strong><span>${escapeHtml(error?.message || '請檢查連線後重試')}</span><button type="button" onclick="searchOrders()">重新搜尋</button></div>`;
+    `<div class="search-error" role="alert"><i class="fas fa-wifi" aria-hidden="true"></i><strong>無法取得訂單</strong><span>${escapeHtml(error?.message || '請檢查連線後重試')}</span><button type="button" onclick="${searchMode === 'overdue' ? 'searchOverdueOrders' : 'searchOrders'}()">重新搜尋</button></div>`;
 }
 
 export function loadMoreOrders() {
   if (!state.lastSearchCriteria || !state.searchNextCursor || state.isLoadingMoreOrders) return;
   state.isLoadingMoreOrders = true;
+  const revision = searchRevision;
   const button = document.getElementById('searchLoadMore');
+  const restoreFocus = document.activeElement === button;
   if (button) setButtonLoading(button, true, '載入中...');
   rpc
     .withSuccessHandler(function (result) {
+      if (revision !== searchRevision) return;
       state.isLoadingMoreOrders = false;
       const page = Array.isArray(result) ? { orders: result, pagination: {} } : result;
       state.searchNextCursor = page?.pagination?.nextCursor || null;
       state.currentSearchOrders = state.currentSearchOrders.concat(page?.orders || []);
       displayOrderTable(state.currentSearchOrders, 'searchResults', 'search');
+      if (restoreFocus && (document.activeElement === document.body || document.activeElement === button)) {
+        const target =
+          document.getElementById('searchLoadMore') || document.querySelector('#searchResults .result-title');
+        target?.focus({ preventScroll: true });
+      }
     })
     .withFailureHandler(function (error) {
+      if (revision !== searchRevision) return;
       state.isLoadingMoreOrders = false;
       if (button) setButtonLoading(button, false);
       showAlert(error?.message || '載入下一頁失敗', 'error');
@@ -78,6 +127,17 @@ export function handleSearchResults(orders) {
 
 export function displayOrderTable(orders, containerId, type = 'search') {
   const container = document.getElementById(containerId);
+  const focusedToggle = container.contains(document.activeElement)
+    ? document.activeElement.closest('.order-items-toggle')?.dataset.oid
+    : undefined;
+  if (containerId === 'searchResults') {
+    const announcement = document.getElementById('searchAnnouncement');
+    const message =
+      type === 'overdue'
+        ? `待處理逾期訂單，共 ${orders?.length || 0} 筆`
+        : `搜尋結果，共 ${orders?.length || 0} 筆`;
+    if (announcement.textContent !== message) announcement.textContent = message;
+  }
   if (containerId === 'searchResults' && state.orderItemsTransition) {
     state.orderItemsTransition = null;
     state.collapsingSearchOrderId = null;
@@ -98,7 +158,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
     const message =
       type === 'overdue'
         ? '<div class="result-banner success"><i class="fas fa-check-circle"></i><span>目前沒有過期未完成的訂單</span></div>'
-        : '<div class="result-banner neutral"><i class="fas fa-inbox"></i><span>未找到符合條件的訂單</span></div>';
+        : '<div class="result-banner neutral"><i class="fas fa-inbox" aria-hidden="true"></i><span>未找到符合條件的訂單。請確認姓名、電話或交貨日期，或減少搜尋條件後再試。</span></div>';
     container.innerHTML = message;
     return;
   }
@@ -107,9 +167,9 @@ export function displayOrderTable(orders, containerId, type = 'search') {
   if (type === 'overdue') {
     headerContent = `
                     <div class="result-banner danger"><i class="fas fa-exclamation-triangle"></i><span>發現 ${orders.length} 筆過期未完成的訂單</span></div>
-                    <h3 class="result-title">過期未完成訂單 (${orders.length} 筆)</h3>`;
+                    <h2 class="result-title" tabindex="-1">過期未完成訂單 (${orders.length} 筆)</h2>`;
   } else {
-    headerContent = `<h3 class="result-title">搜尋結果 (${orders.length} 筆)</h3>`;
+    headerContent = `<h2 class="result-title" tabindex="-1">搜尋結果 (${orders.length} 筆)</h2>`;
   }
   // 動態生成表頭
   let tableHeaders = '<th>姓名</th><th>聯絡方式</th><th>交貨日</th>';
@@ -119,7 +179,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
   tableHeaders += '<th>運費</th><th>總金額</th><th>已付訂金</th><th>剩餘金額</th><th>狀態</th><th>操作</th>';
   // 生成表格內容
   const tableRows = orders
-    .map((order) => {
+    .map((order, index) => {
       const isOverdue = type === 'overdue';
       let overdueDays = 0;
       const rowClasses = [];
@@ -132,8 +192,17 @@ export function displayOrderTable(orders, containerId, type = 'search') {
       const contactType = order.customerContactType || (order.customerLineId ? 'line' : 'phone');
       const contactValue = order.customerContactValue || order.customerLineId || order.customerPhone || '-';
       const contactDisplay = contactType === 'line' ? 'LINE' : contactValue;
+      const orderId = order.id || order.orderId;
+      const canExpandItems = type === 'search' && Array.isArray(order.items);
+      const isExpanded = canExpandItems && state.expandedSearchOrderId === orderId;
+      const isCollapsing = canExpandItems && state.collapsingSearchOrderId === orderId;
+      const detailId = `${containerId}-items-${index}`;
+      const customerName = escapeHtml(order.customerName || '未填姓名');
+      const nameCell = canExpandItems
+        ? `<button type="button" class="order-items-toggle" data-oid="${escapeAttr(orderId)}" aria-expanded="${isExpanded}" ${isExpanded || isCollapsing ? `aria-controls="${detailId}"` : ''} aria-label="${isExpanded ? '收合' : '展開'} ${escapeAttr(order.customerName || '未填姓名')} 的商品明細，訂單 ${escapeAttr(orderId)}" onclick="event.stopPropagation(); toggleOrderItems(this.dataset.oid)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg><span>${customerName}</span></button>`
+        : customerName;
       let cells = `
-                    <td data-label="姓名">${escapeHtml(order.customerName)}</td>
+                    <td data-label="姓名">${nameCell}</td>
                     <td data-label="聯絡方式">${escapeHtml(contactDisplay)}</td>
                     <td data-label="交貨日">${formatDisplayDate(order.deliveryDate)}</td>`;
       if (isOverdue) {
@@ -142,26 +211,22 @@ export function displayOrderTable(orders, containerId, type = 'search') {
                             <span class="overdue-badge ${overdueDays > 7 ? 'severe' : 'mild'}">${overdueDays} 天</span>
                         </td>`;
       }
-      const orderId = order.id || order.orderId;
       const depositAmount = order.depositAmount || 0;
-      const remainingAmount = order.remainingAmount || order.totalAmount;
-      const canExpandItems = type === 'search' && Array.isArray(order.items);
-      const isExpanded = canExpandItems && state.expandedSearchOrderId === orderId;
-      const isCollapsing = canExpandItems && state.collapsingSearchOrderId === orderId;
+      const remainingAmount = order.remainingAmount ?? order.totalAmount;
       if (canExpandItems) rowClasses.push('order-summary-row');
       if (isExpanded) rowClasses.push('is-expanded');
       // 運費顯示
       const hasFee = order.shippingFee > 0;
       const shippingFeeDisplay = hasFee
-        ? `NT$ ${order.shippingFee}`
+        ? `NT$ ${money(order.shippingFee)}`
         : order.shippingNotes === '免運' || order.deliveryType === '自取'
           ? '免運'
           : '-';
       cells += `
                     <td data-label="運費" class="td-fee${hasFee ? ' has-fee' : ''}">${shippingFeeDisplay}</td>
-                    <td data-label="總金額" class="td-amount">NT$ ${order.totalAmount}</td>
-                    <td data-label="已付訂金" class="td-deposit${depositAmount > 0 ? ' paid' : ''}">NT$ ${depositAmount}</td>
-                    <td data-label="剩餘金額" class="td-remaining ${remainingAmount > 0 ? 'due' : 'clear'}">NT$ ${remainingAmount}</td>
+                    <td data-label="總金額" class="td-amount">NT$ ${money(order.totalAmount)}</td>
+                    <td data-label="已付訂金" class="td-deposit${depositAmount > 0 ? ' paid' : ''}">NT$ ${money(depositAmount)}</td>
+                    <td data-label="剩餘金額" class="td-remaining ${remainingAmount > 0 ? 'due' : 'clear'}">NT$ ${money(remainingAmount)}</td>
                     <td data-label="狀態"><span class="status-pill ${getStatusPillClass(order.status)}">${escapeHtml(order.status)}</span></td>
                     <td data-label="操作">
                       <div class="order-actions">
@@ -175,7 +240,12 @@ export function displayOrderTable(orders, containerId, type = 'search') {
         : '';
       const expandedItemsRow =
         isExpanded || isCollapsing
-          ? renderExpandedOrderItems(order.items, tableHeaders.split('</th>').length - 1, isCollapsing)
+          ? renderExpandedOrderItems(
+              order.items,
+              tableHeaders.split('</th>').length - 1,
+              isCollapsing,
+              detailId,
+            )
           : '';
       return `<tr${rowClassAttr}${rowClickAttr}>${cells}</tr>${expandedItemsRow}`;
     })
@@ -189,6 +259,11 @@ export function displayOrderTable(orders, containerId, type = 'search') {
                     </table>
                 </div>
                 ${type === 'search' && state.searchNextCursor ? '<div class="search-pagination"><button id="searchLoadMore" type="button" onclick="loadMoreOrders()">載入更多訂單</button></div>' : ''}`;
+  if (focusedToggle !== undefined) {
+    [...container.querySelectorAll('.order-items-toggle')]
+      .find((button) => button.dataset.oid === focusedToggle)
+      ?.focus({ preventScroll: true });
+  }
 }
 
 export function toggleOrderItems(orderId) {
@@ -220,10 +295,11 @@ export function toggleOrderItems(orderId) {
   });
 }
 
-export function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
+export function renderExpandedOrderItems(items, columnCount, isCollapsing = false, detailId = '') {
   const collapsingClass = isCollapsing ? ' is-collapsing' : '';
+  const idAttribute = detailId ? ` id="${escapeAttr(detailId)}"` : '';
   if (!items || items.length === 0) {
-    return `<tr class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-scroll"><div class="order-items-empty">此訂單沒有商品明細</div></div></div></td></tr>`;
+    return `<tr${idAttribute} class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-scroll"><div class="order-items-empty">此訂單沒有商品明細</div></div></div></td></tr>`;
   }
   let itemsHtml = '';
   items.forEach((item) => {
@@ -276,7 +352,7 @@ export function renderExpandedOrderItems(items, columnCount, isCollapsing = fals
     }
   });
   return `
-                <tr class="order-items-row${collapsingClass}">
+                <tr${idAttribute} class="order-items-row${collapsingClass}">
                     <td colspan="${columnCount}">
                         <div class="order-items-expand">
                             <div class="order-items-scroll">
@@ -316,6 +392,7 @@ export function formatDisplayDate(dateValue) {
 }
 
 export function clearSearch() {
+  resetSearchRequest();
   document.getElementById('searchPhone').value = '';
   document.getElementById('searchName').value = '';
   if (state.searchDatepickerInstance) {
@@ -323,22 +400,26 @@ export function clearSearch() {
   } else {
     document.getElementById('searchDate').value = '';
   }
-  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('searchResults').innerHTML =
+    '<div class="result-banner neutral"><i class="fas fa-search" aria-hidden="true"></i><span>輸入姓名、聯絡方式或交貨日期，開始查詢訂單。</span></div>';
+  document.getElementById('searchAnnouncement').textContent = '已清空搜尋條件與結果';
   const status = document.getElementById('searchStatus');
   if (status) status.value = '';
   selectSearchContactMethod('phone', false);
   state.searchNextCursor = null;
   state.lastSearchCriteria = null;
+  document.getElementById('searchName').focus();
 }
 
 export function searchOverdueOrders() {
-  const searchBtn = window.event?.currentTarget || document.querySelector('.btn-overdue');
-  setButtonLoading(searchBtn, true, '檢索中...');
+  const searchBtn = document.querySelector('.btn-overdue');
+  const revision = beginSearch('overdue', searchBtn);
   // 檢查是否在 Google Apps Script 環境中
   if (isConnected()) {
     rpc
       .withSuccessHandler(function (orders) {
-        setButtonLoading(searchBtn, false);
+        if (revision !== searchRevision) return;
+        finishSearch(searchBtn);
         try {
           handleOverdueResults(orders);
         } catch (clientError) {
@@ -347,12 +428,13 @@ export function searchOverdueOrders() {
         }
       })
       .withFailureHandler(function (error) {
-        setButtonLoading(searchBtn, false);
-        handleError(error);
+        if (revision !== searchRevision) return;
+        finishSearch(searchBtn);
+        renderSearchError(error);
       })
       .searchOverdueOrders();
   } else {
-    setButtonLoading(searchBtn, false);
+    finishSearch(searchBtn);
     renderSearchError(new Error('尚未連接 Firebase'));
   }
 }

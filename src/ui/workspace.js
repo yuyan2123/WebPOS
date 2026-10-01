@@ -135,7 +135,7 @@ export function initializeWorkspace() {
     closeManagement();
     managementToggle.classList.toggle('current-group', section === 'settings');
     const heading = document.getElementById('workspaceTitle');
-    if (heading && !restoring) {
+    if (heading) {
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
     }

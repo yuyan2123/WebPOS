@@ -7,6 +7,349 @@ async function openThemeControls(page) {
   await page.locator('#themeToggle').scrollIntoViewIfNeeded();
 }
 
+async function deferOrderQueries(page) {
+  await page.evaluate(() => {
+    const original = window.posApi.call;
+    window.__queries = [];
+    window.posApi.call = (method, args) => {
+      if (!['searchOrders', 'searchOverdueOrders'].includes(method)) return original(method, args);
+      return new Promise((resolve, reject) => window.__queries.push({ method, args, resolve, reject }));
+    };
+  });
+}
+
+for (const reducedMotion of ['reduce', 'no-preference']) {
+  test(`order disclosure supports keyboard, focus and accessible state with motion ${reducedMotion}`, async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ reducedMotion });
+    await openWorkspace(page);
+    await page.locator('#nav-search').click();
+    await page.evaluate(
+      () =>
+        (window.__orders = [
+          {
+            id: 'one',
+            customerName: '同名客戶',
+            totalAmount: 100,
+            status: '已確認',
+            items: [{ productName: '原味餅', quantity: 2, unitPrice: 50, subtotal: 100 }],
+          },
+          { id: 'two', customerName: '同名客戶', totalAmount: 0, status: '已確認', items: [] },
+        ]),
+    );
+    await page.locator('#searchName').fill('同名');
+    await page.locator('#searchName').press('Enter');
+    const first = page.locator('.order-items-toggle[data-oid="one"]');
+    const second = page.locator('.order-items-toggle[data-oid="two"]');
+    await first.focus();
+    await first.press('Enter');
+    await expect(first).toHaveAttribute('aria-expanded', 'true');
+    await expect(first).toBeFocused();
+    await expect(page.locator('#' + (await first.getAttribute('aria-controls')))).toContainText('原味餅');
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    await expect(page.locator('.order-items-table')).toBeVisible();
+    await first.press('Space');
+    await expect(page.locator('.order-items-row')).toHaveCount(0);
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
+    await expect(first).toBeFocused();
+    await first.press('Enter');
+    await second.focus();
+    await second.press('Enter');
+    await expect(second).toHaveAttribute('aria-expanded', 'true');
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
+    await expect(second).toBeFocused();
+    await expect(page.locator('.order-items-empty')).toHaveText('此訂單沒有商品明細');
+    await expect(page.locator('.order-items-empty')).toBeVisible();
+    await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
+      await settleUI(page);
+      const scan = await new AxeBuilder({ page }).include('#search').analyze();
+      expect(scan.violations).toEqual([]);
+      await second.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath(`${theme}-disclosure.png`) });
+    }
+    await second.press('Space');
+    await page.locator('#searchName').focus();
+    await expect(page.locator('.order-items-row')).toHaveCount(0);
+    await expect(page.locator('#searchName')).toBeFocused();
+  });
+}
+
+test('clearing a collapsing order prevents its animation from restoring the old table', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await page.evaluate(
+    () =>
+      (window.__orders = [
+        {
+          id: 'animation-order',
+          customerName: '舊訂單',
+          totalAmount: 100,
+          items: [{ productName: '商品', quantity: 1, unitPrice: 100, subtotal: 100 }],
+        },
+      ]),
+  );
+  await page.locator('#searchName').fill('舊訂單');
+  await page.locator('#searchName').press('Enter');
+  await expect(page.locator('#searchResults')).toContainText('舊訂單');
+  await page.addStyleTag({ content: '.order-items-expand { animation-delay: 300ms !important; }' });
+  await page.evaluate(() => {
+    window.toggleOrderItems('animation-order');
+    window.toggleOrderItems('animation-order');
+    window.clearSearch();
+  });
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await expect(page.locator('#searchResults')).toContainText('開始查詢');
+  await expect(page.locator('#searchResults table')).toHaveCount(0);
+});
+
+test('order search ignores stale responses, clear cancels results and overdue retries its own query', async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await deferOrderQueries(page);
+  const name = page.locator('#searchName');
+  await name.fill('舊查詢');
+  await name.press('Enter');
+  await expect(page.locator('#searchResults')).toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('#searchResults')).toContainText('正在查詢');
+  await name.fill('新查詢');
+  await name.press('Enter');
+  await page.evaluate(() =>
+    window.__queries[1].resolve({
+      orders: [
+        {
+          id: 'new',
+          customerName: '新的客戶',
+          totalAmount: 12000,
+          depositAmount: 12000,
+          remainingAmount: 0,
+          status: '已付清',
+          deliveryDate: '2026-10-01',
+        },
+      ],
+    }),
+  );
+  await expect(page.locator('#searchResults')).toContainText('新的客戶');
+  await expect(page.locator('.td-amount')).toHaveText('NT$ 12,000');
+  await expect(page.locator('.td-remaining')).toHaveText('NT$ 0');
+  await expect(page.locator('.td-remaining')).toHaveClass(/clear/);
+  await page.evaluate(() => window.__queries[0].reject(new Error('舊查詢失敗')));
+  await expect(page.locator('#searchResults')).toContainText('新的客戶');
+  await name.press('Enter');
+  await page.locator('.btn-clear').click();
+  await page.evaluate(() => window.__queries[2].resolve({ orders: [{ customerName: '已清除的回覆' }] }));
+  await expect(page.locator('#searchResults')).toContainText('開始查詢');
+  await expect(page.locator('#searchName')).toBeFocused();
+  await expect(page.locator('.btn-search')).toBeEnabled();
+  await page.locator('#overdueShortcut').click();
+  await page.evaluate(() => window.__queries[3].reject(new Error('連線中斷')));
+  await expect(page.locator('#searchResults')).toContainText('連線中斷');
+  await page.getByRole('button', { name: '重新搜尋', exact: true }).click();
+  await expect(page.locator('#searchResults')).toBeFocused();
+  expect(await page.evaluate(() => window.__queries[4].method)).toBe('searchOverdueOrders');
+  await page.evaluate(() => window.__queries[4].resolve([]));
+  await expect(page.locator('#searchResults')).toContainText('目前沒有過期');
+  await expect(page.locator('#searchResults')).not.toHaveAttribute('aria-busy');
+});
+
+test('pagination cannot append to a newer search and preserves keyboard focus on completion', async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await deferOrderQueries(page);
+  await page.locator('#searchName').fill('客戶');
+  await page.locator('#searchName').press('Enter');
+  await page.evaluate(() =>
+    window.__queries[0].resolve({
+      orders: [{ id: 'first', customerName: '第一頁', totalAmount: 100 }],
+      pagination: { nextCursor: 'next' },
+    }),
+  );
+  await page.locator('#searchLoadMore').focus();
+  await page.keyboard.press('Enter');
+  await page.evaluate(() =>
+    window.__queries[1].resolve({
+      orders: [{ id: 'second', customerName: '第二頁', totalAmount: 200 }],
+      pagination: {},
+    }),
+  );
+  await expect(page.locator('#searchResults .result-title')).toBeFocused();
+  await expect(page.locator('#searchAnnouncement')).toHaveText('搜尋結果，共 2 筆');
+  await page.locator('#searchName').press('Enter');
+  await page.evaluate(() =>
+    window.__queries[2].resolve({
+      orders: [{ id: 'third', customerName: '另一頁', totalAmount: 100 }],
+      pagination: { nextCursor: 'next' },
+    }),
+  );
+  await page.locator('#searchLoadMore').click();
+  await page.locator('#overdueShortcut').click();
+  await page.evaluate(() => window.__queries[4].resolve([]));
+  await page.evaluate(() =>
+    window.__queries[3].resolve({ orders: [{ id: 'late', customerName: '過期分頁' }] }),
+  );
+  await expect(page.locator('#searchResults')).toContainText('目前沒有過期');
+  await expect(page.locator('#searchResults')).not.toContainText('過期分頁');
+});
+
+test('search empty, loading and error states remain readable in both themes', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await deferOrderQueries(page);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
+    await page.locator('.btn-clear').click();
+    await page.locator('#searchName').fill('範例');
+    await page.locator('#searchName').press('Enter');
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-search-loading.png`) });
+    await page.evaluate(() => window.__queries.at(-1).resolve({ orders: [] }));
+    await expect(page.locator('#searchResults')).toContainText('減少搜尋條件');
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-search-empty.png`) });
+    let scan = await new AxeBuilder({ page }).include('#search').analyze();
+    expect(scan.violations).toEqual([]);
+    await page.locator('#searchName').press('Enter');
+    await page.evaluate(() => window.__queries.at(-1).reject(new Error('連線中斷，請稍後重試')));
+    scan = await new AxeBuilder({ page }).include('#search').analyze();
+    expect(scan.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-search-error.png`) });
+    await page.getByRole('button', { name: '重新搜尋', exact: true }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole('button', { name: '重新搜尋', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-search-retry.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
+test('history navigation moves keyboard focus to the restored page heading', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await page.locator('#searchName').focus();
+  await page.goBack();
+  await expect(page.locator('#customer')).toBeVisible();
+  await expect(page.locator('#workspaceTitle')).toBeFocused();
+  await page.goForward();
+  await expect(page.locator('#search')).toBeVisible();
+  await expect(page.locator('#workspaceTitle')).toBeFocused();
+});
+
+test('notifications pause while focused and dismiss without motion or losing keyboard context', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openWorkspace(page);
+  await page.clock.install();
+  await page.getByRole('button', { name: '儲存並下一步' }).click();
+  const notification = page.locator('.alert-error');
+  const close = notification.getByRole('button', { name: '關閉通知' });
+  await close.focus();
+  await page.clock.fastForward(10000);
+  await expect(notification).toBeVisible();
+  await close.press('Enter');
+  await expect(notification).toHaveCount(0);
+  await expect(page.locator('#workspaceTitle')).toBeFocused();
+  await page.getByRole('button', { name: '儲存並下一步' }).click();
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(7000);
+  await expect(notification).toHaveCount(0);
+});
+
+test('customer identity errors stay beside the fields until corrected', async ({ page }, testInfo) => {
+  await openWorkspace(page);
+  await page.getByRole('button', { name: '儲存並下一步' }).click();
+  await expect(page.locator('#customerIdentityError')).toBeVisible();
+  await expect(page.locator('#customerName')).toBeFocused();
+  await expect(page.locator('#customerName')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('#customerIdentityHint')).toBeHidden();
+  await settleUI(page);
+  const errorColor = await page
+    .locator('#customerIdentityError')
+    .evaluate((el) => getComputedStyle(el).color);
+  await expect(page.locator('#customerName')).toHaveCSS('border-color', errorColor);
+  await expect(page.locator('#customerPhone')).toHaveCSS('border-color', errorColor);
+  const scan = await new AxeBuilder({ page }).include('#customer').analyze();
+  expect(scan.violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('customer-validation.png') });
+  await page.locator('#customerPhone').fill('0912345678');
+  await expect(page.locator('#customerIdentityError')).toBeHidden();
+  await expect(page.locator('#customerIdentityHint')).toBeVisible();
+  await expect(page.locator('#customerName')).not.toHaveAttribute('aria-invalid', 'true');
+  await page.getByRole('button', { name: '儲存並下一步' }).click();
+  await expect(page.locator('#date')).toBeVisible();
+});
+
+test('customer suggestions support keyboard selection and announce the active option', async ({ page }) => {
+  await openWorkspace(page);
+  await page.evaluate(() => {
+    window.__customers = [
+      { name: '測試甲', phone: '0911111111', address: '第一筆地址' },
+      { name: '測試乙', phone: '0922222222', address: '第二筆地址' },
+    ];
+  });
+  const input = page.locator('#customerName');
+  await input.fill('測試');
+  await expect(input).toHaveAttribute('aria-expanded', 'true');
+  await input.press('ArrowUp');
+  await expect(input).toHaveAttribute('aria-activedescendant', 'customerAcList-option-1');
+  await expect(page.locator('#customerAcList-option-1')).toHaveAttribute('aria-selected', 'true');
+  const scan = await new AxeBuilder({ page }).include('#customer').analyze();
+  expect(scan.violations).toEqual([]);
+  await input.press('Enter');
+  await expect(input).toHaveValue('測試乙');
+  await expect(page.locator('#customerAddress')).toHaveValue('第二筆地址');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await expect(input).toBeFocused();
+});
+
+test('late customer suggestions cannot replace a newer query or reopen after Escape', async ({ page }) => {
+  await openWorkspace(page);
+  await page.evaluate(() => {
+    const original = window.posApi.call;
+    window.__customerReplies = {};
+    window.posApi.call = (method, args) =>
+      method === 'searchCustomers'
+        ? new Promise((resolve) => {
+            window.__customerReplies[args[0].keyword] = resolve;
+          })
+        : original(method, args);
+  });
+  const input = page.locator('#customerName');
+  await input.fill('舊查詢');
+  await expect.poll(() => page.evaluate(() => Boolean(window.__customerReplies['舊查詢']))).toBe(true);
+  await input.fill('新查詢');
+  await expect.poll(() => page.evaluate(() => Boolean(window.__customerReplies['新查詢']))).toBe(true);
+  await page.evaluate(() => window.__customerReplies['新查詢']([{ name: '新的客戶' }]));
+  await expect(page.locator('#customerAcList')).toContainText('新的客戶');
+  await page.evaluate(() => window.__customerReplies['舊查詢']([{ name: '過期客戶' }]));
+  await expect(page.locator('#customerAcList')).not.toContainText('過期客戶');
+  await input.press('Escape');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await input.fill('待回覆');
+  await expect.poll(() => page.evaluate(() => Boolean(window.__customerReplies['待回覆']))).toBe(true);
+  await page.locator('#customerAddress').focus();
+  await page.evaluate(() => window.__customerReplies['待回覆']([{ name: '離開後回覆' }]));
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#customerAcList')).toBeHidden();
+  await input.fill('取消查詢');
+  await expect.poll(() => page.evaluate(() => Boolean(window.__customerReplies['取消查詢']))).toBe(true);
+  await input.press('Escape');
+  await page.evaluate(() => window.__customerReplies['取消查詢']([{ name: '取消後回覆' }]));
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await input.fill('切換欄位');
+  await expect.poll(() => page.evaluate(() => Boolean(window.__customerReplies['切換欄位']))).toBe(true);
+  await page.locator('#customerPhone').focus();
+  await page.evaluate(() => window.__customerReplies['切換欄位']([{ name: '原欄位回覆' }]));
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#customerAcList')).toBeHidden();
+});
+
 test('mobile date pickers remain inside the viewport above navigation', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 740 });
   await page.emulateMedia({ reducedMotion: 'reduce' });

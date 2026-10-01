@@ -7,9 +7,25 @@ import { showSectionById } from './platform.js';
 import { updateProductDisplays } from './catalog.js';
 import { getEffectivePrice } from './pricing.js';
 
+let autocompleteRevision = 0;
+const autocompleteInputs = { customerAcList: 'customerName', customerAcListPhone: 'customerPhone' };
+
+function updateIdentityError(show = false) {
+  const error = document.getElementById('customerIdentityError');
+  error.hidden = !show;
+  document.getElementById('customerIdentityHint').hidden = show;
+  for (const id of ['customerName', 'customerPhone']) {
+    const input = document.getElementById(id);
+    input.setAttribute('aria-describedby', show ? 'customerIdentityError' : 'customerIdentityHint');
+    if (show) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  }
+}
+
 export function toggleNameTitle(btn) {
   if (btn.classList.contains('active')) {
     btn.classList.remove('active');
+    scheduleDraftSave();
     return;
   }
   document.querySelectorAll('#nameTitleGroup .name-title-btn').forEach((b) => b.classList.remove('active'));
@@ -36,7 +52,8 @@ export function selectContactMethod(method, clearValue = true) {
     if (state.currentContactMethod === 'line') input.value = 'LINE';
     else if (clearValue) input.value = '';
   }
-  if (label) label.textContent = '聯絡電話';
+  if (label) label.textContent = state.currentContactMethod === 'phone' ? '聯絡電話' : '聯絡方式';
+  if (input?.value || document.getElementById('customerName').value.trim()) updateIdentityError();
   closeAllAcLists();
   scheduleDraftSave();
 }
@@ -90,6 +107,27 @@ export function initSearchContactMethodToggle() {
 export function initCustomerAutocomplete() {
   const nameInput = document.getElementById('customerName');
   const phoneInput = document.getElementById('customerPhone');
+  for (const [listId, inputId] of Object.entries(autocompleteInputs)) {
+    const input = document.getElementById(inputId);
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-controls', listId);
+    input.setAttribute('aria-expanded', 'false');
+    const list = document.getElementById(listId);
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-label', '符合的客戶');
+    input.addEventListener('input', () => {
+      if (nameInput.value.trim() || phoneInput.value.trim()) updateIdentityError();
+    });
+  }
+  document.addEventListener('pos:navigate', closeAllAcLists);
+  document.addEventListener('focusin', (event) => {
+    if (
+      !event.target.closest('.customer-ac-wrap') ||
+      Object.values(autocompleteInputs).includes(event.target.id)
+    )
+      closeAllAcLists();
+  });
   nameInput.addEventListener('input', function () {
     debounceAcSearch(this.value.trim(), 'customerAcList', 'name');
   });
@@ -112,7 +150,8 @@ export function initCustomerAutocomplete() {
 }
 
 export function debounceAcSearch(keyword, listId, mode) {
-  clearTimeout(state.acDebounceTimer);
+  closeAllAcLists();
+  const revision = autocompleteRevision;
   if (!keyword || keyword.length < 2) {
     document.getElementById(listId).classList.remove('show');
     return;
@@ -127,8 +166,12 @@ export function debounceAcSearch(keyword, listId, mode) {
     if (isConnected()) {
       rpc
         .withSuccessHandler(function (results) {
+          if (revision !== autocompleteRevision) return;
           state.customerSearchCache.set(cacheKey, results || []);
           renderAcList(results, listId);
+        })
+        .withFailureHandler(() => {
+          if (revision === autocompleteRevision) closeAllAcLists();
         })
         .searchCustomers({ keyword, mode, contactType: state.currentContactMethod });
     }
@@ -137,6 +180,9 @@ export function debounceAcSearch(keyword, listId, mode) {
 
 export function renderAcList(results, listId) {
   const list = document.getElementById(listId);
+  const input = document.getElementById(autocompleteInputs[listId]);
+  input.setAttribute('aria-expanded', String(Boolean(results?.length)));
+  input.removeAttribute('aria-activedescendant');
   if (!results || results.length === 0) {
     list.classList.remove('show');
     list.innerHTML = '';
@@ -146,7 +192,11 @@ export function renderAcList(results, listId) {
   list.innerHTML = results
     .map(function (c, i) {
       return (
-        '<button type="button" class="customer-ac-item" role="option" data-index="' +
+        '<button type="button" class="customer-ac-item" role="option" tabindex="-1" aria-selected="false" id="' +
+        listId +
+        '-option-' +
+        i +
+        '" data-index="' +
         i +
         '">' +
         '<div class="customer-ac-icon"><i class="fas fa-user"></i></div>' +
@@ -191,17 +241,29 @@ export function selectAcCustomer(index) {
   if (c.address) {
     document.getElementById('customerAddress').value = c.address;
   }
+  updateIdentityError();
+  scheduleDraftSave();
   closeAllAcLists();
 }
 
 export function closeAllAcLists() {
+  autocompleteRevision++;
+  clearTimeout(state.acDebounceTimer);
   document.querySelectorAll('.customer-ac-list').forEach(function (el) {
     el.classList.remove('show');
+    const input = document.getElementById(autocompleteInputs[el.id]);
+    input?.setAttribute('aria-expanded', 'false');
+    input?.removeAttribute('aria-activedescendant');
   });
 }
 
 export function acKeyNav(e, listId) {
   const list = document.getElementById(listId);
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeAllAcLists();
+    return;
+  }
   if (!list.classList.contains('show')) return;
   const items = list.querySelectorAll('.customer-ac-item');
   if (items.length === 0) return;
@@ -217,18 +279,18 @@ export function acKeyNav(e, listId) {
     idx = idx <= 0 ? items.length - 1 : idx - 1;
   } else if (e.key === 'Enter' && idx >= 0) {
     e.preventDefault();
-    items[idx].dispatchEvent(new Event('mousedown'));
-    return;
-  } else if (e.key === 'Escape') {
-    closeAllAcLists();
+    items[idx].click();
     return;
   } else {
     return;
   }
   items.forEach(function (item) {
     item.classList.remove('highlight');
+    item.setAttribute('aria-selected', 'false');
   });
   items[idx].classList.add('highlight');
+  items[idx].setAttribute('aria-selected', 'true');
+  e.target.setAttribute('aria-activedescendant', items[idx].id);
   items[idx].scrollIntoView({ block: 'nearest' });
 }
 
@@ -265,9 +327,12 @@ export function saveCustomer() {
   const recipientPhone = document.getElementById('recipientPhone').value.trim();
   const deliveryType = document.getElementById('deliveryTypeValue').value;
   if (!name && !contactValue) {
+    updateIdentityError(true);
+    document.getElementById('customerName').focus();
     showAlert('客戶姓名或聯絡方式請至少填寫一項', 'error');
     return;
   }
+  updateIdentityError();
   state.currentCustomer = {
     name,
     contactType: state.currentContactMethod,
@@ -287,6 +352,7 @@ export function saveCustomer() {
 }
 
 export function clearCustomerForm() {
+  updateIdentityError();
   document.getElementById('customerName').value = '';
   document.querySelectorAll('#nameTitleGroup .name-title-btn').forEach((b) => b.classList.remove('active'));
   document.getElementById('customerPhone').value = '';

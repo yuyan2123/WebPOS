@@ -593,8 +593,8 @@ body.gj-ui #firebaseGoogleSignIn.gj-social-button {
   border-radius: var(--gj-radius-sm) !important;
 }
 .gj-ui
-  :is(#customer, #search, .firebase-shop-form, #firebaseEmailAuth)
-  :is(
+  :where(#customer, #search, .firebase-shop-form, #firebaseEmailAuth)
+  :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
     select,
     textarea
@@ -1840,3 +1840,38 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
 }
 .gj-ui .theme-settings-label { display: block; font-size: 14px; font-weight: 600; }
 .gj-ui #themeToggleStatus { display: block; font-size: 12px; color: var(--gj-muted); }
+/* Inline disclosure keeps the customer name and keyboard action together. */
+.gj-ui .order-items-toggle {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  max-width: 100%;
+  padding: 0 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  border-radius: 4px;
+}
+.gj-ui .order-items-toggle span { min-width: 0; overflow-wrap: anywhere; }
+.gj-ui .order-items-toggle svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transition: transform 160ms ease;
+}
+.gj-ui .order-items-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.gj-ui .order-items-toggle:hover { color: var(--gj-primary); }
+@media (min-width: 601px) and (max-width: 1100px) {
+  .gj-ui #searchResults .table > tbody > tr.order-summary-row { padding-block: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gj-ui .order-items-toggle svg { transition: none; }
+  .gj-ui .order-items-expand { grid-template-rows: 1fr; opacity: 1; }
+  .gj-ui .order-items-row.is-collapsing .order-items-expand { grid-template-rows: 0fr; opacity: 0; }
+}

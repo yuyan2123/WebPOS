@@ -2539,16 +2539,43 @@ function showAlert(message, type = "success", duration = 0) {
   alertDiv.appendChild(close2);
   alertContainer.prepend(alertDiv);
   let removed = false;
+  let timer;
+  let startedAt;
+  let remaining = duration > 0 ? duration : type === "error" || message.includes("\n") ? 6e3 : 3e3;
   function dismiss2() {
     if (removed) return;
     removed = true;
+    clearTimeout(timer);
+    const hadFocus = alertDiv.contains(document.activeElement);
+    if (hadFocus) {
+      const heading = document.getElementById("workspaceTitle");
+      heading?.focus({ preventScroll: true });
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      alertDiv.remove();
+      return;
+    }
     alertDiv.style.opacity = "0";
     alertDiv.style.transform = "translateX(30%)";
     setTimeout(() => alertDiv.remove(), 300);
   }
-  alertDiv.addEventListener("click", dismiss2);
-  const holdTime = duration > 0 ? duration : type === "error" || message.includes("\n") ? 6e3 : 3e3;
-  setTimeout(dismiss2, holdTime);
+  function pause() {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    remaining = Math.max(0, remaining - (performance.now() - startedAt));
+  }
+  function resume() {
+    if (removed || timer || alertDiv.matches(":hover") || alertDiv.contains(document.activeElement)) return;
+    startedAt = performance.now();
+    timer = setTimeout(dismiss2, remaining);
+  }
+  close2.addEventListener("click", dismiss2);
+  alertDiv.addEventListener("pointerenter", pause);
+  alertDiv.addEventListener("pointerleave", resume);
+  alertDiv.addEventListener("focusin", pause);
+  alertDiv.addEventListener("focusout", () => queueMicrotask(resume));
+  resume();
 }
 function setButtonLoading(button, isLoading = true, loadingText = "") {
   if (typeof button === "string") {
@@ -2634,17 +2661,17 @@ function updateCartModalDisplay() {
     const isGiftbox = item.type === "giftbox";
     const name = escapeHtml(isGiftbox ? item.name : item.productName);
     const accessibleName = escapeAttr(isGiftbox ? item.name : item.productName);
-    const money2 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+    const money3 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
     const special = item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.price;
     const giftboxDetails = isGiftbox ? generateGiftboxDetailsHtml(item) : "";
     return `<div class="cart-item-card gj-pos-card">
         <div class="cart-item-header">
           <div class="cart-item-details">
             <h3 class="cart-item-name">${name}</h3>
-            <div class="cart-item-price">${special ? '<span class="cart-price-label">\u7279\u50F9</span>' : ""}${money2(item.price)}<span class="cart-price-label">\uFF0F${isGiftbox ? "\u76D2" : "\u4EF6"}</span>${item.isCompanyPrice && !special ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</div>
-            ${special ? `<span class="cart-original-price">\u539F\u50F9 ${money2(item.originalPrice)}</span>` : ""}
+            <div class="cart-item-price">${special ? '<span class="cart-price-label">\u7279\u50F9</span>' : ""}${money3(item.price)}<span class="cart-price-label">\uFF0F${isGiftbox ? "\u76D2" : "\u4EF6"}</span>${item.isCompanyPrice && !special ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</div>
+            ${special ? `<span class="cart-original-price">\u539F\u50F9 ${money3(item.originalPrice)}</span>` : ""}
           </div>
-          <div class="cart-item-subtotal"><span>\u5C0F\u8A08</span><strong>${money2(item.price * item.quantity)}</strong></div>
+          <div class="cart-item-subtotal"><span>\u5C0F\u8A08</span><strong>${money3(item.price * item.quantity)}</strong></div>
         </div>
         ${giftboxDetails}
         ${item.notes ? `<div class="cart-giftbox-notes"><span>\u5099\u8A3B</span> ${escapeHtml(item.notes)}</div>` : ""}
@@ -2699,8 +2726,8 @@ function renderModalProductPrice() {
   if (!state.currentModalProduct) return;
   const product = state.currentModalProduct;
   const effectivePrice = getEffectivePrice(product);
-  const money2 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
-  document.getElementById("modalProductPrice").innerHTML = state.isCompanyCustomer && effectivePrice !== parseFloat(product.price) ? `${money2(effectivePrice)}<span class="company-price-tag">\u4F01\u696D\u50F9</span><span class="company-original-price">\u539F\u50F9 ${money2(product.price)}</span>` : money2(effectivePrice);
+  const money3 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+  document.getElementById("modalProductPrice").innerHTML = state.isCompanyCustomer && effectivePrice !== parseFloat(product.price) ? `${money3(effectivePrice)}<span class="company-price-tag">\u4F01\u696D\u50F9</span><span class="company-original-price">\u539F\u50F9 ${money3(product.price)}</span>` : money3(effectivePrice);
 }
 function updateProductTotal() {
   if (!state.currentModalProduct) return;
@@ -2904,6 +2931,38 @@ function updateModalButtons(modalFooter, orderId, newStatus) {
 }
 
 // src/app/search.js
+var searchRevision = 0;
+var searchMode = "search";
+var money = (value) => Number(value ?? 0).toLocaleString("zh-TW");
+function resetSearchRequest() {
+  searchRevision++;
+  state.isLoadingMoreOrders = false;
+  state.searchNextCursor = null;
+  state.currentSearchOrders = [];
+  state.orderItemsTransition = null;
+  state.collapsingSearchOrderId = null;
+  state.expandedSearchOrderId = null;
+  for (const selector2 of [".btn-search", ".btn-overdue"])
+    setButtonLoading(document.querySelector(selector2), false);
+  document.getElementById("searchResults").removeAttribute("aria-busy");
+  return searchRevision;
+}
+function beginSearch(mode, button) {
+  const results = document.getElementById("searchResults");
+  if (results.contains(document.activeElement)) results.focus({ preventScroll: true });
+  const revision = resetSearchRequest();
+  searchMode = mode;
+  state.lastSearchCriteria = null;
+  setButtonLoading(button, true, "\u641C\u5C0B\u4E2D\u2026");
+  document.getElementById("searchResults").setAttribute("aria-busy", "true");
+  document.getElementById("searchResults").innerHTML = '<div class="result-banner neutral"><i class="fas fa-search" aria-hidden="true"></i><span>\u6B63\u5728\u67E5\u8A62\u8A02\u55AE\uFF0C\u8ACB\u7A0D\u5019\u2026</span></div>';
+  document.getElementById("searchAnnouncement").textContent = "\u6B63\u5728\u67E5\u8A62\u8A02\u55AE";
+  return revision;
+}
+function finishSearch(button) {
+  setButtonLoading(button, false);
+  document.getElementById("searchResults").removeAttribute("aria-busy");
+}
 function searchOrders() {
   const searchBtn = document.querySelector(".btn-search");
   const rawContact = state.currentSearchContactMethod === "line" ? "LINE" : document.getElementById("searchPhone").value.trim();
@@ -2918,41 +2977,52 @@ function searchOrders() {
   };
   if (!criteria.contact && !criteria.name && !criteria.date) {
     showAlert("\u8ACB\u81F3\u5C11\u63D0\u4F9B\u4E00\u500B\u641C\u5C0B\u689D\u4EF6", "error");
+    document.getElementById("searchName").focus();
     return;
   }
+  const revision = beginSearch("search", searchBtn);
   state.lastSearchCriteria = criteria;
-  state.searchNextCursor = null;
-  setButtonLoading(searchBtn, true, "\u641C\u5C0B\u4E2D...");
   if (isConnected()) {
     rpc.withSuccessHandler(function(result) {
-      setButtonLoading(searchBtn, false);
+      if (revision !== searchRevision) return;
+      finishSearch(searchBtn);
       const page = Array.isArray(result) ? { orders: result, pagination: {} } : result;
       state.searchNextCursor = page?.pagination?.nextCursor || null;
       handleSearchResults(page?.orders || []);
     }).withFailureHandler(function(error) {
-      setButtonLoading(searchBtn, false);
+      if (revision !== searchRevision) return;
+      finishSearch(searchBtn);
       renderSearchError(error);
     }).searchOrders(criteria);
   } else {
-    setButtonLoading(searchBtn, false);
+    finishSearch(searchBtn);
     renderSearchError(new Error("\u5C1A\u672A\u9023\u63A5 Firebase"));
   }
 }
 function renderSearchError(error) {
-  document.getElementById("searchResults").innerHTML = `<div class="search-error" role="alert"><i class="fas fa-wifi"></i><strong>\u7121\u6CD5\u53D6\u5F97\u8A02\u55AE</strong><span>${escapeHtml(error?.message || "\u8ACB\u6AA2\u67E5\u9023\u7DDA\u5F8C\u91CD\u8A66")}</span><button type="button" onclick="searchOrders()">\u91CD\u65B0\u641C\u5C0B</button></div>`;
+  document.getElementById("searchAnnouncement").textContent = "";
+  document.getElementById("searchResults").innerHTML = `<div class="search-error" role="alert"><i class="fas fa-wifi" aria-hidden="true"></i><strong>\u7121\u6CD5\u53D6\u5F97\u8A02\u55AE</strong><span>${escapeHtml(error?.message || "\u8ACB\u6AA2\u67E5\u9023\u7DDA\u5F8C\u91CD\u8A66")}</span><button type="button" onclick="${searchMode === "overdue" ? "searchOverdueOrders" : "searchOrders"}()">\u91CD\u65B0\u641C\u5C0B</button></div>`;
 }
 function loadMoreOrders() {
   if (!state.lastSearchCriteria || !state.searchNextCursor || state.isLoadingMoreOrders) return;
   state.isLoadingMoreOrders = true;
+  const revision = searchRevision;
   const button = document.getElementById("searchLoadMore");
+  const restoreFocus = document.activeElement === button;
   if (button) setButtonLoading(button, true, "\u8F09\u5165\u4E2D...");
   rpc.withSuccessHandler(function(result) {
+    if (revision !== searchRevision) return;
     state.isLoadingMoreOrders = false;
     const page = Array.isArray(result) ? { orders: result, pagination: {} } : result;
     state.searchNextCursor = page?.pagination?.nextCursor || null;
     state.currentSearchOrders = state.currentSearchOrders.concat(page?.orders || []);
     displayOrderTable(state.currentSearchOrders, "searchResults", "search");
+    if (restoreFocus && (document.activeElement === document.body || document.activeElement === button)) {
+      const target = document.getElementById("searchLoadMore") || document.querySelector("#searchResults .result-title");
+      target?.focus({ preventScroll: true });
+    }
   }).withFailureHandler(function(error) {
+    if (revision !== searchRevision) return;
     state.isLoadingMoreOrders = false;
     if (button) setButtonLoading(button, false);
     showAlert(error?.message || "\u8F09\u5165\u4E0B\u4E00\u9801\u5931\u6557", "error");
@@ -2963,6 +3033,12 @@ function handleSearchResults(orders) {
 }
 function displayOrderTable(orders, containerId, type = "search") {
   const container = document.getElementById(containerId);
+  const focusedToggle = container.contains(document.activeElement) ? document.activeElement.closest(".order-items-toggle")?.dataset.oid : void 0;
+  if (containerId === "searchResults") {
+    const announcement = document.getElementById("searchAnnouncement");
+    const message = type === "overdue" ? `\u5F85\u8655\u7406\u903E\u671F\u8A02\u55AE\uFF0C\u5171 ${orders?.length || 0} \u7B46` : `\u641C\u5C0B\u7D50\u679C\uFF0C\u5171 ${orders?.length || 0} \u7B46`;
+    if (announcement.textContent !== message) announcement.textContent = message;
+  }
   if (containerId === "searchResults" && state.orderItemsTransition) {
     state.orderItemsTransition = null;
     state.collapsingSearchOrderId = null;
@@ -2980,7 +3056,7 @@ function displayOrderTable(orders, containerId, type = "search") {
     if (!collapsingStillExists) state.collapsingSearchOrderId = null;
   }
   if (!orders || orders.length === 0) {
-    const message = type === "overdue" ? '<div class="result-banner success"><i class="fas fa-check-circle"></i><span>\u76EE\u524D\u6C92\u6709\u904E\u671F\u672A\u5B8C\u6210\u7684\u8A02\u55AE</span></div>' : '<div class="result-banner neutral"><i class="fas fa-inbox"></i><span>\u672A\u627E\u5230\u7B26\u5408\u689D\u4EF6\u7684\u8A02\u55AE</span></div>';
+    const message = type === "overdue" ? '<div class="result-banner success"><i class="fas fa-check-circle"></i><span>\u76EE\u524D\u6C92\u6709\u904E\u671F\u672A\u5B8C\u6210\u7684\u8A02\u55AE</span></div>' : '<div class="result-banner neutral"><i class="fas fa-inbox" aria-hidden="true"></i><span>\u672A\u627E\u5230\u7B26\u5408\u689D\u4EF6\u7684\u8A02\u55AE\u3002\u8ACB\u78BA\u8A8D\u59D3\u540D\u3001\u96FB\u8A71\u6216\u4EA4\u8CA8\u65E5\u671F\uFF0C\u6216\u6E1B\u5C11\u641C\u5C0B\u689D\u4EF6\u5F8C\u518D\u8A66\u3002</span></div>';
     container.innerHTML = message;
     return;
   }
@@ -2988,16 +3064,16 @@ function displayOrderTable(orders, containerId, type = "search") {
   if (type === "overdue") {
     headerContent = `
                     <div class="result-banner danger"><i class="fas fa-exclamation-triangle"></i><span>\u767C\u73FE ${orders.length} \u7B46\u904E\u671F\u672A\u5B8C\u6210\u7684\u8A02\u55AE</span></div>
-                    <h3 class="result-title">\u904E\u671F\u672A\u5B8C\u6210\u8A02\u55AE (${orders.length} \u7B46)</h3>`;
+                    <h2 class="result-title" tabindex="-1">\u904E\u671F\u672A\u5B8C\u6210\u8A02\u55AE (${orders.length} \u7B46)</h2>`;
   } else {
-    headerContent = `<h3 class="result-title">\u641C\u5C0B\u7D50\u679C (${orders.length} \u7B46)</h3>`;
+    headerContent = `<h2 class="result-title" tabindex="-1">\u641C\u5C0B\u7D50\u679C (${orders.length} \u7B46)</h2>`;
   }
   let tableHeaders = "<th>\u59D3\u540D</th><th>\u806F\u7D61\u65B9\u5F0F</th><th>\u4EA4\u8CA8\u65E5</th>";
   if (type === "overdue") {
     tableHeaders += "<th>\u903E\u671F\u5929\u6578</th>";
   }
   tableHeaders += "<th>\u904B\u8CBB</th><th>\u7E3D\u91D1\u984D</th><th>\u5DF2\u4ED8\u8A02\u91D1</th><th>\u5269\u9918\u91D1\u984D</th><th>\u72C0\u614B</th><th>\u64CD\u4F5C</th>";
-  const tableRows = orders.map((order) => {
+  const tableRows = orders.map((order, index) => {
     const isOverdue = type === "overdue";
     let overdueDays = 0;
     const rowClasses = [];
@@ -3010,8 +3086,15 @@ function displayOrderTable(orders, containerId, type = "search") {
     const contactType = order.customerContactType || (order.customerLineId ? "line" : "phone");
     const contactValue = order.customerContactValue || order.customerLineId || order.customerPhone || "-";
     const contactDisplay = contactType === "line" ? "LINE" : contactValue;
+    const orderId = order.id || order.orderId;
+    const canExpandItems = type === "search" && Array.isArray(order.items);
+    const isExpanded = canExpandItems && state.expandedSearchOrderId === orderId;
+    const isCollapsing = canExpandItems && state.collapsingSearchOrderId === orderId;
+    const detailId = `${containerId}-items-${index}`;
+    const customerName = escapeHtml(order.customerName || "\u672A\u586B\u59D3\u540D");
+    const nameCell = canExpandItems ? `<button type="button" class="order-items-toggle" data-oid="${escapeAttr(orderId)}" aria-expanded="${isExpanded}" ${isExpanded || isCollapsing ? `aria-controls="${detailId}"` : ""} aria-label="${isExpanded ? "\u6536\u5408" : "\u5C55\u958B"} ${escapeAttr(order.customerName || "\u672A\u586B\u59D3\u540D")} \u7684\u5546\u54C1\u660E\u7D30\uFF0C\u8A02\u55AE ${escapeAttr(orderId)}" onclick="event.stopPropagation(); toggleOrderItems(this.dataset.oid)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg><span>${customerName}</span></button>` : customerName;
     let cells = `
-                    <td data-label="\u59D3\u540D">${escapeHtml(order.customerName)}</td>
+                    <td data-label="\u59D3\u540D">${nameCell}</td>
                     <td data-label="\u806F\u7D61\u65B9\u5F0F">${escapeHtml(contactDisplay)}</td>
                     <td data-label="\u4EA4\u8CA8\u65E5">${formatDisplayDate(order.deliveryDate)}</td>`;
     if (isOverdue) {
@@ -3020,21 +3103,17 @@ function displayOrderTable(orders, containerId, type = "search") {
                             <span class="overdue-badge ${overdueDays > 7 ? "severe" : "mild"}">${overdueDays} \u5929</span>
                         </td>`;
     }
-    const orderId = order.id || order.orderId;
     const depositAmount = order.depositAmount || 0;
-    const remainingAmount = order.remainingAmount || order.totalAmount;
-    const canExpandItems = type === "search" && Array.isArray(order.items);
-    const isExpanded = canExpandItems && state.expandedSearchOrderId === orderId;
-    const isCollapsing = canExpandItems && state.collapsingSearchOrderId === orderId;
+    const remainingAmount = order.remainingAmount ?? order.totalAmount;
     if (canExpandItems) rowClasses.push("order-summary-row");
     if (isExpanded) rowClasses.push("is-expanded");
     const hasFee = order.shippingFee > 0;
-    const shippingFeeDisplay = hasFee ? `NT$ ${order.shippingFee}` : order.shippingNotes === "\u514D\u904B" || order.deliveryType === "\u81EA\u53D6" ? "\u514D\u904B" : "-";
+    const shippingFeeDisplay = hasFee ? `NT$ ${money(order.shippingFee)}` : order.shippingNotes === "\u514D\u904B" || order.deliveryType === "\u81EA\u53D6" ? "\u514D\u904B" : "-";
     cells += `
                     <td data-label="\u904B\u8CBB" class="td-fee${hasFee ? " has-fee" : ""}">${shippingFeeDisplay}</td>
-                    <td data-label="\u7E3D\u91D1\u984D" class="td-amount">NT$ ${order.totalAmount}</td>
-                    <td data-label="\u5DF2\u4ED8\u8A02\u91D1" class="td-deposit${depositAmount > 0 ? " paid" : ""}">NT$ ${depositAmount}</td>
-                    <td data-label="\u5269\u9918\u91D1\u984D" class="td-remaining ${remainingAmount > 0 ? "due" : "clear"}">NT$ ${remainingAmount}</td>
+                    <td data-label="\u7E3D\u91D1\u984D" class="td-amount">NT$ ${money(order.totalAmount)}</td>
+                    <td data-label="\u5DF2\u4ED8\u8A02\u91D1" class="td-deposit${depositAmount > 0 ? " paid" : ""}">NT$ ${money(depositAmount)}</td>
+                    <td data-label="\u5269\u9918\u91D1\u984D" class="td-remaining ${remainingAmount > 0 ? "due" : "clear"}">NT$ ${money(remainingAmount)}</td>
                     <td data-label="\u72C0\u614B"><span class="status-pill ${getStatusPillClass(order.status)}">${escapeHtml(order.status)}</span></td>
                     <td data-label="\u64CD\u4F5C">
                       <div class="order-actions">
@@ -3044,7 +3123,12 @@ function displayOrderTable(orders, containerId, type = "search") {
                     </td>`;
     const rowClassAttr = rowClasses.length ? ` class="${rowClasses.join(" ")}"` : "";
     const rowClickAttr = canExpandItems ? ` onclick="toggleOrderItems('${escapeHandlerArgument(orderId)}')"` : "";
-    const expandedItemsRow = isExpanded || isCollapsing ? renderExpandedOrderItems(order.items, tableHeaders.split("</th>").length - 1, isCollapsing) : "";
+    const expandedItemsRow = isExpanded || isCollapsing ? renderExpandedOrderItems(
+      order.items,
+      tableHeaders.split("</th>").length - 1,
+      isCollapsing,
+      detailId
+    ) : "";
     return `<tr${rowClassAttr}${rowClickAttr}>${cells}</tr>${expandedItemsRow}`;
   }).join("");
   container.innerHTML = `
@@ -3056,6 +3140,9 @@ function displayOrderTable(orders, containerId, type = "search") {
                     </table>
                 </div>
                 ${type === "search" && state.searchNextCursor ? '<div class="search-pagination"><button id="searchLoadMore" type="button" onclick="loadMoreOrders()">\u8F09\u5165\u66F4\u591A\u8A02\u55AE</button></div>' : ""}`;
+  if (focusedToggle !== void 0) {
+    [...container.querySelectorAll(".order-items-toggle")].find((button) => button.dataset.oid === focusedToggle)?.focus({ preventScroll: true });
+  }
 }
 function toggleOrderItems(orderId) {
   if (state.orderItemsTransition) return;
@@ -3083,10 +3170,11 @@ function toggleOrderItems(orderId) {
     });
   });
 }
-function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
+function renderExpandedOrderItems(items, columnCount, isCollapsing = false, detailId = "") {
   const collapsingClass = isCollapsing ? " is-collapsing" : "";
+  const idAttribute = detailId ? ` id="${escapeAttr(detailId)}"` : "";
   if (!items || items.length === 0) {
-    return `<tr class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-scroll"><div class="order-items-empty">\u6B64\u8A02\u55AE\u6C92\u6709\u5546\u54C1\u660E\u7D30</div></div></div></td></tr>`;
+    return `<tr${idAttribute} class="order-items-row${collapsingClass}"><td colspan="${columnCount}"><div class="order-items-expand"><div class="order-items-scroll"><div class="order-items-empty">\u6B64\u8A02\u55AE\u6C92\u6709\u5546\u54C1\u660E\u7D30</div></div></div></td></tr>`;
   }
   let itemsHtml = "";
   items.forEach((item) => {
@@ -3139,7 +3227,7 @@ function renderExpandedOrderItems(items, columnCount, isCollapsing = false) {
     }
   });
   return `
-                <tr class="order-items-row${collapsingClass}">
+                <tr${idAttribute} class="order-items-row${collapsingClass}">
                     <td colspan="${columnCount}">
                         <div class="order-items-expand">
                             <div class="order-items-scroll">
@@ -3175,6 +3263,7 @@ function formatDisplayDate(dateValue) {
   }
 }
 function clearSearch() {
+  resetSearchRequest();
   document.getElementById("searchPhone").value = "";
   document.getElementById("searchName").value = "";
   if (state.searchDatepickerInstance) {
@@ -3182,19 +3271,22 @@ function clearSearch() {
   } else {
     document.getElementById("searchDate").value = "";
   }
-  document.getElementById("searchResults").innerHTML = "";
+  document.getElementById("searchResults").innerHTML = '<div class="result-banner neutral"><i class="fas fa-search" aria-hidden="true"></i><span>\u8F38\u5165\u59D3\u540D\u3001\u806F\u7D61\u65B9\u5F0F\u6216\u4EA4\u8CA8\u65E5\u671F\uFF0C\u958B\u59CB\u67E5\u8A62\u8A02\u55AE\u3002</span></div>';
+  document.getElementById("searchAnnouncement").textContent = "\u5DF2\u6E05\u7A7A\u641C\u5C0B\u689D\u4EF6\u8207\u7D50\u679C";
   const status = document.getElementById("searchStatus");
   if (status) status.value = "";
   selectSearchContactMethod("phone", false);
   state.searchNextCursor = null;
   state.lastSearchCriteria = null;
+  document.getElementById("searchName").focus();
 }
 function searchOverdueOrders() {
-  const searchBtn = window.event?.currentTarget || document.querySelector(".btn-overdue");
-  setButtonLoading(searchBtn, true, "\u6AA2\u7D22\u4E2D...");
+  const searchBtn = document.querySelector(".btn-overdue");
+  const revision = beginSearch("overdue", searchBtn);
   if (isConnected()) {
     rpc.withSuccessHandler(function(orders) {
-      setButtonLoading(searchBtn, false);
+      if (revision !== searchRevision) return;
+      finishSearch(searchBtn);
       try {
         handleOverdueResults(orders);
       } catch (clientError) {
@@ -3202,11 +3294,12 @@ function searchOverdueOrders() {
         showAlert("\u8655\u7406\u904E\u671F\u8A02\u55AE\u7D50\u679C\u6642\u767C\u751F\u932F\u8AA4: " + clientError.message, "error");
       }
     }).withFailureHandler(function(error) {
-      setButtonLoading(searchBtn, false);
-      handleError(error);
+      if (revision !== searchRevision) return;
+      finishSearch(searchBtn);
+      renderSearchError(error);
     }).searchOverdueOrders();
   } else {
-    setButtonLoading(searchBtn, false);
+    finishSearch(searchBtn);
     renderSearchError(new Error("\u5C1A\u672A\u9023\u63A5 Firebase"));
   }
 }
@@ -4307,9 +4400,9 @@ function renderProductCards() {
     const statusClass = p.status === "\u555F\u7528" ? "enabled" : "disabled";
     const statusIcon = p.status === "\u555F\u7528" ? "fa-check-circle" : "fa-times-circle";
     const giftboxBadge = p.giftBoxEnabled === "\u662F" ? '<span class="status-badge yes"><i class="fas fa-gift"></i> \u53EF\u88DD\u79AE\u76D2</span>' : "";
-    const money2 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
-    const specialPriceDisplay = p.specialPrice && p.specialPrice !== "" ? `<span class="price-special">${money2(p.specialPrice)}</span>` : '<span class="price-none">\u672A\u8A2D\u5B9A</span>';
-    const companyPriceDisplay = p.companyPrice && p.companyPrice !== "" ? `<span class="price-value">${money2(p.companyPrice)}</span>` : '<span class="price-none">\u672A\u8A2D\u5B9A</span>';
+    const money3 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
+    const specialPriceDisplay = p.specialPrice && p.specialPrice !== "" ? `<span class="price-special">${money3(p.specialPrice)}</span>` : '<span class="price-none">\u672A\u8A2D\u5B9A</span>';
+    const companyPriceDisplay = p.companyPrice && p.companyPrice !== "" ? `<span class="price-value">${money3(p.companyPrice)}</span>` : '<span class="price-none">\u672A\u8A2D\u5B9A</span>';
     return `<div class="product-card gj-pos-card">
                     <div class="product-card-header">
                         <h3 class="product-name">${escapeHtml(p.productName)}</h3>
@@ -4322,7 +4415,7 @@ function renderProductCards() {
                     <div class="product-card-prices">
                         <div class="price-row">
                             <span class="price-label">\u552E\u50F9</span>
-                            <span class="price-value">${money2(p.price)}</span>
+                            <span class="price-value">${money3(p.price)}</span>
                         </div>
                         <div class="price-row">
                             <span class="price-label">\u7279\u50F9</span>
@@ -4689,9 +4782,23 @@ function initOrderDraftPersistence() {
 }
 
 // src/app/customers.js
+var autocompleteRevision = 0;
+var autocompleteInputs = { customerAcList: "customerName", customerAcListPhone: "customerPhone" };
+function updateIdentityError(show = false) {
+  const error = document.getElementById("customerIdentityError");
+  error.hidden = !show;
+  document.getElementById("customerIdentityHint").hidden = show;
+  for (const id of ["customerName", "customerPhone"]) {
+    const input = document.getElementById(id);
+    input.setAttribute("aria-describedby", show ? "customerIdentityError" : "customerIdentityHint");
+    if (show) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
+  }
+}
 function toggleNameTitle(btn) {
   if (btn.classList.contains("active")) {
     btn.classList.remove("active");
+    scheduleDraftSave();
     return;
   }
   document.querySelectorAll("#nameTitleGroup .name-title-btn").forEach((b) => b.classList.remove("active"));
@@ -4713,7 +4820,8 @@ function selectContactMethod(method, clearValue = true) {
     if (state.currentContactMethod === "line") input.value = "LINE";
     else if (clearValue) input.value = "";
   }
-  if (label) label.textContent = "\u806F\u7D61\u96FB\u8A71";
+  if (label) label.textContent = state.currentContactMethod === "phone" ? "\u806F\u7D61\u96FB\u8A71" : "\u806F\u7D61\u65B9\u5F0F";
+  if (input?.value || document.getElementById("customerName").value.trim()) updateIdentityError();
   closeAllAcLists();
   scheduleDraftSave();
 }
@@ -4759,6 +4867,24 @@ function initSearchContactMethodToggle() {
 function initCustomerAutocomplete() {
   const nameInput = document.getElementById("customerName");
   const phoneInput = document.getElementById("customerPhone");
+  for (const [listId, inputId] of Object.entries(autocompleteInputs)) {
+    const input = document.getElementById(inputId);
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", listId);
+    input.setAttribute("aria-expanded", "false");
+    const list = document.getElementById(listId);
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", "\u7B26\u5408\u7684\u5BA2\u6236");
+    input.addEventListener("input", () => {
+      if (nameInput.value.trim() || phoneInput.value.trim()) updateIdentityError();
+    });
+  }
+  document.addEventListener("pos:navigate", closeAllAcLists);
+  document.addEventListener("focusin", (event) => {
+    if (!event.target.closest(".customer-ac-wrap") || Object.values(autocompleteInputs).includes(event.target.id))
+      closeAllAcLists();
+  });
   nameInput.addEventListener("input", function() {
     debounceAcSearch(this.value.trim(), "customerAcList", "name");
   });
@@ -4778,7 +4904,8 @@ function initCustomerAutocomplete() {
   });
 }
 function debounceAcSearch(keyword, listId, mode) {
-  clearTimeout(state.acDebounceTimer);
+  closeAllAcLists();
+  const revision = autocompleteRevision;
   if (!keyword || keyword.length < 2) {
     document.getElementById(listId).classList.remove("show");
     return;
@@ -4791,14 +4918,20 @@ function debounceAcSearch(keyword, listId, mode) {
   state.acDebounceTimer = setTimeout(function() {
     if (isConnected()) {
       rpc.withSuccessHandler(function(results) {
+        if (revision !== autocompleteRevision) return;
         state.customerSearchCache.set(cacheKey, results || []);
         renderAcList(results, listId);
+      }).withFailureHandler(() => {
+        if (revision === autocompleteRevision) closeAllAcLists();
       }).searchCustomers({ keyword, mode, contactType: state.currentContactMethod });
     }
   }, 300);
 }
 function renderAcList(results, listId) {
   const list = document.getElementById(listId);
+  const input = document.getElementById(autocompleteInputs[listId]);
+  input.setAttribute("aria-expanded", String(Boolean(results?.length)));
+  input.removeAttribute("aria-activedescendant");
   if (!results || results.length === 0) {
     list.classList.remove("show");
     list.innerHTML = "";
@@ -4806,7 +4939,7 @@ function renderAcList(results, listId) {
   }
   state.acResultsCache = results;
   list.innerHTML = results.map(function(c, i) {
-    return '<button type="button" class="customer-ac-item" role="option" data-index="' + i + '"><div class="customer-ac-icon"><i class="fas fa-user"></i></div><div class="customer-ac-info"><div class="customer-ac-name">' + escapeHtml(c.name) + '</div><div class="customer-ac-phone">' + escapeHtml(c.contactType === "line" ? "LINE" : c.contactValue || c.phone || "") + (c.address ? " / " + escapeHtml(c.address) : "") + "</div></div></button>";
+    return '<button type="button" class="customer-ac-item" role="option" tabindex="-1" aria-selected="false" id="' + listId + "-option-" + i + '" data-index="' + i + '"><div class="customer-ac-icon"><i class="fas fa-user"></i></div><div class="customer-ac-info"><div class="customer-ac-name">' + escapeHtml(c.name) + '</div><div class="customer-ac-phone">' + escapeHtml(c.contactType === "line" ? "LINE" : c.contactValue || c.phone || "") + (c.address ? " / " + escapeHtml(c.address) : "") + "</div></div></button>";
   }).join("");
   list.setAttribute("role", "listbox");
   list.setAttribute("aria-label", "\u7B26\u5408\u7684\u5BA2\u6236");
@@ -4834,15 +4967,27 @@ function selectAcCustomer(index) {
   if (c.address) {
     document.getElementById("customerAddress").value = c.address;
   }
+  updateIdentityError();
+  scheduleDraftSave();
   closeAllAcLists();
 }
 function closeAllAcLists() {
+  autocompleteRevision++;
+  clearTimeout(state.acDebounceTimer);
   document.querySelectorAll(".customer-ac-list").forEach(function(el) {
     el.classList.remove("show");
+    const input = document.getElementById(autocompleteInputs[el.id]);
+    input?.setAttribute("aria-expanded", "false");
+    input?.removeAttribute("aria-activedescendant");
   });
 }
 function acKeyNav(e, listId) {
   const list = document.getElementById(listId);
+  if (e.key === "Escape") {
+    e.preventDefault();
+    closeAllAcLists();
+    return;
+  }
   if (!list.classList.contains("show")) return;
   const items = list.querySelectorAll(".customer-ac-item");
   if (items.length === 0) return;
@@ -4858,18 +5003,18 @@ function acKeyNav(e, listId) {
     idx = idx <= 0 ? items.length - 1 : idx - 1;
   } else if (e.key === "Enter" && idx >= 0) {
     e.preventDefault();
-    items[idx].dispatchEvent(new Event("mousedown"));
-    return;
-  } else if (e.key === "Escape") {
-    closeAllAcLists();
+    items[idx].click();
     return;
   } else {
     return;
   }
   items.forEach(function(item) {
     item.classList.remove("highlight");
+    item.setAttribute("aria-selected", "false");
   });
   items[idx].classList.add("highlight");
+  items[idx].setAttribute("aria-selected", "true");
+  e.target.setAttribute("aria-activedescendant", items[idx].id);
   items[idx].scrollIntoView({ block: "nearest" });
 }
 function escapeHtml(str) {
@@ -4895,9 +5040,12 @@ function saveCustomer() {
   const recipientPhone = document.getElementById("recipientPhone").value.trim();
   const deliveryType = document.getElementById("deliveryTypeValue").value;
   if (!name && !contactValue) {
+    updateIdentityError(true);
+    document.getElementById("customerName").focus();
     showAlert("\u5BA2\u6236\u59D3\u540D\u6216\u806F\u7D61\u65B9\u5F0F\u8ACB\u81F3\u5C11\u586B\u5BEB\u4E00\u9805", "error");
     return;
   }
+  updateIdentityError();
   state.currentCustomer = {
     name,
     contactType: state.currentContactMethod,
@@ -4916,6 +5064,7 @@ function saveCustomer() {
   showSectionById("date");
 }
 function clearCustomerForm() {
+  updateIdentityError();
   document.getElementById("customerName").value = "";
   document.querySelectorAll("#nameTitleGroup .name-title-btn").forEach((b) => b.classList.remove("active"));
   document.getElementById("customerPhone").value = "";
@@ -6256,7 +6405,7 @@ var clean = (value) => Array.from(
   String(value ?? ""),
   (char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127 ? " " : char
 ).join("").trim();
-var money = (value) => {
+var money2 = (value) => {
   const number = Number(value ?? 0);
   if (!Number.isFinite(number)) throw new Error("\u8A02\u55AE\u91D1\u984D\u683C\u5F0F\u4E0D\u6B63\u78BA");
   return `NT$ ${number.toLocaleString("zh-TW", { maximumFractionDigits: 2 })}`;
@@ -6343,7 +6492,7 @@ async function renderReceipt(order, config, products = []) {
   pushLine(null);
   order.items.forEach((item) => {
     add(item.productName || "\u672A\u547D\u540D\u5546\u54C1");
-    add(`${item.quantity} \xD7 ${money(item.unitPrice)} = ${money(item.subtotal)}`);
+    add(`${item.quantity} \xD7 ${money2(item.unitPrice)} = ${money2(item.subtotal)}`);
     if (item.isGiftBox && item.giftBoxDetails) {
       for (const [id, quantity] of Object.entries(item.giftBoxDetails.products || {})) {
         const name = products.find((product) => product.productId === id)?.productName || `\u5546\u54C1 ${id}`;
@@ -6354,11 +6503,11 @@ async function renderReceipt(order, config, products = []) {
     if (item.notes) add(`\u5099\u8A3B\uFF1A${item.notes}`);
   });
   pushLine(null);
-  add(`\u904B\u8CBB\uFF1A${money(order.shippingFee)}`);
+  add(`\u904B\u8CBB\uFF1A${money2(order.shippingFee)}`);
   if (order.shippingNotes) add(order.shippingNotes);
-  add(`\u7E3D\u91D1\u984D\uFF1A${money(order.totalAmount)}`);
-  add(`\u5DF2\u4ED8\u8A02\u91D1\uFF1A${money(order.depositAmount)}`);
-  add(`\u5269\u9918\u91D1\u984D\uFF1A${money(order.remainingAmount ?? order.totalAmount)}`);
+  add(`\u7E3D\u91D1\u984D\uFF1A${money2(order.totalAmount)}`);
+  add(`\u5DF2\u4ED8\u8A02\u91D1\uFF1A${money2(order.depositAmount)}`);
+  add(`\u5269\u9918\u91D1\u984D\uFF1A${money2(order.remainingAmount ?? order.totalAmount)}`);
   if (order.notes) add(`\u5099\u8A3B\uFF1A${order.notes}`);
   add("\u6B64\u55AE\u70BA\u8A02\u55AE\u660E\u7D30\uFF0C\u975E\u7D71\u4E00\u767C\u7968");
   function drawBand(start) {
@@ -7573,7 +7722,7 @@ function viewOrderDetails(orderId) {
 function handleOrderDetails(details) {
   const orderId = details.orderId || details.id;
   const handlerId = escapeHandlerArgument(orderId);
-  const money2 = (value) => `NT$ ${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
+  const money3 = (value) => `NT$ ${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
   const remainingAmount = details.remainingAmount ?? details.totalAmount;
   const items = details.items || [];
   const isLine = details.customerContactType === "line" || Boolean(details.customerLineId);
@@ -7602,12 +7751,12 @@ function handleOrderDetails(details) {
       </details>`;
     }
     const specialPrice = item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.unitPrice;
-    const price = specialPrice ? `<span class="original-price">${money2(item.originalPrice)}</span><span class="special-price-text">\u7279\u50F9 ${money2(item.unitPrice)}</span>` : money2(item.unitPrice);
+    const price = specialPrice ? `<span class="original-price">${money3(item.originalPrice)}</span><span class="special-price-text">\u7279\u50F9 ${money3(item.unitPrice)}</span>` : money3(item.unitPrice);
     return `<tr role="row">
       <td role="cell" class="order-detail-product"><strong>${escapeHtml(item.productName)}</strong>${giftContents}</td>
       <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u6578\u91CF</span>${escapeHtml(item.quantity)}</td>
       <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u55AE\u50F9</span>${price}</td>
-      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u5C0F\u8A08</span><strong>${money2(item.subtotal)}</strong></td>
+      <td role="cell"><span class="order-detail-mobile-label" aria-hidden="true">\u5C0F\u8A08</span><strong>${money3(item.subtotal)}</strong></td>
     </tr>`;
   }).join("");
   detailModal.innerHTML = `<div class="modal-content gj-pos-dialog order-detail-dialog" onclick="event.stopPropagation()">
@@ -7623,7 +7772,7 @@ function handleOrderDetails(details) {
                     <dl class="order-detail-overview" aria-label="\u4EA4\u8CA8\u8207\u6536\u6B3E\u6458\u8981">
                       <div><dt>\u4EA4\u8CA8\u65E5\u671F</dt><dd>${escapeHtml(formatDisplayDate(details.deliveryDate))}</dd></div>
                       <div><dt>\u914D\u9001\u65B9\u5F0F</dt><dd>${escapeHtml(details.deliveryType || "\u5916\u9001")}</dd></div>
-                      <div><dt>${remainingAmount > 0 ? "\u5F85\u6536\u91D1\u984D" : "\u5269\u9918\u91D1\u984D"}</dt><dd class="order-detail-balance ${remainingAmount > 0 ? "is-outstanding" : "is-paid"}">${money2(remainingAmount)}</dd></div>
+                      <div><dt>${remainingAmount > 0 ? "\u5F85\u6536\u91D1\u984D" : "\u5269\u9918\u91D1\u984D"}</dt><dd class="order-detail-balance ${remainingAmount > 0 ? "is-outstanding" : "is-paid"}">${money3(remainingAmount)}</dd></div>
                     </dl>
                     <div class="order-detail-layout">
                       <section class="order-detail-items" aria-label="\u8A02\u55AE\u660E\u7D30">
@@ -7649,10 +7798,10 @@ function handleOrderDetails(details) {
                         <section class="order-detail-payment" aria-label="\u4ED8\u6B3E\u8CC7\u8A0A">
                           <div class="order-detail-section-heading"><h3>\u4ED8\u6B3E\u8CC7\u8A0A</h3></div>
                           <dl class="order-detail-facts order-detail-payment-facts">
-                            <div><dt>\u7E3D\u91D1\u984D</dt><dd>${money2(details.totalAmount)}</dd></div>
-                            <div><dt>\u5DF2\u4ED8\u8A02\u91D1</dt><dd>${money2(details.depositAmount)}</dd></div>
-                            ${details.shippingFee > 0 || details.shippingNotes ? `<div><dt>\u904B\u8CBB\uFF08\u5DF2\u542B\u65BC\u7E3D\u91D1\u984D\uFF09</dt><dd>${details.shippingFee > 0 ? money2(details.shippingFee) : "\u514D\u904B"}</dd></div>` : ""}
-                            <div class="order-detail-payment-balance"><dt>\u5269\u9918\u91D1\u984D</dt><dd class="order-detail-balance ${remainingAmount > 0 ? "is-outstanding" : "is-paid"}">${money2(remainingAmount)}</dd></div>
+                            <div><dt>\u7E3D\u91D1\u984D</dt><dd>${money3(details.totalAmount)}</dd></div>
+                            <div><dt>\u5DF2\u4ED8\u8A02\u91D1</dt><dd>${money3(details.depositAmount)}</dd></div>
+                            ${details.shippingFee > 0 || details.shippingNotes ? `<div><dt>\u904B\u8CBB\uFF08\u5DF2\u542B\u65BC\u7E3D\u91D1\u984D\uFF09</dt><dd>${details.shippingFee > 0 ? money3(details.shippingFee) : "\u514D\u904B"}</dd></div>` : ""}
+                            <div class="order-detail-payment-balance"><dt>\u5269\u9918\u91D1\u984D</dt><dd class="order-detail-balance ${remainingAmount > 0 ? "is-outstanding" : "is-paid"}">${money3(remainingAmount)}</dd></div>
                           </dl>
                           ${canUpdate ? `<button type="button" class="gj-btn order-detail-deposit" onclick="showDepositModal('${handlerId}', ${escapeHandlerArgument(details.totalAmount)}, ${escapeHandlerArgument(details.depositAmount || 0)}); this.closest('.modal').remove();"><i class="fas fa-coins" aria-hidden="true"></i> \u8A2D\u5B9A\u8A02\u91D1</button>` : ""}
                         </section>
@@ -7867,7 +8016,7 @@ function initializeWorkspace() {
     closeManagement();
     managementToggle.classList.toggle("current-group", section === "settings");
     const heading = document.getElementById("workspaceTitle");
-    if (heading && !restoring) {
+    if (heading) {
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
     }

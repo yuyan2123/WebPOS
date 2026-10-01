@@ -41,18 +41,43 @@ export function showAlert(message, type = 'success', duration = 0) {
   alertDiv.appendChild(close);
   alertContainer.prepend(alertDiv);
   let removed = false;
+  let timer;
+  let startedAt;
+  let remaining = duration > 0 ? duration : type === 'error' || message.includes('\n') ? 6000 : 3000;
   function dismiss() {
     if (removed) return;
     removed = true;
+    clearTimeout(timer);
+    const hadFocus = alertDiv.contains(document.activeElement);
+    if (hadFocus) {
+      const heading = document.getElementById('workspaceTitle');
+      heading?.focus({ preventScroll: true });
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      alertDiv.remove();
+      return;
+    }
     alertDiv.style.opacity = '0';
     alertDiv.style.transform = 'translateX(30%)';
     setTimeout(() => alertDiv.remove(), 300);
   }
-  // 點擊即關閉
-  alertDiv.addEventListener('click', dismiss);
-  // 錯誤與多行重要訊息停留較久；呼叫端可用 duration 指定
-  const holdTime = duration > 0 ? duration : type === 'error' || message.includes('\n') ? 6000 : 3000;
-  setTimeout(dismiss, holdTime);
+  function pause() {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    remaining = Math.max(0, remaining - (performance.now() - startedAt));
+  }
+  function resume() {
+    if (removed || timer || alertDiv.matches(':hover') || alertDiv.contains(document.activeElement)) return;
+    startedAt = performance.now();
+    timer = setTimeout(dismiss, remaining);
+  }
+  close.addEventListener('click', dismiss);
+  alertDiv.addEventListener('pointerenter', pause);
+  alertDiv.addEventListener('pointerleave', resume);
+  alertDiv.addEventListener('focusin', pause);
+  alertDiv.addEventListener('focusout', () => queueMicrotask(resume));
+  resume();
 }
 
 // --- Button Loading State Management ---

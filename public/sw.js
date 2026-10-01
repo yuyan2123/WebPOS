@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gin-jia-pos-505d7eaf3810";
+const CACHE_VERSION = "gin-jia-pos-5f735925103d";
 const APP_SHELL = [
   "/",
   "/index.html",

@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#006973">
-    <meta name="app-version" content="0.15.1+e6f87fa09d00">
-    <meta name="app-updated-at" content="2026-09-28T09:45:18.590Z">
+    <meta name="app-version" content="0.15.2+e80ff6b6ea81">
+    <meta name="app-updated-at" content="2026-10-01T09:35:54.234Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -79,12 +79,13 @@
 
         <!-- 客戶資訊頁 -->
         <section id="customer" class="content-section active max-w-4xl mx-auto bg-md-content p-8 rounded-2xl shadow-sm">
-            <p class="text-sm text-md-on-surface-variant mb-4">客戶姓名或聯絡方式請至少填寫一項</p>
+            <p id="customerIdentityHint" class="text-sm text-md-on-surface-variant mb-4">客戶姓名或聯絡方式請至少填寫一項</p>
+            <p id="customerIdentityError" class="text-sm text-md-error mb-4" hidden>請填寫客戶姓名或聯絡方式後，再繼續選擇交貨日期。</p>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="customer-ac-wrap">
                     <label class="block text-base font-medium text-md-on-surface-variant mb-2">客戶姓名</label>
                     <div class="name-title-row">
-                        <input type="text" id="customerName" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl focus:ring-2 focus:ring-md-primary outline-none text-lg name-title-input gj-input" placeholder="請輸入姓名" autocomplete="off">
+                        <input type="text" id="customerName" aria-describedby="customerIdentityHint" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl focus:ring-2 focus:ring-md-primary outline-none text-lg name-title-input gj-input" placeholder="請輸入姓名" autocomplete="off">
                         <div class="name-title-group gj-segment" id="nameTitleGroup">
                             <button type="button" class="name-title-btn" data-title="先生" onclick="toggleNameTitle(this)">先生</button>
                             <button type="button" class="name-title-btn" data-title="小姐" onclick="toggleNameTitle(this)">小姐</button>
@@ -95,7 +96,7 @@
                 <div class="customer-ac-wrap">
                     <label id="customerContactLabel" for="customerPhone" class="block text-base font-medium text-md-on-surface-variant mb-2">聯絡電話</label>
                     <div class="name-title-row">
-                        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="customerPhone" class="name-title-input w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl focus:ring-2 focus:ring-md-primary outline-none text-lg gj-input" placeholder="09xx-xxx-xxx" autocomplete="off">
+                        <input type="tel" inputmode="numeric" pattern="[0-9]*" id="customerPhone" aria-describedby="customerIdentityHint" class="name-title-input w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl focus:ring-2 focus:ring-md-primary outline-none text-lg gj-input" placeholder="09xx-xxx-xxx" autocomplete="off">
                         <div class="name-title-group gj-segment contact-method-toggle" role="group" aria-label="聯絡方式">
                             <button id="contactMethodPhone" type="button" class="name-title-btn active">電話</button>
                             <button id="contactMethodLine" type="button" class="name-title-btn">LINE</button>
@@ -349,7 +350,8 @@
                 </div>
 
                 <!-- 搜尋結果 -->
-                <div id="searchResults" aria-live="polite"></div>
+                <p id="searchAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+                <div id="searchResults" role="region" aria-label="訂單查詢結果" tabindex="-1"><div class="result-banner neutral"><i class="fas fa-search" aria-hidden="true"></i><span>輸入姓名、聯絡方式或交貨日期，開始查詢訂單。</span></div></div>
             </div>
         </section>
 
@@ -561,7 +563,7 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version 0.15.1</p>
+            <p>Website content edited by yuyan2123. Version 0.15.2</p>
         </footer>
 
     </main>
