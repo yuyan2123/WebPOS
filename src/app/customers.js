@@ -328,7 +328,6 @@ export function saveCustomer() {
   const deliveryType = document.getElementById('deliveryTypeValue').value;
   if (!name && !contactValue) {
     updateIdentityError(true);
-    document.getElementById('customerName').focus();
     showAlert('客戶姓名或聯絡方式請至少填寫一項', 'error');
     return;
   }

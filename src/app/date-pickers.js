@@ -7,6 +7,13 @@ export function createDatepicker(el, options) {
     isMobile: mobile.matches,
     buttons: [...(options.buttons || []), { content: '關閉', onClick: (dp) => dp.hide() }],
   });
+  // The library's mouseup handler refocuses the input after every calendar action.
+  // Keep its pointer state without moving focus away from the user's chosen control.
+  picker.$datepicker.removeEventListener('mouseup', picker._onMouseUp);
+  picker._onMouseUp = () => {
+    picker.inFocus = false;
+  };
+  picker.$datepicker.addEventListener('mouseup', picker._onMouseUp);
   mobile.addEventListener('change', () => picker.update({ isMobile: mobile.matches }));
   return picker;
 }

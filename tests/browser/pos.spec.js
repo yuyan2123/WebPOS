@@ -28,6 +28,10 @@ test('product form keeps linked errors, preserves failed drafts and filters reta
   await page.locator('#productCategoryOptions').getByRole('button', { name: '伴手禮', exact: true }).click();
   await expect(page.locator('#productCategory')).not.toHaveAttribute('aria-invalid');
   await expect(page.locator('#productCategory')).toHaveAttribute('aria-describedby', 'productCategoryHint');
+  await page.locator('#productSaveButton').click();
+  await expect(page.locator('#productFormFeedback')).toBeFocused();
+  await expect(page.locator('#productFormFeedback a')).toHaveCount(1);
+  await expect(page.locator('#productPrice')).not.toBeFocused();
   await page.locator('#productPrice').fill('50');
   await expect(page.locator('#productFormFeedback')).toBeHidden();
   await page.evaluate(() => {
@@ -153,7 +157,7 @@ test('deposit errors explain the amount limit, retain payment notes and allow a 
   await expect(page.locator('#depositAmountError')).toContainText('NT$ 100');
   await expect(page.locator('#depositCalculationResult')).toBeHidden();
   await page.locator('#confirmDepositBtn').click();
-  await expect(amount).toBeFocused();
+  await expect(amount).not.toBeFocused();
   expect(await page.evaluate(() => window.__calls.some((call) => call.method === 'updateOrderDeposit'))).toBe(
     false,
   );
@@ -380,7 +384,7 @@ test('order search ignores stale responses, clear cancels results and overdue re
   await page.locator('.btn-clear').click();
   await page.evaluate(() => window.__queries[2].resolve({ orders: [{ customerName: '已清除的回覆' }] }));
   await expect(page.locator('#searchResults')).toContainText('開始查詢');
-  await expect(page.locator('#searchName')).toBeFocused();
+  await expect(page.locator('#searchName')).not.toBeFocused();
   await expect(page.locator('.btn-search')).toBeEnabled();
   await page.locator('#overdueShortcut').click();
   await page.evaluate(() => window.__queries[3].reject(new Error('連線中斷')));
@@ -475,6 +479,62 @@ test('history navigation moves keyboard focus to the restored page heading', asy
   await expect(page.locator('#workspaceTitle')).toBeFocused();
 });
 
+test('clearing or submitting empty order filters does not focus an input', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('#nav-search').click();
+  await page.locator('#searchName').fill('測試客戶');
+  await page.locator('#searchPhone').fill('0912345678');
+  await page.locator('#searchContactLine').click();
+  await page.locator('.btn-clear').click();
+  await expect(page.locator('#searchName')).toHaveValue('');
+  await expect(page.locator('#searchPhone')).toHaveValue('');
+  await expect(page.locator('#searchDate')).toHaveValue('');
+  await expect(page.locator('#searchContactPhone')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#searchName')).not.toBeFocused();
+  await expect(page.locator('#searchPhone')).not.toBeFocused();
+  await page.locator('.btn-search').click();
+  await expect(page.locator('.alert-error')).toContainText('至少提供一個搜尋條件');
+  await expect(page.locator('#searchName')).not.toBeFocused();
+  await page.keyboard.press('/');
+  await expect(page.locator('#searchName')).toBeFocused();
+});
+
+test('opening a login dialog focuses the dialog and keeps fields reachable by Tab', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('#nav-customer').focus();
+  const source = require('node:fs').readFileSync('public/js/rpc-bridge.js', 'utf8');
+  await page.addScriptTag({
+    content: source.replace(
+      "document.addEventListener('DOMContentLoaded', function() {",
+      `installAuthOverlay();
+       window.showFocusLogin = () => showAuthOverlay();
+       window.hideFocusLogin = hideAuthOverlay;
+       document.addEventListener('unused-focus-test', function() {`,
+    ),
+  });
+  await page.evaluate(() => window.showFocusLogin());
+  await expect(page.locator('#firebaseAuthOverlay')).toBeFocused();
+  await expect(page.locator('#firebaseAuthEmail')).not.toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#firebaseGoogleSignIn')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#firebaseAuthEmail')).toBeFocused();
+  await page.evaluate(() => window.hideFocusLogin());
+  await expect(page.locator('#nav-customer')).toBeFocused();
+});
+
+test('saving printer settings with no device key reports the error without focusing its input', async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await openManagementPanel(page, 'printer');
+  await page.locator('#printer-tab-print').click();
+  await page.locator('#printer-enabled').check();
+  await page.locator('#printer-settings button[type="submit"]').click();
+  await expect(page.locator('#printer-status')).toContainText('請先輸入裝置金鑰');
+  await expect(page.locator('#printer-token')).not.toBeFocused();
+});
+
 test('notifications pause while focused and dismiss without motion or losing keyboard context', async ({
   page,
 }) => {
@@ -500,7 +560,7 @@ test('customer identity errors stay beside the fields until corrected', async ({
   await openWorkspace(page);
   await page.getByRole('button', { name: '儲存並下一步' }).click();
   await expect(page.locator('#customerIdentityError')).toBeVisible();
-  await expect(page.locator('#customerName')).toBeFocused();
+  await expect(page.locator('#customerName')).not.toBeFocused();
   await expect(page.locator('#customerName')).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator('#customerIdentityHint')).toBeHidden();
   await settleUI(page);
@@ -631,6 +691,45 @@ test('mobile date pickers remain inside the viewport above navigation', async ({
       await expect(page.locator('.air-datepicker.-active-')).toHaveCount(0);
     }
     await page.setViewportSize({ width: 375, height: 740 });
+  }
+});
+
+test('date picker actions select, clear and close without programmatically focusing fields', async ({ page }) => {
+  await openWorkspace(page);
+  await page.evaluate(() => {
+    window.inputFocusCalls = [];
+    const original = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function (...args) {
+      if (this.matches('input,textarea,select')) window.inputFocusCalls.push(this.id);
+      return original.apply(this, args);
+    };
+  });
+  for (const [panel, id] of [
+    ['search', 'searchDate'],
+    ['reports', 'reportDatePicker'],
+    ['demand', 'demandDatePicker'],
+    ['capacity', 'overrideDate'],
+  ]) {
+    if (panel === 'search') await page.locator('#nav-search').click();
+    else await openManagementPanel(page, panel);
+    const input = page.locator('#' + id);
+    const calendar = page.locator('.air-datepicker.-active-');
+    await input.click();
+    await expect(calendar).toBeVisible();
+    await page.evaluate(() => { window.inputFocusCalls.length = 0; });
+    await calendar.getByRole('button', { name: '今天', exact: true }).click();
+    await expect(input).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+    expect(await page.evaluate(() => window.inputFocusCalls)).toEqual([]);
+    if (!(await calendar.isVisible())) await input.click();
+    await page.evaluate(() => { window.inputFocusCalls.length = 0; });
+    await calendar.getByRole('button', { name: '清除', exact: true }).click();
+    await expect(input).toHaveValue('');
+    expect(await page.evaluate(() => window.inputFocusCalls)).toEqual([]);
+    if (!(await calendar.isVisible())) await input.click();
+    await page.evaluate(() => { window.inputFocusCalls.length = 0; });
+    await calendar.getByRole('button', { name: '關閉', exact: true }).click();
+    await expect(calendar).toHaveCount(0);
+    expect(await page.evaluate(() => window.inputFocusCalls)).toEqual([]);
   }
 });
 

@@ -173,6 +173,18 @@ the redirect result before showing the login screen. On deployed Hosting domains
 `authDomain` uses the current hostname so Safari can access the sign-in helper on the
 same origin. Local emulators retain their supplied configuration.
 
+Users who first signed in with Google can add a password from the account menu's
+"Set sign-in password" action (`使用者帳號 → 設定登入密碼`). The form links Email/password
+credentials to the signed-in Google user, keeping the same UID, shop memberships and roles.
+Creating another account with the same Email does not link providers; the registration
+message directs existing Google users to this action. Passwords are cleared on completion
+or cancellation and are never saved in browser storage.
+
+Password reset keeps a neutral response for unknown addresses while reporting network,
+rate-limit and provider-configuration errors. A successful request does not confirm mailbox
+delivery; Firebase's Email Enumeration Protection can also suppress account-existence errors.
+Check the Auth email templates and delivery settings if real emails still do not arrive.
+
 For each deployed domain, enable it in Firebase Authentication's authorized domains
 and add `https://<domain>/__/auth/handler` to the Google OAuth web client's authorized
 redirect URIs (including `https://webpos-14776.web.app/__/auth/handler` when using web.app).

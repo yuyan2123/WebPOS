@@ -381,10 +381,7 @@ export function saveProduct() {
   }
   renderProductFeedback();
   if (productErrors.size) {
-    (productErrors.size > 1
-      ? document.getElementById('productFormFeedback')
-      : document.getElementById(productErrors.keys().next().value)
-    ).focus();
+    document.getElementById('productFormFeedback').focus();
     return;
   }
   const specialPriceValue = document.getElementById('productSpecialPrice').value.trim();

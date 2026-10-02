@@ -9,6 +9,7 @@ const selector = '.modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOver
 const focusable =
   'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 const close = {
+  firebaseAuthOverlay: () => window.closePasswordSetup?.(),
   firebaseShopOverlay: () => window.closeShopManager?.(),
   productOrderModal: closeProductOrder,
   productEditModal: closeProductEditModal,
@@ -20,6 +21,11 @@ const close = {
   confirmModal: closeConfirmModal,
 };
 const visible = (element) => element.getClientRects().length > 0 && !element.closest('[inert]');
+const initialFocusTarget = (dialog) => {
+  const first = [...dialog.querySelectorAll(focusable)].find(visible);
+  // Opening a dialog must not summon the mobile keyboard. Tab still reaches every field.
+  return first?.matches('input,select,textarea,[contenteditable]') ? dialog : first || dialog;
+};
 
 export function initializeAccessibility() {
   let active = null;
@@ -94,12 +100,11 @@ export function initializeAccessibility() {
             top.setAttribute('aria-labelledby', heading.id);
           } else top.setAttribute('aria-label', '操作視窗');
         }
-        const first = [...top.querySelectorAll(focusable)].find(visible);
         const restored = previous && returns.get(previous);
         top.tabIndex = -1;
         (restored?.isConnected && top.contains(restored) && visible(restored)
           ? restored
-          : first || top
+          : initialFocusTarget(top)
         ).focus({ preventScroll: true });
       } else if (previous) {
         const target = returns.get(previous);
@@ -152,13 +157,17 @@ export function initializeAccessibility() {
           last = controls.at(-1) || active;
         if (
           event.shiftKey &&
-          (document.activeElement === first || !active.contains(document.activeElement))
+          (document.activeElement === active ||
+            document.activeElement === first ||
+            !active.contains(document.activeElement))
         ) {
           event.preventDefault();
           last.focus();
         } else if (
           !event.shiftKey &&
-          (document.activeElement === last || !active.contains(document.activeElement))
+          (document.activeElement === active ||
+            document.activeElement === last ||
+            !active.contains(document.activeElement))
         ) {
           event.preventDefault();
           first.focus();
@@ -168,8 +177,7 @@ export function initializeAccessibility() {
     true,
   );
   document.addEventListener('focusin', (event) => {
-    if (active && !active.contains(event.target))
-      ([...active.querySelectorAll(focusable)].find(visible) || active).focus();
+    if (active && !active.contains(event.target)) initialFocusTarget(active).focus({ preventScroll: true });
   });
   enhance();
 }

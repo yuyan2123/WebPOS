@@ -255,10 +255,7 @@ export function confirmDepositUpdate() {
   }
   const error = depositAmountError();
   setDepositFieldError(error);
-  if (error) {
-    document.getElementById('depositAmountInput').focus();
-    return;
-  }
+  if (error) return;
   const confirmBtn = document.getElementById('confirmDepositBtn');
   const editorVersion = depositEditorVersion;
   depositUpdatePending = true;

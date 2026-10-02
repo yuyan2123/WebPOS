@@ -61,7 +61,6 @@ export function searchOrders() {
   };
   if (!criteria.contact && !criteria.name && !criteria.date) {
     showAlert('請至少提供一個搜尋條件', 'error');
-    document.getElementById('searchName').focus();
     return;
   }
   const revision = beginSearch('search', searchBtn);
@@ -448,7 +447,6 @@ export function clearSearch() {
   selectSearchContactMethod('phone', false);
   state.searchNextCursor = null;
   state.lastSearchCriteria = null;
-  document.getElementById('searchName').focus();
 }
 
 export function searchOverdueOrders() {

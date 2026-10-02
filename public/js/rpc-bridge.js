@@ -20,6 +20,7 @@
     let shopMembersShopId = null;
     let membersLoading = false;
     let selectedMember = null;
+    let passwordSetupUid = null;
     const GLOBAL_METHODS = new Set(['listMyShops', 'createShop', 'registerDeviceSession']);
 
     function authFailureMessage(error, fallback = '登入失敗，請稍後再試。') {
@@ -32,8 +33,13 @@
             ['auth/too-many-requests', '嘗試次數過多，請稍後再試。'],
             ['auth/popup-blocked', '瀏覽器封鎖了 Google 登入視窗，請允許彈出式視窗後重試。'],
             ['auth/popup-closed-by-user', 'Google 登入已取消，可重新登入。'],
-            ['auth/email-already-in-use', '無法建立此帳號，請改用登入或重設密碼。'],
+            ['auth/email-already-in-use', '此 Email 已有帳號，請直接登入。若曾使用 Google 登入，請先用 Google 登入，再從「使用者帳號 → 設定登入密碼」新增密碼。'],
             ['auth/weak-password', '密碼強度不足，請改用較長的密碼並搭配字母、數字與符號。'],
+            ['auth/password-does-not-meet-requirements', '密碼不符合要求，請改用較長的密碼並搭配字母、數字與符號。'],
+            ['auth/operation-not-allowed', '目前未啟用 Email／密碼登入，請聯絡管理者確認登入設定。'],
+            ['auth/requires-recent-login', '請登出後重新使用 Google 登入，再設定登入密碼。'],
+            ['auth/provider-already-linked', '此帳號已有登入密碼，請使用 Email 登入或重設密碼。'],
+            ['auth/credential-already-in-use', '此 Email 已連結到其他帳號，請使用原本的帳號登入。'],
         ]);
         return messages.get(error?.code) || (String(error?.code || '').startsWith('auth/') ? fallback : error?.message || fallback);
     }
@@ -62,6 +68,7 @@
             .firebase-auth-primary.firebase-auth-create { color: var(--gj-primary); background: var(--gj-primary-soft); }
             #firebaseResetPassword { border: 0; padding: 2px; color: var(--gj-muted); background: transparent;
                 font: 600 .82rem/1.2 inherit; cursor: pointer; }
+            #firebaseEmailSignIn[hidden], #firebaseResetPassword[hidden], #firebasePasswordSetupCancel[hidden], #firebaseSetPassword[hidden] { display: none !important; }
             .firebase-auth-divider { display: flex; align-items: center; gap: 10px; margin: 13px 0; color: var(--gj-muted); font-size: .8rem; }
             .firebase-auth-divider::before, .firebase-auth-divider::after { content: ''; height: 1px; flex: 1; background: var(--gj-border); }
             #firebaseVerificationActions { display: none; gap: 9px; }
@@ -77,8 +84,9 @@
                 box-shadow: 0 6px 24px rgba(15,23,42,.12); color: var(--gj-muted); font: 600 .75rem/1.2 inherit; }
             #firebaseAccountBadge.active { display: flex; }
             #firebaseAccountEmail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            #firebaseSignOut { border: 0; border-radius: 999px; padding: 6px 9px; color: var(--gj-muted);
+            #firebaseSignOut, #firebaseSetPassword { border: 0; border-radius: 999px; padding: 6px 9px; color: var(--gj-muted);
                 background: var(--gj-bg); font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
+            #firebaseSetPassword { min-height: 44px; font-size: 14px; }
             #firebaseShopButton { border: 0; border-radius: 999px; padding: 6px 9px; color: var(--gj-primary);
                 background: var(--gj-primary-soft); font: 700 .72rem/1 inherit; cursor: pointer; white-space: nowrap; }
             #firebaseShopOverlay { position: fixed; inset: 0; z-index: 100001; display: none; place-items: center;
@@ -124,6 +132,7 @@
                     </div>
                     <button id="firebaseResetPassword" type="button">忘記密碼？寄送重設信</button>
                 </form>
+                <button id="firebasePasswordSetupCancel" class="firebase-auth-secondary" type="button" hidden>取消</button>
                 <div id="firebaseAuthDivider" class="firebase-auth-divider">或</div>
                 <button id="firebaseGoogleSignIn" class="gj-social-button" type="button"><span class="gj-social-logo" aria-hidden="true"><img src="/icons/google-signin.svg" width="20" height="20" alt=""></span><span class="firebase-auth-action-label">使用 Google 帳號登入</span></button>
                 <div id="firebaseVerificationActions">
@@ -143,6 +152,7 @@
             <button id="firebaseAccountToggle" type="button" aria-label="使用者帳號" aria-expanded="false" aria-controls="firebaseAccountMenu"><i class="fas fa-user" aria-hidden="true"></i></button>
             <div id="firebaseAccountMenu" hidden>
                 <span id="firebaseAccountEmail"></span>
+                <button id="firebaseSetPassword" type="button" hidden>設定登入密碼</button>
                 <button id="firebaseSignOut" type="button">登出</button>
             </div>`;
         document.body.appendChild(badge);
@@ -245,21 +255,39 @@
     function showAuthOverlay(message, mode, user) {
         installAuthOverlay();
         const verificationMode = mode === 'verify';
+        const passwordMode = mode === 'password' || mode === 'password-complete';
+        const passwordComplete = mode === 'password-complete';
+        passwordSetupUid = passwordMode ? user?.uid : null;
         const title = document.getElementById('firebaseAuthTitle');
         const description = document.getElementById('firebaseAuthDescription');
         const emailAuth = document.getElementById('firebaseEmailAuth');
         const divider = document.getElementById('firebaseAuthDivider');
         const googleButton = document.getElementById('firebaseGoogleSignIn');
         const verificationActions = document.getElementById('firebaseVerificationActions');
-        if (title) title.textContent = verificationMode ? '請驗證 Email' : '登入 WebPOS';
+        if (title) title.textContent = passwordComplete ? '登入密碼已設定' : passwordMode ? '設定登入密碼' : verificationMode ? '請驗證 Email' : '登入 WebPOS';
         if (description) {
-            description.textContent = verificationMode
+            description.textContent = passwordComplete
+                ? '之後可使用 Google 或 Email 與密碼登入同一個帳號，店鋪資料與權限保持一致。'
+                : passwordMode
+                ? '為目前的 Google 帳號新增登入密碼，之後也能使用 Email 登入。'
+                : verificationMode
                 ? `驗證信已寄到 ${user?.email || '您的信箱'}。完成驗證前，系統不會讀取任何店鋪資料。`
                 : '請使用 Email 或 Google 帳號登入。完成 Email 驗證後才能存取店鋪資料。';
         }
-        if (emailAuth) emailAuth.style.display = verificationMode ? 'none' : 'grid';
-        if (divider) divider.style.display = verificationMode ? 'none' : 'flex';
-        if (googleButton) googleButton.style.display = verificationMode ? 'none' : 'flex';
+        if (emailAuth) emailAuth.style.display = verificationMode || passwordComplete ? 'none' : 'grid';
+        if (divider) divider.style.display = verificationMode || passwordMode ? 'none' : 'flex';
+        if (googleButton) googleButton.style.display = verificationMode || passwordMode ? 'none' : 'flex';
+        const email = document.getElementById('firebaseAuthEmail');
+        email.readOnly = passwordMode;
+        if (passwordMode) email.value = user.email;
+        document.getElementById('firebaseAuthPassword').autocomplete = passwordMode ? 'new-password' : 'current-password';
+        document.getElementById('firebaseEmailSignIn').hidden = passwordMode;
+        document.getElementById('firebaseEmailRegister').textContent = passwordMode ? '設定登入密碼' : '建立帳號';
+        document.getElementById('firebaseResetPassword').hidden = passwordMode;
+        emailAuth.querySelector('.firebase-auth-row').style.gridTemplateColumns = passwordMode ? '1fr' : '';
+        const cancel = document.getElementById('firebasePasswordSetupCancel');
+        cancel.hidden = !passwordMode;
+        cancel.textContent = passwordComplete ? '返回工作台' : '取消';
         verificationActions?.classList.toggle('active', verificationMode);
         const error = document.getElementById('firebaseAuthError');
         if (error) error.textContent = message || '';
@@ -271,6 +299,9 @@
 
     function hideAuthOverlay() {
         document.getElementById('firebaseAuthOverlay')?.classList.remove('active');
+        passwordSetupUid = null;
+        const email = document.getElementById('firebaseAuthEmail');
+        if (email) email.readOnly = false;
         const password = document.getElementById('firebaseAuthPassword');
         if (password) {
             password.value = '';
@@ -425,6 +456,16 @@
                 finally { list.inert = false; }
             });
         });
+    }
+
+    function canSetPassword(user) {
+        return Boolean(user?.emailVerified && user.email &&
+            user.providerData?.some(provider => provider.providerId === 'google.com') &&
+            !user.providerData?.some(provider => provider.providerId === 'password'));
+    }
+
+    function updatePasswordSetupButton(user) {
+        document.getElementById('firebaseSetPassword').hidden = !canSetPassword(user);
     }
 
     function showShopView(view, focus = true) {
@@ -621,7 +662,6 @@
         setShopMessage(message);
         input.setAttribute('aria-invalid', 'true');
         input.setAttribute('aria-errormessage', 'firebaseShopMessage');
-        input.focus();
         return false;
     }
 
@@ -858,7 +898,7 @@
                 }
                 renderCredentialErrors();
                 if (authErrors.size) {
-                    (authErrors.size > 1 ? document.getElementById('firebaseAuthValidation') : document.getElementById(authErrors.keys().next().value)).focus();
+                    document.getElementById('firebaseAuthValidation').focus();
                     return false;
                 }
                 return true;
@@ -882,7 +922,7 @@
             async function runAuthAction(button, label, action, onError) {
                 if (authActionPending) return;
                 authActionPending = true;
-                const controls = [...document.querySelectorAll('#firebaseEmailAuth input, #firebaseEmailAuth button, #firebaseGoogleSignIn')];
+                const controls = [...document.querySelectorAll('#firebaseEmailAuth input, #firebaseEmailAuth button, #firebaseGoogleSignIn, #firebasePasswordSetupCancel')];
                 const previousDisabled = controls.map(control => control.disabled);
                 const buttonLabel = button.querySelector('.firebase-auth-action-label') || button;
                 const previousLabel = buttonLabel.textContent;
@@ -898,7 +938,7 @@
                     await action();
                 } catch (error) {
                     if (onError) onError(error);
-                    else showAuthOverlay(authFailureMessage(error));
+                    else showAuthOverlay(authFailureMessage(error), passwordSetupUid && auth.currentUser?.uid === passwordSetupUid ? 'password' : undefined, auth.currentUser);
                 } finally {
                     controls.forEach((control, index) => { control.disabled = previousDisabled[index]; });
                     buttonLabel.textContent = previousLabel;
@@ -918,17 +958,54 @@
                 if (!validateCredentials()) return;
                 const email = emailInput.value.trim();
                 const password = passwordInput.value;
-                await runAuthAction(button, button.id === 'firebaseEmailRegister' ? '建立帳號中…' : '登入中…', () => action(email, password));
+                await runAuthAction(button, passwordSetupUid ? '設定密碼中…' : button.id === 'firebaseEmailRegister' ? '建立帳號中…' : '登入中…', () => action(email, password));
             }
+            async function setGooglePassword(email, password) {
+                const user = auth.currentUser;
+                if (!passwordSetupUid || user?.uid !== passwordSetupUid || !canSetPassword(user) ||
+                    user.email.toLowerCase() !== email.toLowerCase()) {
+                    throw new Error('登入狀態已變更，請重新使用 Google 登入後再設定密碼。');
+                }
+                // Update only the authenticated Google user's password. Keep its verified email and UID.
+                await authSdk.updatePassword(user, password);
+                if (auth.currentUser?.uid !== user.uid) throw new Error('登入狀態已變更，請重新登入確認密碼設定。');
+                updatePasswordSetupButton(auth.currentUser);
+                passwordInput.value = '';
+                showAuthOverlay('', 'password-complete', auth.currentUser);
+            }
+            document.getElementById('firebaseSetPassword').addEventListener('click', () => {
+                if (authActionPending || !canSetPassword(auth.currentUser)) return;
+                setAccountMenuOpen(false);
+                authErrors.clear();
+                renderCredentialErrors();
+                passwordInput.value = '';
+                showAuthOverlay('', 'password', auth.currentUser);
+            });
+            window.closePasswordSetup = () => {
+                if (!passwordSetupUid || authActionPending) return;
+                authErrors.clear();
+                renderCredentialErrors();
+                hideAuthOverlay();
+                requestAnimationFrame(() => {
+                    const badge = document.getElementById('firebaseAccountBadge');
+                    Promise.all(badge.getAnimations().map(animation => animation.finished.catch(() => {}))).then(() => {
+                        if (!document.getElementById('firebaseAuthOverlay').classList.contains('active'))
+                            document.getElementById('firebaseAccountToggle').focus({ preventScroll: true });
+                    });
+                });
+            };
+            document.getElementById('firebasePasswordSetupCancel').addEventListener('click', window.closePasswordSetup);
             document.getElementById('firebaseEmailAuth').addEventListener('submit', function(event) {
                 event.preventDefault();
-                return withEmailCredentials(document.getElementById('firebaseEmailSignIn'), async (email, password) => {
+                return withEmailCredentials(document.getElementById(passwordSetupUid ? 'firebaseEmailRegister' : 'firebaseEmailSignIn'), async (email, password) => {
+                    if (passwordSetupUid) return setGooglePassword(email, password);
                     const credential = await authSdk.signInWithEmailAndPassword(auth, email, password);
                     if (!credential.user.emailVerified) showAuthOverlay('', 'verify', credential.user);
                 });
             });
             document.getElementById('firebaseEmailRegister').addEventListener('click', function() {
                 return withEmailCredentials(this, async (email, password) => {
+                    if (passwordSetupUid) return setGooglePassword(email, password);
                     const credential = await authSdk.createUserWithEmailAndPassword(auth, email, password);
                     await authSdk.sendEmailVerification(credential.user);
                     showAuthOverlay('驗證信已寄出，請開啟信中的連結。', 'verify', credential.user);
@@ -939,11 +1016,14 @@
                 document.getElementById('firebaseAuthError').textContent = '';
                 if (!validateCredentials(false)) return;
                 const email = emailInput.value.trim();
-                const complete = () => showAuthOverlay('如果此帳號存在，密碼重設信將寄到該信箱。');
+                const complete = () => showAuthOverlay('如果此帳號存在，密碼重設信將寄到該信箱，請一併檢查垃圾郵件。若曾使用 Google 登入，也可登入後從「使用者帳號 → 設定登入密碼」新增密碼。');
                 await runAuthAction(this, '寄送重設信中…', async () => {
                     await authSdk.sendPasswordResetEmail(auth, email);
-                    showAuthOverlay('如果此帳號存在，密碼重設信將寄到該信箱。');
-                }, complete);
+                    complete();
+                }, error => {
+                    if (error?.code === 'auth/user-not-found') complete();
+                    else showAuthOverlay(authFailureMessage(error, '無法寄送密碼重設信，請稍後再試。'));
+                });
             });
             document.getElementById('firebaseGoogleSignIn').addEventListener('click', async function() {
                 authErrors.clear();
@@ -1008,6 +1088,7 @@
             await new Promise((resolve) => {
                 let initialStateResolved = false;
                 authSdk.onAuthStateChanged(auth, (user) => {
+                    updatePasswordSetupButton(user);
                     if (user?.emailVerified) {
                         if (activeUid && activeUid !== user.uid) {
                             window.dispatchEvent(new Event('pos:session-ending'));
@@ -1016,7 +1097,7 @@
                         }
                         activeUid = user.uid;
                         document.body.dataset.userId = user.uid;
-                        hideAuthOverlay();
+                        if (passwordSetupUid !== user.uid) hideAuthOverlay();
                         document.getElementById('firebaseAccountEmail').textContent = `✓ ${user.email || user.uid}`;
                         setAccountBadgeVisible(true);
                         authWaiters.splice(0).forEach((waiter) => waiter.resolve(user));

@@ -247,7 +247,6 @@ function saveSettings() {
   config.fontSize = Number(config.fontSize);
   if (config.enabled && !config.token) {
     selectPrinterPage('device');
-    element('printer-token').focus();
     throw new Error('請先輸入裝置金鑰，再儲存設定');
   }
   // Remove any previously remembered secret before writing the chosen persistence mode.

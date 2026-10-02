@@ -166,6 +166,78 @@ const direct = await fetch(
   { headers: { Authorization: `Bearer ${owner.token}` } },
 );
 assert.equal(direct.status, 403, "Direct browser-equivalent Firestore access must remain denied");
+
+// A Google-only account sets a password on its authenticated UID through the
+// same password-only update used by the Web SDK, retaining its shop membership.
+const authUrl = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`;
+async function authRequest(method, payload) {
+  const response = await fetch(
+    `${authUrl}/identitytoolkit.googleapis.com/v1/accounts:${method}?key=emulator`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+  const result = await response.json();
+  assert.ok(response.ok, result.error?.message || "Emulated authentication failed");
+  return result;
+}
+const googleEmail = "google-password-link@example.test";
+const googleJwt =
+  [
+    { alg: "none", typ: "JWT" },
+    {
+      sub: "google-provider-subject",
+      email: googleEmail,
+      email_verified: true,
+      iss: "https://accounts.google.com",
+      aud: "emulator",
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    },
+  ]
+    .map((value) => Buffer.from(JSON.stringify(value)).toString("base64url"))
+    .join(".") + ".";
+const googleSignIn = () =>
+  authRequest("signInWithIdp", {
+    requestUri: "http://localhost",
+    postBody: new URLSearchParams({ providerId: "google.com", id_token: googleJwt }).toString(),
+    returnSecureToken: true,
+  });
+const google = await googleSignIn();
+const googleUid = google.localId;
+assert.deepEqual(
+  (await auth.getUser(googleUid)).providerData.map((provider) => provider.providerId),
+  ["google.com"],
+);
+await rpc(owner, "addShopMember", [{ email: googleEmail, role: "viewer" }], shopId);
+const shopsBeforeLink = await rpc({ token: google.idToken }, "listMyShops");
+const linked = await authRequest("update", {
+  idToken: google.idToken,
+  password,
+  returnSecureToken: true,
+});
+assert.equal(linked.localId, googleUid);
+const passwordLogin = await authRequest("signInWithPassword", {
+  email: googleEmail,
+  password,
+  returnSecureToken: true,
+});
+assert.equal(passwordLogin.localId, googleUid);
+assert.deepEqual(await rpc({ token: passwordLogin.idToken }, "listMyShops"), shopsBeforeLink);
+assert.equal((await googleSignIn()).localId, googleUid);
+assert.deepEqual((await auth.getUser(googleUid)).providerData.map((provider) => provider.providerId).sort(), [
+  "google.com",
+  "password",
+]);
+await authRequest("sendOobCode", { requestType: "PASSWORD_RESET", email: googleEmail });
+const outbox = await (await fetch(`${authUrl}/emulator/v1/projects/${projectId}/oobCodes`)).json();
+assert.ok(
+  outbox.oobCodes.some((code) => code.email === googleEmail && code.requestType === "PASSWORD_RESET"),
+);
+console.log(
+  "PASS: Google/password linking retains UID and shop roles; emulator generates the password reset email",
+);
 console.log(
   "PASS: authenticated emulator workflows, roles/isolation, idempotency, capacity, payments, reports, catalog, membership and deny-all rules",
 );

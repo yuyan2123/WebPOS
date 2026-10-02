@@ -164,7 +164,7 @@ test('shop selection is compact and separates creation from management in both t
   await expect(page.locator('#firebaseShopTitle')).toHaveText('建立店鋪');
   await expect(page.locator('#firebaseShopList')).toBeHidden();
   await page.locator('#firebaseCreateShop').click();
-  await expect(page.locator('#firebaseNewShopName')).toBeFocused();
+  await expect(page.locator('#firebaseNewShopName')).not.toBeFocused();
   await expect(page.locator('#firebaseShopMessage')).toContainText('2 至 60');
   expect(await page.evaluate(() => window.shopRpcCount)).toBe(1);
   await page.locator('#firebaseNewShopName').fill('新店鋪');

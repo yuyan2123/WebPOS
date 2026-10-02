@@ -59,7 +59,8 @@ async function loginPage(
     route.fulfill({
       contentType: 'text/javascript',
       body: `
-      const user = { uid: 'google-account', email: 'test@example.test', emailVerified: true };
+      const user = { uid: 'google-account', email: 'test@example.test', emailVerified: true,
+        providerData: [{ providerId: 'google.com' }] };
       const auth = { currentUser: null };
       let listener;
       export const getAuth = () => auth;
@@ -100,7 +101,8 @@ async function loginPage(
         if (window.__authScenario.pending) {
           await new Promise(resolve => { window.__finishEmailAction = resolve; });
         }
-        if (window.__authScenario.failure) throw Object.assign(new Error(window.__authScenario.failure), { code: window.__authScenario.failureCode });
+        if (window.__authScenario.failure && (!window.__authScenario.failureMethod || window.__authScenario.failureMethod === method))
+          throw Object.assign(new Error(window.__authScenario.failure), { code: window.__authScenario.failureCode });
       };
       export const signInWithEmailAndPassword = async (_, email, password) => {
         await emailAction('email-signin', email, password);
@@ -109,6 +111,23 @@ async function loginPage(
         return { user };
       };
       export const sendPasswordResetEmail = (_, email) => emailAction('reset', email);
+      export const createUserWithEmailAndPassword = async (_, email, password) => {
+        await emailAction('register', email, password);
+        const created = { uid: 'email-account', email, emailVerified: false,
+          providerData: [{ providerId: 'password' }] };
+        auth.currentUser = created;
+        listener(created);
+        return { user: created };
+      };
+      export const sendEmailVerification = async user => {
+        window.__authCalls.push('verify-email');
+        window.__verificationUid = user.uid;
+      };
+      export const updatePassword = async (existing, password) => {
+        await emailAction('link', existing.email, password);
+        window.__linkedAccount = { uid: existing.uid, email: existing.email, password, providerId: 'password' };
+        existing.providerData.push({ providerId: 'password' });
+      };
     `,
     }),
   );
@@ -203,7 +222,8 @@ test('password reset validates only Email and login stays operable on a short vi
   const email = page.getByLabel('Email', { exact: true });
   await email.fill('invalid');
   await reset.click();
-  await expect(email).toBeFocused();
+  await expect(page.locator('#firebaseAuthValidation')).toBeFocused();
+  await expect(email).not.toBeFocused();
   await expect(email).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator('#firebaseAuthPassword')).not.toHaveAttribute('aria-invalid');
   expect(await page.evaluate(() => window.__authCalls.includes('reset'))).toBe(false);
@@ -240,6 +260,132 @@ test('authentication errors explain recovery in Chinese and keep entered credent
     await expect(page.locator('#firebaseAuthPassword')).toHaveValue('secret-pass');
     await expect(page.locator('#firebaseGoogleSignIn')).toBeEnabled();
   }
+});
+
+test('Google accounts add a password to the same account without registering a second user', async ({
+  page,
+}, testInfo) => {
+  await loginPage(page, { styled: true });
+  await page.locator('#firebaseAuthEmail').fill('test@example.test');
+  await page.locator('#firebaseAuthPassword').fill('new-password-123');
+  await page.evaluate(() => {
+    Object.assign(window.__authScenario, {
+      failure: 'Email exists',
+      failureCode: 'auth/email-already-in-use',
+      failureMethod: 'register',
+    });
+  });
+  await page.locator('#firebaseEmailRegister').click();
+  await expect(page.locator('#firebaseAuthError')).toContainText('使用者帳號 → 設定登入密碼');
+  await page.locator('#firebaseGoogleSignIn').click();
+  await page.locator('#firebaseAccountToggle').click();
+  await page.locator('#firebaseSetPassword').click();
+  await expect(page.locator('#firebaseAuthTitle')).toHaveText('設定登入密碼');
+  await expect(page.locator('#firebaseAuthEmail')).toHaveValue('test@example.test');
+  await expect(page.locator('#firebaseAuthEmail')).toHaveAttribute('readonly', '');
+  await expect(page.locator('#firebaseAuthPassword')).toHaveValue('');
+  await expect(page.locator('#firebaseAuthPassword')).toHaveAttribute('autocomplete', 'new-password');
+  await expect(page.locator('#firebaseEmailSignIn')).toBeHidden();
+  await expect(page.locator('#firebaseResetPassword')).toBeHidden();
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    const scan = await new (require('@axe-core/playwright').default)({ page })
+      .include('#firebaseAuthOverlay')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+    expect(scan.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`${theme}-password-link.png`) });
+  }
+  await page.locator('#firebaseAuthPassword').fill('new-password-123');
+  await page.locator('#firebaseAuthPassword').press('Enter');
+  await expect(page.locator('#firebaseAuthTitle')).toHaveText('登入密碼已設定');
+  expect(await page.evaluate(() => window.__linkedAccount)).toEqual({
+    uid: 'google-account',
+    email: 'test@example.test',
+    password: 'new-password-123',
+    providerId: 'password',
+  });
+  expect(await page.evaluate(() => window.__authCalls.filter((call) => call === 'register'))).toHaveLength(1);
+  await expect(page.locator('body')).toHaveAttribute('data-user-id', 'google-account');
+  await expect(page.locator('#firebaseAuthPassword')).toHaveValue('');
+  await page.getByRole('button', { name: '返回工作台', exact: true }).click();
+  await expect(page.locator('#firebaseAuthOverlay')).toBeHidden();
+  await page.locator('#firebaseAccountToggle').click();
+  await expect(page.locator('#firebaseSetPassword')).toBeHidden();
+});
+
+test('password linking preserves failed input, blocks overlapping actions and can be canceled safely', async ({
+  page,
+}) => {
+  await loginPage(page, { styled: true });
+  await page.locator('#firebaseGoogleSignIn').click();
+  await page.locator('#firebaseAccountToggle').click();
+  await page.locator('#firebaseSetPassword').click();
+  await page.locator('#firebaseAuthPassword').fill('retry-password-123');
+  await page.evaluate(() => {
+    Object.assign(window.__authScenario, {
+      pending: true,
+      failure: 'Network unavailable',
+      failureCode: 'auth/network-request-failed',
+      failureMethod: 'link',
+    });
+  });
+  await page.locator('#firebaseEmailRegister').click();
+  await expect(page.locator('#firebasePasswordSetupCancel')).toBeDisabled();
+  await expect(page.locator('#firebaseAuthPassword')).toBeDisabled();
+  await page.evaluate(() => {
+    document.getElementById('firebaseEmailAuth').dispatchEvent(new Event('submit', { cancelable: true }));
+    window.closePasswordSetup();
+  });
+  await expect(page.locator('#firebaseAuthOverlay')).toBeVisible();
+  expect(await page.evaluate(() => window.__authCalls.filter((call) => call === 'link'))).toHaveLength(1);
+  await page.evaluate(() => window.__finishEmailAction());
+  await expect(page.locator('#firebaseAuthError')).toContainText('目前無法連線');
+  await expect(page.locator('#firebaseAuthTitle')).toHaveText('設定登入密碼');
+  await expect(page.locator('#firebaseAuthPassword')).toHaveValue('retry-password-123');
+  await expect(page.locator('#firebasePasswordSetupCancel')).toBeEnabled();
+  await page.locator('#firebasePasswordSetupCancel').click();
+  await expect(page.locator('#firebaseAuthOverlay')).toBeHidden();
+  await expect(page.locator('#firebaseAuthPassword')).toHaveValue('');
+  await page.locator('#firebaseAccountToggle').click();
+  await expect(page.locator('#firebaseSetPassword')).toBeVisible();
+});
+
+test('new Email registrations still create a verified-email flow', async ({ page }) => {
+  await loginPage(page);
+  await page.locator('#firebaseAuthEmail').fill('new@example.test');
+  await page.locator('#firebaseAuthPassword').fill('new-password-123');
+  await page.locator('#firebaseEmailRegister').click();
+  await expect(page.locator('#firebaseAuthTitle')).toHaveText('請驗證 Email');
+  await expect(page.locator('#firebaseAuthError')).toContainText('驗證信已寄出');
+  expect(await page.evaluate(() => window.__verificationUid)).toBe('email-account');
+  expect(await page.evaluate(() => window.__authCalls.includes('link'))).toBe(false);
+});
+
+test('password reset reports delivery errors and only conceals missing accounts', async ({ page }) => {
+  await loginPage(page);
+  await page.locator('#firebaseAuthEmail').fill('test@example.test');
+  const reset = page.locator('#firebaseResetPassword');
+  for (const [code, message] of [
+    ['auth/network-request-failed', '目前無法連線'],
+    ['auth/too-many-requests', '嘗試次數過多'],
+    ['auth/operation-not-allowed', '未啟用 Email／密碼登入'],
+  ]) {
+    await page.evaluate((code) => {
+      Object.assign(window.__authScenario, { failure: code, failureCode: code });
+    }, code);
+    await reset.click();
+    await expect(page.locator('#firebaseAuthError')).toContainText(message);
+    await expect(page.locator('#firebaseAuthError')).not.toContainText('如果此帳號存在');
+    await expect(reset).toBeEnabled();
+  }
+  await page.evaluate(() => {
+    Object.assign(window.__authScenario, { failure: 'Not found', failureCode: 'auth/user-not-found' });
+  });
+  await reset.click();
+  await expect(page.locator('#firebaseAuthError')).toContainText('如果此帳號存在');
 });
 
 test('labeled Google button loads its local logo and stays readable in both themes', async ({

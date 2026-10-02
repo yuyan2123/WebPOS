@@ -3094,7 +3094,6 @@ function searchOrders() {
   };
   if (!criteria.contact && !criteria.name && !criteria.date) {
     showAlert("\u8ACB\u81F3\u5C11\u63D0\u4F9B\u4E00\u500B\u641C\u5C0B\u689D\u4EF6", "error");
-    document.getElementById("searchName").focus();
     return;
   }
   const revision = beginSearch("search", searchBtn);
@@ -3434,7 +3433,6 @@ function clearSearch() {
   selectSearchContactMethod("phone", false);
   state.searchNextCursor = null;
   state.lastSearchCriteria = null;
-  document.getElementById("searchName").focus();
 }
 function searchOverdueOrders() {
   const searchBtn = document.querySelector(".btn-overdue");
@@ -4760,7 +4758,7 @@ function saveProduct() {
   }
   renderProductFeedback();
   if (productErrors.size) {
-    (productErrors.size > 1 ? document.getElementById("productFormFeedback") : document.getElementById(productErrors.keys().next().value)).focus();
+    document.getElementById("productFormFeedback").focus();
     return;
   }
   const specialPriceValue = document.getElementById("productSpecialPrice").value.trim();
@@ -5333,7 +5331,6 @@ function saveCustomer() {
   const deliveryType = document.getElementById("deliveryTypeValue").value;
   if (!name && !contactValue) {
     updateIdentityError(true);
-    document.getElementById("customerName").focus();
     showAlert("\u5BA2\u6236\u59D3\u540D\u6216\u806F\u7D61\u65B9\u5F0F\u8ACB\u81F3\u5C11\u586B\u5BEB\u4E00\u9805", "error");
     return;
   }
@@ -5827,6 +5824,11 @@ function createDatepicker(el, options) {
     isMobile: mobile.matches,
     buttons: [...options.buttons || [], { content: "\u95DC\u9589", onClick: (dp) => dp.hide() }]
   });
+  picker.$datepicker.removeEventListener("mouseup", picker._onMouseUp);
+  picker._onMouseUp = () => {
+    picker.inFocus = false;
+  };
+  picker.$datepicker.addEventListener("mouseup", picker._onMouseUp);
   mobile.addEventListener("change", () => picker.update({ isMobile: mobile.matches }));
   return picker;
 }
@@ -7139,7 +7141,6 @@ function saveSettings() {
   config.fontSize = Number(config.fontSize);
   if (config.enabled && !config.token) {
     selectPrinterPage("device");
-    element("printer-token").focus();
     throw new Error("\u8ACB\u5148\u8F38\u5165\u88DD\u7F6E\u91D1\u9470\uFF0C\u518D\u5132\u5B58\u8A2D\u5B9A");
   }
   localStorage.removeItem(key());
@@ -7904,10 +7905,7 @@ function confirmDepositUpdate() {
   }
   const error = depositAmountError();
   setDepositFieldError(error);
-  if (error) {
-    document.getElementById("depositAmountInput").focus();
-    return;
-  }
+  if (error) return;
   const confirmBtn = document.getElementById("confirmDepositBtn");
   const editorVersion = depositEditorVersion;
   depositUpdatePending = true;
@@ -8467,6 +8465,7 @@ function initializeWorkspace() {
 var selector = ".modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverlay";
 var focusable = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 var close = {
+  firebaseAuthOverlay: () => window.closePasswordSetup?.(),
   firebaseShopOverlay: () => window.closeShopManager?.(),
   productOrderModal: closeProductOrder,
   productEditModal: closeProductEditModal,
@@ -8478,6 +8477,10 @@ var close = {
   confirmModal: closeConfirmModal
 };
 var visible = (element2) => element2.getClientRects().length > 0 && !element2.closest("[inert]");
+var initialFocusTarget = (dialog) => {
+  const first = [...dialog.querySelectorAll(focusable)].find(visible);
+  return first?.matches("input,select,textarea,[contenteditable]") ? dialog : first || dialog;
+};
 function initializeAccessibility() {
   let active2 = null;
   const returns = /* @__PURE__ */ new WeakMap();
@@ -8536,10 +8539,9 @@ function initializeAccessibility() {
             top.setAttribute("aria-labelledby", heading.id);
           } else top.setAttribute("aria-label", "\u64CD\u4F5C\u8996\u7A97");
         }
-        const first = [...top.querySelectorAll(focusable)].find(visible);
         const restored = previous && returns.get(previous);
         top.tabIndex = -1;
-        (restored?.isConnected && top.contains(restored) && visible(restored) ? restored : first || top).focus({ preventScroll: true });
+        (restored?.isConnected && top.contains(restored) && visible(restored) ? restored : initialFocusTarget(top)).focus({ preventScroll: true });
       } else if (previous) {
         const target = returns.get(previous);
         if (target?.isConnected && visible(target)) target.focus({ preventScroll: true });
@@ -8586,10 +8588,10 @@ function initializeAccessibility() {
       if (event.key === "Tab") {
         const controls = [...active2.querySelectorAll(focusable)].filter(visible);
         const first = controls[0] || active2, last = controls.at(-1) || active2;
-        if (event.shiftKey && (document.activeElement === first || !active2.contains(document.activeElement))) {
+        if (event.shiftKey && (document.activeElement === active2 || document.activeElement === first || !active2.contains(document.activeElement))) {
           event.preventDefault();
           last.focus();
-        } else if (!event.shiftKey && (document.activeElement === last || !active2.contains(document.activeElement))) {
+        } else if (!event.shiftKey && (document.activeElement === active2 || document.activeElement === last || !active2.contains(document.activeElement))) {
           event.preventDefault();
           first.focus();
         }
@@ -8598,8 +8600,7 @@ function initializeAccessibility() {
     true
   );
   document.addEventListener("focusin", (event) => {
-    if (active2 && !active2.contains(event.target))
-      ([...active2.querySelectorAll(focusable)].find(visible) || active2).focus();
+    if (active2 && !active2.contains(event.target)) initialFocusTarget(active2).focus({ preventScroll: true });
   });
   enhance();
 }
