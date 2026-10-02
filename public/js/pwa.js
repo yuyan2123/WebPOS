@@ -2,16 +2,21 @@
   "use strict";
   let installPrompt = null;
   let updateRequested = false;
+  let updateAvailable = false;
 
-  function showMessage(title, message, actions, iconClass = "fa-mobile-alt") {
-    let banner = document.getElementById("pwaBanner");
+  function showMessage(title, message, actions, iconClass = "fa-mobile-alt", isUpdate = false) {
+    const bannerId = isUpdate ? "pwaUpdateNotice" : "pwaBanner";
+    let banner = document.getElementById(bannerId);
     if (!banner) {
       banner = document.createElement("div");
-      banner.id = "pwaBanner";
-      banner.className = "pwa-banner";
+      banner.id = bannerId;
+      banner.className = isUpdate ? "pwa-banner pwa-banner--update" : "pwa-banner";
       banner.setAttribute("role", "status");
       banner.setAttribute("aria-live", "polite");
-      (document.querySelector('.app-navigation') || document.body).appendChild(banner);
+      const navigation = document.querySelector('.app-navigation');
+      const hint = navigation?.querySelector('.navigation-hint');
+      if (isUpdate && hint) navigation.insertBefore(banner, hint);
+      else (navigation || document.body).appendChild(banner);
     }
     banner.innerHTML = `
       <span class="pwa-banner-icon" aria-hidden="true"><i class="fas ${iconClass}"></i></span>
@@ -42,6 +47,7 @@
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     installPrompt = event;
+    if (updateAvailable) return;
     const banner = showMessage("安裝 WebPOS", "加入主畫面，快速開啟訂單工作台。", '<button id="pwaInstall" type="button">安裝</button><button id="pwaDismiss" type="button">稍後</button>');
     banner.querySelector("#pwaInstall")?.addEventListener("click", async () => {
       await installPrompt?.prompt();
@@ -79,24 +85,87 @@
     }
     navigator.serviceWorker.register("/sw.js").then((registration) => {
       updateButton.disabled = false;
+      const managementButton = document.getElementById('managementToggle');
+      const deviceButton = document.getElementById('nav-device');
+      const mobileNavigation = window.matchMedia('(max-width: 899px)');
+      const dismissalKey = 'ginJiaPos.updateNoticeDismissed';
+      let noticeDismissed = false;
+      try { noticeDismissed = sessionStorage.getItem(dismissalKey) === (version || 'current'); } catch { /* Storage may be unavailable. */ }
+
+      function positionUpdateNotice() {
+        const banner = document.getElementById('pwaUpdateNotice');
+        const visible = mobileNavigation.matches && banner?.classList.contains('active');
+        document.body.classList.toggle('pwa-update-visible', Boolean(visible));
+        if (!visible) {
+          document.body.style.removeProperty('--pwa-update-height');
+          return;
+        }
+        const bannerRect = banner.getBoundingClientRect();
+        const buttonRect = managementButton.getBoundingClientRect();
+        const arrowRight = bannerRect.right - (buttonRect.left + buttonRect.width / 2);
+        banner.style.setProperty('--pwa-arrow-right', `${Math.max(20, Math.min(bannerRect.width - 20, arrowRight))}px`);
+        document.body.style.setProperty('--pwa-update-height', `${bannerRect.height}px`);
+      }
+
+      function dismissUpdateNotice(restoreFocus = true) {
+        const banner = document.getElementById('pwaUpdateNotice');
+        const wasFocused = banner?.contains(document.activeElement);
+        noticeDismissed = true;
+        try { sessionStorage.setItem(dismissalKey, version || 'current'); } catch { /* Storage may be unavailable. */ }
+        banner?.classList.remove('active');
+        positionUpdateNotice();
+        if (restoreFocus && wasFocused) (mobileNavigation.matches ? managementButton : deviceButton).focus({ preventScroll: true });
+      }
+
+      const noticeResize = new ResizeObserver(positionUpdateNotice);
+      window.addEventListener('resize', positionUpdateNotice);
+      mobileNavigation.addEventListener('change', positionUpdateNotice);
+      managementButton.addEventListener('click', () => {
+        if (document.getElementById('pwaUpdateNotice')?.classList.contains('active')) dismissUpdateNotice(false);
+      });
+      document.addEventListener('pos:navigate', (event) => {
+        if (event.detail.panel === 'device' && updateAvailable) dismissUpdateNotice(false);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !event.defaultPrevented && !managementButton.closest('[inert]') && document.getElementById('pwaUpdateNotice')?.classList.contains('active')) {
+          dismissUpdateNotice();
+        }
+      });
+
       function applyUpdate(worker) {
+        if (updateRequested) return;
         if (document.body.dataset.draftDirty === 'true') {
-          const message = '仍有訂單草稿，請先完成或捨棄。';
+          const message = '目前有未完成的訂單，請先完成或捨棄，再更新。';
           updateStatus.textContent = message;
-          const bannerMessage = document.querySelector('#pwaBanner .pwa-banner-message');
-          if (bannerMessage) bannerMessage.textContent = message;
           return;
         }
         updateButton.disabled = true;
+        updateButton.textContent = '更新中…';
         updateStatus.textContent = '正在更新…';
         updateRequested = true;
         worker.postMessage({ type: 'SKIP_WAITING' });
       }
-      function offerUpdate(worker) {
+      function offerUpdate() {
+        if (updateRequested) return;
+        updateAvailable = true;
         updateButton.textContent = '更新';
-        updateStatus.textContent = '有新版本可更新。';
-        const banner = showMessage("版本更新", "完成目前訂單後即可更新。", '<button id="pwaUpdate" type="button">更新</button>', "fa-sync-alt");
-        banner.querySelector("#pwaUpdate")?.addEventListener("click", () => applyUpdate(worker));
+        updateStatus.textContent = '有新版本可更新。更新會重新載入頁面，可等目前工作完成後再更新。';
+        managementButton.dataset.updateAvailable = 'true';
+        managementButton.setAttribute('aria-label', '管理，有可用更新');
+        deviceButton.dataset.updateAvailable = 'true';
+        deviceButton.setAttribute('aria-label', '裝置資訊，有可用更新');
+        document.getElementById('pwaBanner')?.classList.remove('active');
+        if (noticeDismissed || document.body.dataset.panel === 'device') return;
+        if (document.getElementById('pwaUpdateNotice')?.classList.contains('active')) return;
+        const banner = showMessage("有新版本可用", "更新會重新載入頁面，可以先完成手邊工作。", '<button id="pwaUpdateDismiss" type="button">稍後再說</button><button id="pwaUpdateDetails" type="button">查看更新</button>', "fa-sync-alt", true);
+        banner.querySelector('#pwaUpdateDismiss').addEventListener('click', () => dismissUpdateNotice());
+        banner.querySelector('#pwaUpdateDetails').addEventListener('click', () => {
+          dismissUpdateNotice(false);
+          deviceButton.click();
+          updateButton.focus();
+        });
+        noticeResize.observe(banner);
+        positionUpdateNotice();
       }
       updateButton.addEventListener('click', async () => {
         if (registration.waiting) {
@@ -126,7 +195,7 @@
             });
           }
           if (worker?.state === 'redundant') throw new Error('installation failed');
-          if (registration.waiting) offerUpdate(registration.waiting);
+          if (registration.waiting) offerUpdate();
           else {
             updateButton.textContent = '檢查更新';
             updateStatus.textContent = '目前已是最新版本。';
@@ -138,12 +207,12 @@
           updateButton.disabled = false;
         }
       });
-      if (registration.waiting) offerUpdate(registration.waiting);
+      if (registration.waiting) offerUpdate();
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         worker?.addEventListener("statechange", () => {
           if (worker.state !== "installed" || !navigator.serviceWorker.controller) return;
-          offerUpdate(worker);
+          offerUpdate();
         });
       });
     }).catch((error) => {

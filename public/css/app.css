@@ -6409,11 +6409,12 @@ body .firebase-shop-option.active {
   font-weight: 700;
 }
 #pwaInstall,
-#pwaUpdate {
+#pwaUpdateDetails {
   color: var(--gj-on-primary);
   background: var(--pos-primary, var(--gj-primary));
 }
-#pwaDismiss {
+#pwaDismiss,
+#pwaUpdateDismiss {
   color: var(--gj-muted);
   background: transparent;
 }
@@ -8442,6 +8443,83 @@ body.gj-ui #firebaseGoogleSignIn.gj-social-button {
 .gj-ui .pwa-banner-message { display: block; font-size: 12px; line-height: 1.5; }
 .gj-ui .pwa-banner-actions { display: flex; flex-direction: row; gap: 8px; width: 100%; }
 .gj-ui .pwa-banner button { flex: 1; width: auto; min-height: 44px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+
+/* Update reminders belong to Management and leave the current task interactive. */
+.gj-ui .pwa-banner--update {
+  padding: 16px;
+  gap: 12px;
+  text-align: left;
+}
+.gj-ui .pwa-banner--update .pwa-banner-copy strong {
+  font-size: 16px;
+}
+.gj-ui .pwa-banner--update .pwa-banner-message {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.gj-ui #pwaUpdateDismiss {
+  background: var(--gj-subtle);
+  color: var(--gj-text);
+}
+.gj-ui .pwa-banner--update button:active {
+  filter: brightness(0.92);
+}
+.gj-ui #managementToggle[data-update-available] {
+  position: relative;
+}
+.gj-ui #managementToggle[data-update-available]::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gj-primary);
+  box-shadow: 0 0 0 2px var(--gj-surface);
+}
+.gj-ui #nav-device[data-update-available]::after {
+  content: "有更新";
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: var(--gj-on-primary-soft);
+  background: var(--gj-primary-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .gj-ui .pwa-banner--update {
+    position: absolute !important;
+    top: auto;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(100% + 12px) !important;
+    left: auto;
+    width: min(320px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))) !important;
+    margin: 0;
+    border-radius: 16px;
+    box-shadow: var(--gj-shadow);
+  }
+  .gj-ui .pwa-banner--update::after {
+    content: "";
+    position: absolute;
+    right: calc(var(--pwa-arrow-right, 28px) - 7px);
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    border-right: 1px solid var(--gj-border);
+    border-bottom: 1px solid var(--gj-border);
+    background: var(--gj-surface);
+    transform: rotate(45deg);
+  }
+  .gj-ui.pwa-update-visible .fab-cart {
+    bottom: calc(90px + env(safe-area-inset-bottom) + var(--pwa-update-height) + 12px) !important;
+  }
+  .gj-ui #managementToggle[data-update-available]::after {
+    right: calc(50% - 18px);
+  }
+}
 .gj-ui .receipt-preview {
   background: #fff;
   color: #000;
@@ -9837,4 +9915,396 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
   .gj-ui .cart-checkout-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 1fr); align-items: center; gap: 16px; }
   .gj-ui .cart-checkout-actions > div { flex-direction: column; align-items: flex-start; margin-bottom: 0; font-size: 18px; }
   .gj-ui .cart-checkout-actions #checkoutBtn { min-height: 48px; padding-block: 10px; }
+}
+
+/* Shop switching is a short sheet; management screens share a bounded frame. */
+.gj-ui #firebaseShopOverlay {
+  inset: var(--vp-top) 0 var(--vp-bottom);
+  padding: 20px;
+  background: var(--gj-backdrop);
+  backdrop-filter: blur(6px) !important;
+}
+.gj-ui .firebase-shop-card {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, 100%);
+  max-height: calc(100dvh - var(--vp-top) - var(--vp-bottom) - 40px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--gj-border);
+  border-radius: 20px !important;
+}
+.gj-ui .firebase-shop-handle {
+  display: none;
+}
+.gj-ui .firebase-shop-head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 20px 20px 18px;
+}
+.gj-ui .firebase-shop-heading {
+  flex: 1;
+  min-width: 0;
+  padding-top: 3px;
+}
+.gj-ui #firebaseShopTitle {
+  margin: 0;
+  color: var(--gj-text);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.gj-ui #firebaseShopSubtitle {
+  margin: 4px 0 0;
+  color: var(--gj-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.gj-ui #firebaseShopOverlay .firebase-shop-icon-button {
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px !important;
+  color: var(--gj-muted);
+  background: transparent;
+}
+.gj-ui #firebaseShopClose {
+  background: var(--gj-subtle);
+}
+.gj-ui .firebase-shop-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 20px 20px;
+  scrollbar-width: thin;
+}
+.gj-ui #firebaseShopList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.gj-ui #firebaseShopOverlay .firebase-shop-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--gj-text);
+  background: transparent;
+  font-size: 16px;
+  text-align: left;
+}
+.gj-ui #firebaseShopOverlay .firebase-shop-option.active {
+  border-color: transparent;
+  background: var(--gj-primary-soft);
+  color: var(--gj-on-primary-soft);
+}
+.gj-ui .firebase-shop-symbol,
+.gj-ui .firebase-member-avatar {
+  display: inline-flex;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--gj-subtle);
+  color: var(--gj-muted);
+}
+.gj-ui .firebase-shop-option.active .firebase-shop-symbol {
+  background: var(--gj-surface);
+  color: var(--gj-primary);
+}
+.gj-ui .firebase-shop-option-copy,
+.gj-ui .firebase-member-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.gj-ui .firebase-shop-option-copy strong {
+  font-weight: 600;
+}
+.gj-ui .firebase-shop-option-copy > span,
+.gj-ui .firebase-member-copy > span {
+  color: var(--gj-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+.gj-ui .firebase-shop-option.active .firebase-shop-option-copy > span {
+  color: var(--gj-on-primary-soft);
+}
+.gj-ui .firebase-shop-current {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.gj-ui .firebase-shop-current .gj-icon,
+.gj-ui .firebase-shop-chevron {
+  width: 18px;
+  height: 18px;
+}
+.gj-ui .firebase-shop-chevron {
+  flex: none;
+  color: var(--gj-muted);
+}
+.gj-ui .firebase-shop-footer {
+  flex: none;
+  padding: 16px 20px;
+  border-top: 1px solid var(--gj-border);
+}
+.gj-ui .firebase-shop-entry-actions {
+  display: flex;
+  gap: 12px;
+}
+.gj-ui #firebaseShopOverlay .firebase-shop-secondary {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--gj-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gj-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.gj-ui .firebase-shop-secondary .gj-icon {
+  width: 18px;
+  height: 18px;
+}
+.gj-ui #firebaseShopOverlay .firebase-shop-action {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gj-on-primary);
+  background: var(--gj-primary);
+}
+.gj-ui #firebaseShopOverlay button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.gj-ui #firebaseShopOverlay button:active {
+  filter: brightness(0.94);
+}
+.gj-ui #firebaseShopOverlay .firebase-shop-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 4px 0 0;
+  border: 0;
+}
+.gj-ui .firebase-shop-form label {
+  color: var(--gj-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.gj-ui #firebaseShopOverlay .gj-input {
+  width: 100%;
+  min-height: 48px !important;
+  padding: 12px;
+  border-radius: 10px;
+  color: var(--gj-text);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.gj-ui #firebaseShopClose:disabled {
+  display: none;
+}
+.gj-ui .firebase-shop-help {
+  margin: 0 0 16px;
+  color: var(--gj-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.gj-ui .firebase-shop-help:last-child {
+  margin-bottom: 0;
+}
+.gj-ui .firebase-shop-tabs {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  margin: 0 20px 16px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--gj-subtle);
+}
+.gj-ui .firebase-shop-tabs button {
+  flex: 1;
+  min-height: 44px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--gj-muted);
+  background: transparent;
+  font-size: 14px;
+}
+.gj-ui .firebase-shop-tabs [aria-selected="true"] {
+  color: var(--gj-text);
+  background: var(--gj-surface);
+  font-weight: 600;
+}
+.gj-ui .firebase-members-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--gj-muted);
+  font-size: 13px;
+}
+.gj-ui #firebaseMembersRetry {
+  padding: 0 8px;
+  color: var(--gj-primary);
+  background: transparent;
+}
+.gj-ui .firebase-member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gj-border);
+}
+.gj-ui .firebase-member-row:last-child {
+  border-bottom: 0;
+}
+.gj-ui .firebase-member-avatar {
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+}
+.gj-ui .firebase-member-email {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  color: var(--gj-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.gj-ui .firebase-member-owner {
+  flex: none;
+  margin-inline: 12px;
+  color: var(--gj-muted);
+}
+.gj-ui .firebase-member-identity {
+  margin: 0 0 20px;
+  color: var(--gj-text);
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gj-ui .firebase-shop-remove {
+  width: 100%;
+  margin-top: 24px;
+  border-top: 1px solid var(--gj-border);
+  border-radius: 0;
+  padding: 16px 12px 0;
+  color: var(--gj-danger);
+  background: transparent;
+  font-size: 14px;
+}
+.gj-ui #firebaseShopMessage {
+  flex: none;
+  min-height: 0;
+  max-height: 100px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 20px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.gj-ui .firebase-shop-empty {
+  padding: 24px 12px;
+  color: var(--gj-muted);
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: center;
+}
+.gj-ui #firebaseShopLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 76px;
+  margin: 0;
+  border-radius: 12px;
+  background: var(--gj-subtle);
+  color: var(--gj-muted);
+  font-size: 14px;
+}
+@media (hover: hover) {
+  .gj-ui #firebaseShopOverlay .firebase-shop-option:not(.active):hover,
+  .gj-ui #firebaseShopOverlay .firebase-shop-secondary:hover,
+  .gj-ui #firebaseShopOverlay .firebase-shop-icon-button:hover {
+    background: var(--gj-subtle);
+  }
+}
+@media (max-width: 600px) {
+  .gj-ui #firebaseShopOverlay {
+    padding: 12px 8px 0;
+    place-items: end center;
+  }
+  .gj-ui .firebase-shop-card {
+    width: 100%;
+    max-height: calc(100dvh - var(--vp-top) - var(--vp-bottom) - 16px - env(safe-area-inset-top));
+    padding: 0;
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0 !important;
+  }
+  .gj-ui .firebase-shop-handle {
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 4px;
+    margin: 10px auto 0;
+    border-radius: 99px;
+    background: var(--gj-border);
+  }
+  .gj-ui .firebase-shop-head {
+    padding: 16px 16px 18px;
+  }
+  .gj-ui .firebase-shop-body {
+    padding-inline: 16px;
+  }
+  .gj-ui .firebase-shop-tabs {
+    margin-inline: 16px;
+  }
+  .gj-ui .firebase-shop-footer {
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+  }
+  .gj-ui #firebaseShopMessage {
+    padding-inline: 16px;
+  }
+  .gj-ui #firebaseShopOverlay .firebase-shop-option {
+    padding: 10px;
+    gap: 10px;
+  }
 }

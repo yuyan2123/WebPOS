@@ -550,6 +550,83 @@ body.gj-ui #firebaseGoogleSignIn.gj-social-button {
 .gj-ui .pwa-banner-message { display: block; font-size: 12px; line-height: 1.5; }
 .gj-ui .pwa-banner-actions { display: flex; flex-direction: row; gap: 8px; width: 100%; }
 .gj-ui .pwa-banner button { flex: 1; width: auto; min-height: 44px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+
+/* Update reminders belong to Management and leave the current task interactive. */
+.gj-ui .pwa-banner--update {
+  padding: 16px;
+  gap: 12px;
+  text-align: left;
+}
+.gj-ui .pwa-banner--update .pwa-banner-copy strong {
+  font-size: 16px;
+}
+.gj-ui .pwa-banner--update .pwa-banner-message {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.gj-ui #pwaUpdateDismiss {
+  background: var(--gj-subtle);
+  color: var(--gj-text);
+}
+.gj-ui .pwa-banner--update button:active {
+  filter: brightness(0.92);
+}
+.gj-ui #managementToggle[data-update-available] {
+  position: relative;
+}
+.gj-ui #managementToggle[data-update-available]::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gj-primary);
+  box-shadow: 0 0 0 2px var(--gj-surface);
+}
+.gj-ui #nav-device[data-update-available]::after {
+  content: "有更新";
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: var(--gj-on-primary-soft);
+  background: var(--gj-primary-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .gj-ui .pwa-banner--update {
+    position: absolute !important;
+    top: auto;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(100% + 12px) !important;
+    left: auto;
+    width: min(320px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))) !important;
+    margin: 0;
+    border-radius: 16px;
+    box-shadow: var(--gj-shadow);
+  }
+  .gj-ui .pwa-banner--update::after {
+    content: "";
+    position: absolute;
+    right: calc(var(--pwa-arrow-right, 28px) - 7px);
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    border-right: 1px solid var(--gj-border);
+    border-bottom: 1px solid var(--gj-border);
+    background: var(--gj-surface);
+    transform: rotate(45deg);
+  }
+  .gj-ui.pwa-update-visible .fab-cart {
+    bottom: calc(90px + env(safe-area-inset-bottom) + var(--pwa-update-height) + 12px) !important;
+  }
+  .gj-ui #managementToggle[data-update-available]::after {
+    right: calc(50% - 18px);
+  }
+}
 .gj-ui .receipt-preview {
   background: #fff;
   color: #000;

@@ -9,6 +9,7 @@ const selector = '.modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOver
 const focusable =
   'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 const close = {
+  firebaseShopOverlay: () => window.closeShopManager?.(),
   productOrderModal: closeProductOrder,
   productEditModal: closeProductEditModal,
   cartModal: closeCartModal,

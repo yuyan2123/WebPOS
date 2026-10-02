@@ -27,6 +27,7 @@ writeFileSync(
       readFileSync(`src/styles/${name}.css`, 'utf8'),
     ),
     readFileSync('src/styles/pos.css', 'utf8'),
+    readFileSync('src/styles/shop-manager.css', 'utf8'),
   ].join('\n'),
 );
 
@@ -77,7 +78,7 @@ for (const path of shell) {
   );
 }
 releaseHash.update(worker.replace(/const CACHE_VERSION = .*;/, ''));
-const version = `0.15.6+${releaseHash.digest('hex').slice(0, 12)}`;
+const version = `0.15.7+${releaseHash.digest('hex').slice(0, 12)}`;
 const previousVersion = html.match(/name="app-version" content="([^"]*)"/)[1];
 const updatedAt =
   previousVersion === version

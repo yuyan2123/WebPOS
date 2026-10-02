@@ -3279,6 +3279,122 @@ test('gift-box composition, custom price, notes and quantity survive checkout', 
   expect(errors).toEqual([]);
 });
 
+async function mockAvailableUpdate(page) {
+  await page.addInitScript(() => {
+    const serviceWorker = new EventTarget();
+    const registration = new EventTarget();
+    const worker = new EventTarget();
+    window.__updateMessages = [];
+    serviceWorker.controller = {};
+    worker.state = 'installed';
+    worker.postMessage = (message) => window.__updateMessages.push(message);
+    registration.waiting = worker;
+    registration.installing = worker;
+    registration.update = async () => {};
+    serviceWorker.register = async () => registration;
+    Object.defineProperty(navigator, 'serviceWorker', { value: serviceWorker });
+    window.__repeatUpdateNotice = () => {
+      registration.dispatchEvent(new Event('updatefound'));
+      worker.dispatchEvent(new Event('statechange'));
+    };
+  });
+}
+
+test('update reminder points to Management and opens details before any reload', async ({ page }, testInfo) => {
+  await mockAvailableUpdate(page);
+  const errors = await openWorkspace(page);
+  const notice = page.locator('#pwaUpdateNotice');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('更新會重新載入頁面');
+  await expect(page.locator('#managementToggle')).toHaveAttribute('data-update-available', 'true');
+  const viewports = testInfo.project.name === 'phone'
+    ? [{ width: 375, height: 812 }, { width: 844, height: 390 }, { width: 320, height: 640 }]
+    : [page.viewportSize()];
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
+      await settleUI(page);
+      if (viewport.width < 900) {
+        const boxes = await page.evaluate(() => {
+          const banner = document.getElementById('pwaUpdateNotice');
+          const button = document.getElementById('managementToggle').getBoundingClientRect();
+          const rect = banner.getBoundingClientRect();
+          const arrow = parseFloat(banner.style.getPropertyValue('--pwa-arrow-right'));
+          return {
+            notice: rect.toJSON(),
+            navTop: document.querySelector('.app-navigation').getBoundingClientRect().top,
+            cartBottom: document.querySelector('.fab-cart').getBoundingClientRect().bottom,
+            arrowCenter: rect.right - arrow,
+            buttonCenter: button.left + button.width / 2,
+          };
+        });
+        expect(boxes.notice.x).toBeGreaterThanOrEqual(0);
+        expect(boxes.notice.right).toBeLessThanOrEqual(viewport.width);
+        expect(boxes.notice.top).toBeGreaterThanOrEqual(0);
+        expect(boxes.notice.bottom).toBeLessThan(boxes.navTop);
+        expect(boxes.cartBottom).toBeLessThan(boxes.notice.top);
+        expect(boxes.arrowCenter).toBeCloseTo(boxes.buttonCenter, 0);
+      }
+      for (const id of ['pwaUpdateDismiss', 'pwaUpdateDetails']) {
+        const button = await page.locator('#' + id).boundingBox();
+        expect(button.height).toBeGreaterThanOrEqual(44);
+      }
+      const scan = await new AxeBuilder({ page }).include('#pwaUpdateNotice').analyze();
+      expect(scan.violations).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`${theme}-${viewport.width}-update-reminder.png`) });
+    }
+  }
+  await page.locator('#pwaUpdateDetails').click();
+  await expect(notice).toBeHidden();
+  await expect(page.locator('#settingsSystem')).toBeVisible();
+  await expect(page.locator('#systemCheckUpdate')).toBeFocused();
+  await expect(page.locator('#startupStatus')).toBeHidden();
+  expect(await page.evaluate(() => window.__updateMessages)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('update reminder stays deferred for the session while Management retains the update', async ({ page }) => {
+  await mockAvailableUpdate(page);
+  const errors = await openWorkspace(page);
+  await page.locator('#pwaUpdateDismiss').click();
+  await expect(page.locator('#pwaUpdateNotice')).toBeHidden();
+  await expect(page.locator('body')).not.toHaveClass(/pwa-update-visible/);
+  await page.evaluate(() => window.__repeatUpdateNotice());
+  await expect(page.locator('#pwaUpdateNotice')).toBeHidden();
+  await page.reload();
+  await expect(page.locator('#startupStatus')).toBeHidden();
+  await expect(page.locator('#mainContent')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('#pwaUpdateNotice')).toHaveCount(0);
+  await expect(page.locator('#nav-device')).toHaveAttribute('data-update-available', 'true');
+  await openManagementPanel(page, 'device');
+  await expect(page.locator('#systemCheckUpdate')).toHaveText('更新');
+  expect(await page.evaluate(() => window.__updateMessages)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('Management closes the update reminder and unfinished orders remain protected', async ({ page }) => {
+  await mockAvailableUpdate(page);
+  const errors = await openWorkspace(page);
+  await page.locator('#customerName').fill('尚未完成的訂單');
+  await expect(page.locator('body')).toHaveAttribute('data-draft-dirty', 'true');
+  await openManagementPanel(page, 'device');
+  await expect(page.locator('#pwaUpdateNotice')).toBeHidden();
+  await page.locator('#systemCheckUpdate').click();
+  await expect(page.locator('#systemUpdateStatus')).toContainText('目前有未完成的訂單');
+  await expect(page.locator('#customerName')).toHaveValue('尚未完成的訂單');
+  expect(await page.evaluate(() => window.__updateMessages)).toEqual([]);
+  await page.locator('#nav-customer').click();
+  await page.getByRole('button', { name: '清空資料', exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-draft-dirty', 'false');
+  await openManagementPanel(page, 'device');
+  await page.locator('#systemCheckUpdate').click();
+  await expect(page.locator('#systemCheckUpdate')).toBeDisabled();
+  await expect(page.locator('#systemCheckUpdate')).toHaveText('更新中…');
+  expect(await page.evaluate(() => window.__updateMessages)).toEqual([{ type: 'SKIP_WAITING' }]);
+  expect(errors).toEqual([]);
+});
+
 for (const result of ['current', 'available', 'failed']) {
   test(`system information checks updates: ${result}`, async ({ page }) => {
     await page.addInitScript((updateResult) => {
@@ -3324,7 +3440,7 @@ for (const result of ['current', 'available', 'failed']) {
     await expect(page.locator('#systemUpdateStatus')).toHaveText(
       {
         current: '目前已是最新版本。',
-        available: '有新版本可更新。',
+        available: '有新版本可更新。更新會重新載入頁面，可等目前工作完成後再更新。',
         failed: '檢查更新失敗，請稍後重試。',
       }[result],
     );
@@ -3334,7 +3450,7 @@ for (const result of ['current', 'available', 'failed']) {
         document.body.dataset.draftDirty = 'true';
       });
       await page.locator('#systemCheckUpdate').click();
-      await expect(page.locator('#systemUpdateStatus')).toContainText('仍有訂單草稿');
+      await expect(page.locator('#systemUpdateStatus')).toContainText('目前有未完成的訂單');
       expect(await page.evaluate(() => window.__updateMessage)).toBeUndefined();
       await page.evaluate(() => {
         document.body.dataset.draftDirty = 'false';

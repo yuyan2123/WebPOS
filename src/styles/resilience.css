@@ -166,11 +166,12 @@
   font-weight: 700;
 }
 #pwaInstall,
-#pwaUpdate {
+#pwaUpdateDetails {
   color: var(--gj-on-primary);
   background: var(--pos-primary, var(--gj-primary));
 }
-#pwaDismiss {
+#pwaDismiss,
+#pwaUpdateDismiss {
   color: var(--gj-muted);
   background: transparent;
 }

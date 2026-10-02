@@ -194,7 +194,9 @@ test('update reload message is consumed once and normal reload restores loading 
   await expect.poll(() => page.evaluate(() => typeof window.completeStartup)).toBe('function');
   await page.evaluate(() => window.completeStartup());
   await expect(page.locator('#startupStatus')).toBeHidden();
-  await page.locator('#pwaUpdate').click();
+  await page.locator('#pwaUpdateDetails').click();
+  await expect(page.locator('#startupStatus')).toBeHidden();
+  await page.locator('#systemCheckUpdate').click();
   await expect(page.locator('#startupStatus')).toBeVisible();
   await expect(page.locator('#startupMessage')).toHaveText('更新中...');
   expect(await page.evaluate(() => sessionStorage.getItem('ginJiaPos.updateReload'))).toBeNull();

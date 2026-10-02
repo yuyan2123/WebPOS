@@ -8467,6 +8467,7 @@ function initializeWorkspace() {
 var selector = ".modal, .cart-sidebar, #firebaseAuthOverlay, #firebaseShopOverlay";
 var focusable = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]';
 var close = {
+  firebaseShopOverlay: () => window.closeShopManager?.(),
   productOrderModal: closeProductOrder,
   productEditModal: closeProductEditModal,
   cartModal: closeCartModal,

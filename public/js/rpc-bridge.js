@@ -13,6 +13,13 @@
     let sessionBootstrapPromise = null;
     let shopsLoaded = false;
     let shopManagerLoading = false;
+    let shopManagerRequired = false;
+    let shopManagerView = 'select';
+    let shopViewRevision = 0;
+    let shopMembers = null;
+    let shopMembersShopId = null;
+    let membersLoading = false;
+    let selectedMember = null;
     const GLOBAL_METHODS = new Set(['listMyShops', 'createShop', 'registerDeviceSession']);
 
     function authFailureMessage(error, fallback = '登入失敗，請稍後再試。') {
@@ -77,47 +84,12 @@
             #firebaseShopOverlay { position: fixed; inset: 0; z-index: 100001; display: none; place-items: center;
                 padding: 20px; background: rgba(15,23,42,.72); backdrop-filter: blur(8px); }
             #firebaseShopOverlay.active { display: grid; }
-            .firebase-shop-card { width: min(680px, 100%); max-height: min(820px, calc(100vh - 40px)); overflow: auto;
-                padding: 26px; border-radius: 22px; background: var(--gj-surface); box-shadow: 0 24px 70px rgba(15,23,42,.3); font-family: inherit; }
-            .firebase-shop-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-            .firebase-shop-head h2 { margin: 0; color: var(--gj-text); font-size: 1.45rem; }
-            #firebaseShopClose { border: 0; background: var(--gj-bg); color: var(--gj-muted); width: 36px; height: 36px;
-                border-radius: 50%; font-size: 1.2rem; cursor: pointer; }
-            #firebaseShopClose:disabled { display: none; }
-            #firebaseShopList { display: grid; gap: 9px; margin-bottom: 20px; }
-            .firebase-shop-option { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-                padding: 13px 15px; border: 1px solid var(--gj-border); border-radius: 12px; background: var(--gj-surface); color: var(--gj-muted);
-                text-align: left; cursor: pointer; }
-            .firebase-shop-option.active { border-color: var(--gj-primary); background: var(--gj-primary-soft); color: var(--gj-primary); }
-            .firebase-shop-role { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--gj-bg); font-size: .72rem; }
-            .firebase-shop-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding-top: 16px; border-top: 1px solid var(--gj-border); }
-            .firebase-shop-form input, .firebase-shop-form select { min-width: 0; padding: 10px 12px; border: 1px solid var(--gj-border);
-                border-radius: 9px; background: var(--gj-surface); color: var(--gj-muted); }
-            .firebase-shop-form button, .firebase-shop-action { border: 0; border-radius: 9px; padding: 10px 14px;
-                background: var(--gj-primary); color: var(--gj-on-primary); font-weight: 700; cursor: pointer; }
-            #firebaseShopAdmin { display: none; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--gj-border); }
-            #firebaseShopAdmin.active { display: block; }
-            .firebase-shop-meta { margin: 4px 0 14px; color: var(--gj-muted); font-size: .78rem; word-break: break-all; }
-            .firebase-member-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px;
-                padding: 10px 0; border-bottom: 1px solid var(--gj-bg); }
-            .firebase-member-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gj-muted); font-size: .88rem; }
-            .firebase-member-row select { padding: 7px; border: 1px solid var(--gj-border); border-radius: 8px; }
-            .firebase-member-remove { border: 0; border-radius: 8px; padding: 8px; color: var(--gj-danger); background: var(--gj-surface); cursor: pointer; }
-            #firebaseShopMessage { min-height: 22px; margin-top: 10px; color: var(--gj-danger); font-size: .85rem; }
-            #firebaseShopLoading { display: flex; align-items: center; justify-content: center; gap: 4px;
-                min-height: 76px; margin-bottom: 16px; border-radius: 12px; background: var(--gj-primary-soft); color: var(--gj-primary); font-size: .9rem; }
-            #firebaseShopLoading[hidden] { display: none; }
             .firebase-loading-dots { display: inline-flex; font-size: 22px; font-weight: 700; line-height: 1; }
             .firebase-loading-dots span { animation: firebaseLoadingDot 1.2s ease-in-out infinite; }
             .firebase-loading-dots span:nth-child(2) { animation-delay: .15s; }
             .firebase-loading-dots span:nth-child(3) { animation-delay: .3s; }
             @keyframes firebaseLoadingDot { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
             @media (prefers-reduced-motion: reduce) { .firebase-loading-dots span { animation: none; } }
-            @media (max-width: 560px) {
-                .firebase-shop-form { grid-template-columns: 1fr; }
-                .firebase-member-row { grid-template-columns: minmax(0,1fr) auto; }
-                .firebase-member-remove { grid-column: 2; }
-            }
         `;
         document.head.appendChild(style);
         const overlay = document.createElement('div');
@@ -195,33 +167,77 @@
 
         const shopOverlay = document.createElement('div');
         shopOverlay.id = 'firebaseShopOverlay';
+        shopOverlay.setAttribute('role', 'dialog');
+        shopOverlay.setAttribute('aria-modal', 'true');
+        shopOverlay.setAttribute('aria-labelledby', 'firebaseShopTitle');
+        shopOverlay.setAttribute('aria-describedby', 'firebaseShopSubtitle');
         shopOverlay.innerHTML = `
-            <div class="firebase-shop-card">
+            <div class="firebase-shop-card" data-view="select">
+                <span class="firebase-shop-handle" aria-hidden="true"></span>
                 <div class="firebase-shop-head">
-                    <h2>我的店鋪</h2>
-                    <button id="firebaseShopClose" type="button" aria-label="關閉">&times;</button>
+                    <button id="firebaseShopBack" class="firebase-shop-icon-button" type="button" aria-label="返回店鋪列表" hidden><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+                    <div class="firebase-shop-heading"><h2 id="firebaseShopTitle" tabindex="-1">切換店鋪</h2><p id="firebaseShopSubtitle">選擇要使用的店鋪</p></div>
+                    <button id="firebaseShopClose" class="firebase-shop-icon-button" type="button" aria-label="關閉店鋪視窗"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
                 </div>
-                <div id="firebaseShopLoading" role="status" hidden>載入店鋪資料中<span class="firebase-loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></div>
-                <div id="firebaseShopList"></div>
-                <div class="firebase-shop-form">
-                    <input id="firebaseNewShopName" type="text" maxlength="60" placeholder="新店鋪名稱" class="gj-input">
-                    <button id="firebaseCreateShop" type="button">建立店鋪</button>
+                <div id="firebaseShopTabs" class="firebase-shop-tabs" role="tablist" aria-label="店鋪設定" hidden>
+                    <button id="firebaseShopDetailsTab" type="button" role="tab" aria-selected="true" aria-controls="firebaseShopDetails">店鋪資料</button>
+                    <button id="firebaseShopMembersTab" type="button" role="tab" aria-selected="false" aria-controls="firebaseShopMembers" tabindex="-1">成員與權限</button>
                 </div>
-                <div id="firebaseShopAdmin">
-                    <h3 style="margin:0;color:var(--gj-muted);">店鋪與成員管理</h3>
-                    <div id="firebaseShopMeta" class="firebase-shop-meta"></div>
-                    <div class="firebase-shop-form" style="padding-top:0;border-top:0;margin-bottom:14px;">
-                        <input id="firebaseRenameShopName" type="text" maxlength="60" placeholder="店鋪名稱" class="gj-input">
-                        <button id="firebaseRenameShop" type="button">重新命名</button>
+                <div class="firebase-shop-body">
+                    <section data-shop-view="select" aria-label="店鋪列表">
+                        <div id="firebaseShopLoading" role="status" hidden>載入店鋪資料中<span class="firebase-loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></div>
+                        <div id="firebaseShopList"></div>
+                    </section>
+                    <section data-shop-view="create" aria-label="建立店鋪" hidden>
+                        <form id="firebaseCreateShopForm" class="firebase-shop-form" novalidate>
+                            <label for="firebaseNewShopName">店鋪名稱</label>
+                            <input id="firebaseNewShopName" type="text" required minlength="2" maxlength="60" placeholder="例如：金家餅店" autocomplete="off" aria-describedby="firebaseNewShopHint" class="gj-input">
+                            <p id="firebaseNewShopHint" class="firebase-shop-help">建立後會直接切換到新店鋪。</p>
+                        </form>
+                    </section>
+                    <section id="firebaseShopDetails" data-shop-view="settings" role="tabpanel" aria-labelledby="firebaseShopDetailsTab" hidden>
+                        <form id="firebaseRenameShopForm" class="firebase-shop-form" novalidate>
+                            <label for="firebaseRenameShopName">店鋪名稱</label>
+                            <input id="firebaseRenameShopName" type="text" required minlength="2" maxlength="60" autocomplete="off" aria-describedby="firebaseRenameShopHint" class="gj-input">
+                            <p id="firebaseRenameShopHint" class="firebase-shop-help">名稱會同步更新給所有店鋪成員。</p>
+                        </form>
+                    </section>
+                    <section id="firebaseShopMembers" data-shop-view="members" role="tabpanel" aria-labelledby="firebaseShopMembersTab" hidden>
+                        <div class="firebase-members-heading"><span id="firebaseMemberCount">店鋪成員</span><button id="firebaseMembersRetry" type="button" hidden>重新載入</button></div>
+                        <div id="firebaseMembersLoading" class="firebase-shop-empty" role="status" hidden>載入成員中…</div>
+                        <div id="firebaseMemberList"></div>
+                    </section>
+                    <section data-shop-view="invite" aria-label="新增成員" hidden>
+                        <form id="firebaseAddMemberForm" class="firebase-shop-form" novalidate>
+                            <label for="firebaseMemberEmail">成員 Email</label>
+                            <input id="firebaseMemberEmail" type="email" required autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="name@example.com" aria-describedby="firebaseMemberHint" class="gj-input">
+                            <p id="firebaseMemberHint" class="firebase-shop-help">請對方先登入一次，並完成 Email 驗證。</p>
+                            <label for="firebaseMemberRole">使用權限</label>
+                            <select id="firebaseMemberRole" class="gj-input"><option value="editor">可編輯</option><option value="viewer">僅檢視</option></select>
+                        </form>
+                    </section>
+                    <section data-shop-view="member" aria-label="成員設定" hidden>
+                        <p id="firebaseSelectedMemberEmail" class="firebase-member-identity"></p>
+                        <form id="firebaseMemberSettingsForm" class="firebase-shop-form">
+                            <label for="firebaseSelectedMemberRole">使用權限</label>
+                            <select id="firebaseSelectedMemberRole" class="gj-input"><option value="editor">可編輯</option><option value="viewer">僅檢視</option></select>
+                            <p class="firebase-shop-help">僅檢視成員無法建立或修改訂單。</p>
+                        </form>
+                        <button id="firebaseRemoveMember" class="firebase-shop-remove" type="button">移除此成員</button>
+                    </section>
+                </div>
+                <div id="firebaseShopMessage" role="alert" hidden></div>
+                <div class="firebase-shop-footer">
+                    <div data-shop-actions="select" class="firebase-shop-entry-actions">
+                        <button id="firebaseOpenCreateShop" class="firebase-shop-secondary" type="button"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>建立店鋪</button>
+                        <button id="firebaseOpenShopSettings" class="firebase-shop-secondary" type="button"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4m4 0h8M4 12h10m4 0h2M4 18h2m4 0h10"/><circle cx="10" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg>店鋪設定</button>
                     </div>
-                    <div class="firebase-shop-form" style="grid-template-columns:minmax(0,1fr) auto auto;">
-                        <input id="firebaseMemberEmail" type="email" placeholder="成員帳號 Email" class="gj-input">
-                        <select id="firebaseMemberRole" class="gj-input"><option value="editor">可編輯</option><option value="viewer">僅檢視</option></select>
-                        <button id="firebaseAddMember" type="button">新增成員</button>
-                    </div>
-                    <div id="firebaseMemberList" style="margin-top:12px;"></div>
+                    <button id="firebaseCreateShop" data-shop-actions="create" class="firebase-shop-action" type="submit" form="firebaseCreateShopForm" hidden>建立並切換</button>
+                    <button id="firebaseRenameShop" data-shop-actions="settings" class="firebase-shop-action" type="submit" form="firebaseRenameShopForm" hidden>儲存名稱</button>
+                    <button id="firebaseOpenAddMember" data-shop-actions="members" class="firebase-shop-action" type="button" hidden>新增成員</button>
+                    <button id="firebaseAddMember" data-shop-actions="invite" class="firebase-shop-action" type="submit" form="firebaseAddMemberForm" hidden>新增成員</button>
+                    <button id="firebaseSaveMember" data-shop-actions="member" class="firebase-shop-action" type="submit" form="firebaseMemberSettingsForm" hidden>儲存變更</button>
                 </div>
-                <div id="firebaseShopMessage" role="alert"></div>
             </div>`;
         document.body.appendChild(shopOverlay);
     }
@@ -285,6 +301,8 @@
         const element = document.getElementById('firebaseShopMessage');
         if (!element) return;
         element.textContent = message || '';
+        element.hidden = !message;
+        element.setAttribute('role', success ? 'status' : 'alert');
         element.style.color = success ? 'var(--gj-success)' : 'var(--gj-danger)';
     }
 
@@ -386,26 +404,80 @@
         const list = document.getElementById('firebaseShopList');
         if (!list) return;
         if (availableShops.length === 0) {
-            list.innerHTML = '<div style="padding:18px;border-radius:12px;background:var(--gj-bg);color:var(--gj-muted);text-align:center;">尚未建立店鋪，請先建立第一間店鋪。</div>';
+            list.innerHTML = '<div class="firebase-shop-empty">尚未建立店鋪<br>建立第一間店鋪，就能開始使用。</div>';
             return;
         }
         list.innerHTML = availableShops.map((shop) => `
-            <button type="button" class="firebase-shop-option ${activeShop?.shopId === shop.shopId ? 'active' : ''}" data-shop-id="${escapeMarkup(shop.shopId)}">
-                <span><strong>${escapeMarkup(shop.name)}</strong></span>
-                <span class="firebase-shop-role">${shop.role === 'owner' && shop.ownerUid && shop.ownerUid !== activeUid ? 'admin' : roleLabel(shop.role)}</span>
+            <button type="button" class="firebase-shop-option ${activeShop?.shopId === shop.shopId ? 'active' : ''}" data-shop-id="${escapeMarkup(shop.shopId)}" ${activeShop?.shopId === shop.shopId ? 'aria-current="true"' : ''}>
+                <span class="firebase-shop-symbol" aria-hidden="true"><svg class="gj-icon" viewBox="0 0 24 24"><path d="M3 10v10h18V10M3 4h18l2 6H1ZM9 20v-7h6v7"/></svg></span>
+                <span class="firebase-shop-option-copy"><strong>${escapeMarkup(shop.name)}</strong><span>${shop.role === 'owner' && shop.ownerUid && shop.ownerUid !== activeUid ? '管理員' : roleLabel(shop.role)}</span></span>
+                ${activeShop?.shopId === shop.shopId
+                    ? '<span class="firebase-shop-current">目前使用<svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg></span>'
+                    : '<svg class="gj-icon firebase-shop-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>'}
             </button>`).join('');
         list.querySelectorAll('.firebase-shop-option').forEach((button) => {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async () => {
                 const shop = availableShops.find((item) => item.shopId === button.dataset.shopId);
-                if (shop) activateShop(shop, true);
+                if (!shop) return;
+                list.inert = true;
+                try { await activateShop(shop, true); }
+                catch (error) { setShopMessage(error.message); }
+                finally { list.inert = false; }
             });
         });
     }
 
+    function showShopView(view, focus = true) {
+        const canManage = activeShop?.role === 'owner';
+        if (['settings', 'members', 'invite', 'member'].includes(view) && !canManage) view = 'select';
+        shopManagerView = view;
+        shopViewRevision++;
+        const overlay = document.getElementById('firebaseShopOverlay');
+        overlay.querySelector('.firebase-shop-card').dataset.view = view;
+        overlay.querySelectorAll('[data-shop-view]').forEach((panel) => { panel.hidden = panel.dataset.shopView !== view; });
+        overlay.querySelectorAll('[data-shop-actions]').forEach((actions) => { actions.hidden = actions.dataset.shopActions !== view; });
+        const titles = { select: '切換店鋪', create: '建立店鋪', settings: '店鋪設定', members: '店鋪設定', invite: '新增成員', member: '成員設定' };
+        const title = document.getElementById('firebaseShopTitle');
+        title.textContent = titles[view];
+        document.getElementById('firebaseShopSubtitle').textContent = view === 'select' ? '選擇要使用的店鋪' : view === 'create' ? '為新的店鋪取個名稱' : activeShop?.name || '';
+        const back = document.getElementById('firebaseShopBack');
+        back.hidden = view === 'select';
+        back.setAttribute('aria-label', ['invite', 'member'].includes(view) ? '返回成員列表' : '返回店鋪列表');
+        document.getElementById('firebaseOpenShopSettings').hidden = !canManage;
+        document.getElementById('firebaseShopTabs').hidden = !['settings', 'members'].includes(view);
+        for (const [id, target] of [['firebaseShopDetailsTab', 'settings'], ['firebaseShopMembersTab', 'members']]) {
+            const tab = document.getElementById(id);
+            tab.setAttribute('aria-selected', String(view === target));
+            tab.tabIndex = view === target ? 0 : -1;
+        }
+        overlay.querySelectorAll('[aria-invalid]').forEach((input) => {
+            input.removeAttribute('aria-invalid');
+            input.removeAttribute('aria-errormessage');
+        });
+        setShopMessage('');
+        overlay.querySelector('.firebase-shop-body').scrollTop = 0;
+        if (focus && overlay.classList.contains('active')) title.focus({ preventScroll: true });
+    }
+
+    function closeShopManager() {
+        if (shopManagerRequired) return;
+        const overlay = document.getElementById('firebaseShopOverlay');
+        overlay.classList.remove('active');
+        requestAnimationFrame(async () => {
+            // The account badge fades back in after the dialog closes. Chrome
+            // cannot focus its button until the visibility transition finishes.
+            const badge = document.getElementById('firebaseAccountBadge');
+            await Promise.all(badge.getAnimations().map((animation) => animation.finished.catch(() => {})));
+            if (!overlay.classList.contains('active')) document.getElementById('firebaseShopButton').focus({ preventScroll: true });
+        });
+    }
+
     function showShopOverlay(required) {
+        shopManagerRequired = Boolean(required || !activeShop);
+        showShopView('select', false);
         renderShopList();
         const close = document.getElementById('firebaseShopClose');
-        if (close) close.disabled = Boolean(required);
+        if (close) close.disabled = shopManagerRequired;
         document.getElementById('firebaseShopOverlay').classList.add('active');
     }
 
@@ -437,49 +509,70 @@
     function renderMembers(members) {
         const list = document.getElementById('firebaseMemberList');
         if (!list) return;
-        list.innerHTML = members.map((member) => {
+        document.getElementById('firebaseMemberCount').textContent = `${members.length} 位成員`;
+        if (!members.length) {
+            list.innerHTML = '<div class="firebase-shop-empty">尚無成員資料</div>';
+            return;
+        }
+        list.innerHTML = [...members].sort((a, b) => Number(b.role === 'owner') - Number(a.role === 'owner')).map((member) => {
             const owner = member.role === 'owner';
+            const email = member.email || member.name || member.uid;
             return `<div class="firebase-member-row" data-member-uid="${escapeMarkup(member.uid)}">
-                <div class="firebase-member-email"><strong>${escapeMarkup(member.email || member.name || member.uid)}</strong></div>
+                <span class="firebase-member-avatar" aria-hidden="true">${escapeMarkup(Array.from(email)[0]?.toUpperCase() || 'M')}</span>
+                <div class="firebase-member-copy"><strong class="firebase-member-email">${escapeMarkup(email)}</strong><span>${roleLabel(member.role)}${member.uid === activeUid ? ' · 你' : ''}</span></div>
                 ${owner
-                    ? '<span class="firebase-shop-role">擁有者</span>'
-                    : `<select class="firebase-member-role gj-input"><option value="editor" ${member.role === 'editor' ? 'selected' : ''}>可編輯</option><option value="viewer" ${member.role === 'viewer' ? 'selected' : ''}>僅檢視</option></select>
-                       <button type="button" class="firebase-member-remove gj-btn gj-btn--danger" aria-label="移除成員"><i class="fas fa-trash"></i></button>`}
+                    ? '<svg class="gj-icon firebase-member-owner" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-5"/></svg>'
+                    : `<button type="button" class="firebase-member-manage firebase-shop-icon-button" aria-label="管理 ${escapeMarkup(email)}"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`}
             </div>`;
         }).join('');
-        list.querySelectorAll('.firebase-member-role').forEach((select) => {
-            select.addEventListener('change', async () => {
-                const row = select.closest('.firebase-member-row');
-                const state = await ensureSignedIn();
-                try {
-                    await rawRpc(state, 'updateShopMemberRole', [{ uid: row.dataset.memberUid, role: select.value }], activeShop.shopId);
-                    setShopMessage('成員權限已更新', true);
-                } catch (error) {
-                    setShopMessage(error.message);
-                    await loadMembers(state);
-                }
-            });
-        });
-        list.querySelectorAll('.firebase-member-remove').forEach((button) => {
-            button.addEventListener('click', async () => {
-                const row = button.closest('.firebase-member-row');
-                if (!confirm('確定要移除此店鋪成員？')) return;
-                const state = await ensureSignedIn();
-                try {
-                    await rawRpc(state, 'removeShopMember', [row.dataset.memberUid], activeShop.shopId);
-                    setShopMessage('成員已移除', true);
-                    await loadMembers(state);
-                } catch (error) {
-                    setShopMessage(error.message);
-                }
+        list.querySelectorAll('.firebase-member-manage').forEach((button) => {
+            button.addEventListener('click', () => {
+                selectedMember = members.find((member) => member.uid === button.closest('.firebase-member-row').dataset.memberUid);
+                document.getElementById('firebaseSelectedMemberEmail').textContent = selectedMember.email || selectedMember.name || selectedMember.uid;
+                document.getElementById('firebaseSelectedMemberRole').value = selectedMember.role;
+                showShopView('member');
             });
         });
     }
 
     async function loadMembers(state) {
         if (!activeShop || activeShop.role !== 'owner') return;
-        const members = await rawRpc(state, 'listShopMembers', [], activeShop.shopId);
+        const shopId = activeShop.shopId;
+        const members = await rawRpc(state, 'listShopMembers', [], shopId);
+        if (activeShop?.shopId !== shopId) return;
+        shopMembers = members;
+        shopMembersShopId = shopId;
         renderMembers(members);
+    }
+
+    async function showShopMembers() {
+        showShopView('members');
+        if (shopMembers && shopMembersShopId === activeShop?.shopId) {
+            renderMembers(shopMembers);
+            return;
+        }
+        if (membersLoading) return;
+        membersLoading = true;
+        document.getElementById('firebaseMemberCount').textContent = '店鋪成員';
+        const loading = document.getElementById('firebaseMembersLoading');
+        const list = document.getElementById('firebaseMemberList');
+        const retry = document.getElementById('firebaseMembersRetry');
+        list.hidden = true;
+        list.setAttribute('aria-busy', 'true');
+        loading.hidden = false;
+        retry.hidden = true;
+        document.getElementById('firebaseOpenAddMember').disabled = true;
+        try { await loadMembers(await ensureSignedIn()); }
+        catch (error) {
+            if (shopManagerView === 'members') setShopMessage(error.message);
+            retry.hidden = false;
+        } finally {
+            membersLoading = false;
+            loading.hidden = true;
+            list.hidden = false;
+            list.setAttribute('aria-busy', 'false');
+            document.getElementById('firebaseOpenAddMember').disabled = false;
+        }
     }
 
     async function openShopManager(required) {
@@ -487,91 +580,185 @@
         shopManagerLoading = true;
         setShopMessage('');
         showShopOverlay(Boolean(required || !activeShop));
-        const admin = document.getElementById('firebaseShopAdmin');
         const list = document.getElementById('firebaseShopList');
         const loading = document.getElementById('firebaseShopLoading');
         const forms = document.querySelectorAll('#firebaseShopOverlay .firebase-shop-form');
-        admin.classList.remove('active');
-        list.style.display = 'none';
+        list.hidden = true;
         list.setAttribute('aria-busy', 'true');
         loading.hidden = false;
         forms.forEach((form) => { form.inert = true; });
+        document.getElementById('firebaseOpenCreateShop').disabled = true;
+        document.getElementById('firebaseOpenShopSettings').disabled = true;
         try {
             const state = await ensureSignedIn();
             await refreshShops(state);
             const current = activeShop && availableShops.find((shop) => shop.shopId === activeShop.shopId);
             activeShop = current || null;
             updateShopBadge();
-            document.getElementById('firebaseShopClose').disabled = Boolean(required || !activeShop);
+            shopManagerRequired = Boolean(required || !activeShop);
+            document.getElementById('firebaseShopClose').disabled = shopManagerRequired;
+            document.getElementById('firebaseOpenShopSettings').hidden = activeShop?.role !== 'owner';
             if (activeShop?.role === 'owner') {
-                document.getElementById('firebaseMemberList').replaceChildren();
-                document.getElementById('firebaseShopMeta').textContent = `店鋪 ID：${activeShop.shopId}`;
                 document.getElementById('firebaseRenameShopName').value = activeShop.name;
-                await loadMembers(state);
-                admin.classList.add('active');
             }
+            shopMembers = null;
+            shopMembersShopId = null;
+            document.getElementById('firebaseMemberList').replaceChildren();
         } finally {
             shopManagerLoading = false;
             loading.hidden = true;
-            list.style.display = '';
+            list.hidden = false;
             list.setAttribute('aria-busy', 'false');
             forms.forEach((form) => { form.inert = false; });
+            document.getElementById('firebaseOpenCreateShop').disabled = false;
+            document.getElementById('firebaseOpenShopSettings').disabled = false;
+        }
+    }
+
+    function validateShopInput(id, message) {
+        const input = document.getElementById(id);
+        if (input.checkValidity() && input.value.trim().length >= (input.type === 'email' ? 1 : 2)) return true;
+        setShopMessage(message);
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-errormessage', 'firebaseShopMessage');
+        input.focus();
+        return false;
+    }
+
+    async function runShopAction(buttonId, progress, action) {
+        const button = document.getElementById(buttonId);
+        if (button.disabled) return;
+        const label = button.textContent;
+        const shopId = activeShop?.shopId;
+        const view = shopManagerView;
+        const revision = shopViewRevision;
+        const stillCurrent = () => document.getElementById('firebaseShopOverlay').classList.contains('active') && activeShop?.shopId === shopId && shopManagerView === view && shopViewRevision === revision;
+        button.disabled = true;
+        button.textContent = progress;
+        setShopMessage('');
+        try {
+            const result = await action(stillCurrent);
+            if (stillCurrent() && result) {
+                if (result.view) showShopView(result.view);
+                setShopMessage(result.message, true);
+            }
+        } catch (error) {
+            if (stillCurrent()) setShopMessage(error.message);
+        } finally {
+            button.disabled = false;
+            button.textContent = label;
         }
     }
 
     function installShopEventHandlers() {
+        const overlay = document.getElementById('firebaseShopOverlay');
+        window.closeShopManager = closeShopManager;
         document.getElementById('firebaseShopButton').addEventListener('click', () => {
             openShopManager(false).catch((error) => setShopMessage(error.message));
         });
-        document.getElementById('firebaseShopClose').addEventListener('click', () => {
-            document.getElementById('firebaseShopOverlay').classList.remove('active');
+        document.getElementById('firebaseShopClose').addEventListener('click', closeShopManager);
+        overlay.addEventListener('click', (event) => { if (event.target === overlay) closeShopManager(); });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !event.defaultPrevented && overlay.classList.contains('active')) closeShopManager();
         });
-        document.getElementById('firebaseCreateShop').addEventListener('click', async function() {
+        document.getElementById('firebaseShopBack').addEventListener('click', () => {
+            if (['invite', 'member'].includes(shopManagerView)) showShopMembers();
+            else showShopView('select');
+        });
+        document.getElementById('firebaseOpenCreateShop').addEventListener('click', () => showShopView('create'));
+        document.getElementById('firebaseOpenShopSettings').addEventListener('click', () => showShopView('settings'));
+        document.getElementById('firebaseShopDetailsTab').addEventListener('click', () => showShopView('settings'));
+        document.getElementById('firebaseShopMembersTab').addEventListener('click', showShopMembers);
+        document.getElementById('firebaseMembersRetry').addEventListener('click', showShopMembers);
+        document.getElementById('firebaseOpenAddMember').addEventListener('click', () => showShopView('invite'));
+        document.getElementById('firebaseShopTabs').addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const showMembers = event.key === 'End' || ['ArrowLeft', 'ArrowRight'].includes(event.key) && shopManagerView === 'settings';
+            if (showMembers) showShopMembers(); else showShopView('settings');
+            document.getElementById(showMembers ? 'firebaseShopMembersTab' : 'firebaseShopDetailsTab').focus();
+        });
+        overlay.addEventListener('input', (event) => {
+            if (event.target.hasAttribute('aria-invalid')) {
+                event.target.removeAttribute('aria-invalid');
+                event.target.removeAttribute('aria-errormessage');
+                setShopMessage('');
+            }
+        });
+        document.getElementById('firebaseCreateShopForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!validateShopInput('firebaseNewShopName', '店鋪名稱請填寫 2 至 60 個字元。')) return;
             const nameInput = document.getElementById('firebaseNewShopName');
             const name = nameInput.value.trim();
-            this.disabled = true;
-            try {
+            await runShopAction('firebaseCreateShop', '建立中…', async (stillCurrent) => {
                 const state = await ensureSignedIn();
                 const result = await rawRpc(state, 'createShop', [{ name }], null);
                 availableShops.push(result.shop);
                 nameInput.value = '';
-                activateShop(result.shop, Boolean(activeShop));
-                setShopMessage('店鋪已建立', true);
-            } catch (error) {
-                setShopMessage(error.message);
-            } finally {
-                this.disabled = false;
-            }
+                if (stillCurrent()) await activateShop(result.shop, Boolean(activeShop));
+                else renderShopList();
+            });
         });
-        document.getElementById('firebaseRenameShop').addEventListener('click', async function() {
+        document.getElementById('firebaseRenameShopForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!validateShopInput('firebaseRenameShopName', '店鋪名稱請填寫 2 至 60 個字元。')) return;
             const name = document.getElementById('firebaseRenameShopName').value.trim();
-            try {
+            const shopId = activeShop.shopId;
+            await runShopAction('firebaseRenameShop', '儲存中…', async () => {
                 const state = await ensureSignedIn();
-                await rawRpc(state, 'renameShop', [name], activeShop.shopId);
-                activeShop.name = name;
-                availableShops = availableShops.map((shop) => shop.shopId === activeShop.shopId ? { ...shop, name } : shop);
+                await rawRpc(state, 'renameShop', [name], shopId);
+                if (activeShop?.shopId === shopId) activeShop.name = name;
+                availableShops = availableShops.map((shop) => shop.shopId === shopId ? { ...shop, name } : shop);
                 updateShopBadge();
                 renderShopList();
-                setShopMessage('店鋪名稱已更新', true);
-            } catch (error) {
-                setShopMessage(error.message);
-            }
+                if (activeShop?.shopId === shopId && ['settings', 'members'].includes(shopManagerView)) document.getElementById('firebaseShopSubtitle').textContent = name;
+                return { message: '店鋪名稱已更新' };
+            });
         });
-        document.getElementById('firebaseAddMember').addEventListener('click', async function() {
+        document.getElementById('firebaseAddMemberForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!validateShopInput('firebaseMemberEmail', '請填寫有效的成員 Email。')) return;
             const emailInput = document.getElementById('firebaseMemberEmail');
-            const roleInput = document.getElementById('firebaseMemberRole');
-            this.disabled = true;
-            try {
+            const email = emailInput.value.trim();
+            const role = document.getElementById('firebaseMemberRole').value;
+            const shopId = activeShop.shopId;
+            await runShopAction('firebaseAddMember', '新增中…', async () => {
                 const state = await ensureSignedIn();
-                await rawRpc(state, 'addShopMember', [{ email: emailInput.value.trim(), role: roleInput.value }], activeShop.shopId);
+                await rawRpc(state, 'addShopMember', [{ email, role }], shopId);
                 emailInput.value = '';
-                setShopMessage('成員已加入店鋪', true);
-                await loadMembers(state);
-            } catch (error) {
-                setShopMessage(error.message);
-            } finally {
-                this.disabled = false;
-            }
+                if (activeShop?.shopId === shopId) await loadMembers(state);
+                return { view: 'members', message: '成員已加入店鋪' };
+            });
+        });
+        document.getElementById('firebaseMemberSettingsForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!selectedMember || selectedMember.role === 'owner') return;
+            const uid = selectedMember.uid;
+            const role = document.getElementById('firebaseSelectedMemberRole').value;
+            const shopId = activeShop.shopId;
+            await runShopAction('firebaseSaveMember', '儲存中…', async () => {
+                const state = await ensureSignedIn();
+                await rawRpc(state, 'updateShopMemberRole', [{ uid, role }], shopId);
+                if (shopMembersShopId === shopId) {
+                    shopMembers = shopMembers.map((member) => member.uid === uid ? { ...member, role } : member);
+                    renderMembers(shopMembers);
+                }
+                return { view: 'members', message: '成員權限已更新' };
+            });
+        });
+        document.getElementById('firebaseRemoveMember').addEventListener('click', async () => {
+            if (!selectedMember || selectedMember.role === 'owner' || !confirm(`確定要將 ${selectedMember.email || selectedMember.uid} 移出此店鋪？`)) return;
+            const uid = selectedMember.uid;
+            const shopId = activeShop.shopId;
+            await runShopAction('firebaseRemoveMember', '移除中…', async () => {
+                const state = await ensureSignedIn();
+                await rawRpc(state, 'removeShopMember', [uid], shopId);
+                if (shopMembersShopId === shopId) {
+                    shopMembers = shopMembers.filter((member) => member.uid !== uid);
+                    renderMembers(shopMembers);
+                }
+                return { view: 'members', message: '成員已移除' };
+            });
         });
     }
 
