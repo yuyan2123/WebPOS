@@ -12,9 +12,16 @@ concurrency:
   group: firebase-live
   cancel-in-progress: false
 jobs:
+  verify:
+    uses: ./.github/workflows/pos-ci.yml
   build_and_deploy:
+    needs: verify
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Require all validation jobs to pass
+        if: ${{ needs.verify.result != 'success' }}
+        run: exit 1
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
@@ -23,11 +30,11 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             functions/package-lock.json
-      - run: npm ci
       - run: npm ci --prefix functions
-      - uses: ./.github/actions/setup-pos
-      - run: npm run build
-      - run: npm run test:integration
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.verify.outputs.build-artifact }}
+          path: .
       - uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_WEBPOS_14776 }}

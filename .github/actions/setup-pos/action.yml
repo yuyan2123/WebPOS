@@ -1,5 +1,10 @@
 name: Set up POS toolchain
 description: Install the pinned Rust/Wasm toolchain and browser test runtime.
+inputs:
+  install-browsers:
+    description: Install browser runtimes when this job runs Playwright tests.
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -23,5 +28,6 @@ runs:
         if ! wasm-bindgen --version 2>/dev/null | grep -q '0.2.128'; then
           cargo install wasm-bindgen-cli --version 0.2.128 --locked
         fi
-    - shell: bash
+    - if: ${{ inputs.install-browsers == 'true' }}
+      shell: bash
       run: npx playwright install --with-deps chromium webkit

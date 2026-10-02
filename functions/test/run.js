@@ -2,6 +2,8 @@ await import("./values.test.js");
 await import("./isolation.test.js");
 await import("./security.test.js");
 await import("./optimization.test.js");
+await import("./bootstrap-performance.test.js");
+await import("./session-bootstrap.test.js");
 await import("./contacts.test.js");
 await import("./frontend.test.js");
 await import("./transactions.test.js");

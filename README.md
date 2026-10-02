@@ -138,8 +138,11 @@ committed, revoke or rotate them and remove the sensitive content from history b
 and browser tests. The emulator integration suite is a separate command. `firebase deploy`
 and `npm run deploy` do not build or test automatically: `firebase.json` has no predeploy hook.
 
-GitHub workflows run the build and emulator tests before deployment. Same-repository pull
-requests receive Hosting previews; fork pull requests are skipped by the preview workflow.
+GitHub workflows build the deployment artifacts and run Rust/Node checks, unit tests and
+emulator integration once, then run the complete browser suite across four parallel runners.
+All browser shards and backend checks must pass before the exact same build artifact is deployed.
+Build artifacts and failed browser test results are retained for seven days. Same-repository pull requests
+receive Hosting previews; fork pull requests are skipped by the preview workflow.
 Merges to `main` deploy Firestore rules/indexes, Functions and Hosting together. For your own
 deployment, update the hard-coded project ID and service-account secret reference in both
 files under `.github/workflows/`; changing `.firebaserc` alone does not change CI's target.

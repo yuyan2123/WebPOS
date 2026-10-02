@@ -22,7 +22,6 @@ test("public RPC does not expose unbounded customer reads or two-step order subm
   assert.match(index, /submitOrder: submitOrderService/);
   assert.match(index, /getShopBootstrap: getShopBootstrapService/);
   assert.match(index, /method === "initializeSession"/);
-  assert.match(index, /Promise\.all\(\[/);
 });
 
 test("capacity uses daily counters and device audit avoids a read transaction", async () => {

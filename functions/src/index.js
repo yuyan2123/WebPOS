@@ -144,16 +144,23 @@ export async function executeRpc(request) {
   const method = String(request.data?.method || "");
   const args = Array.isArray(request.data?.args) ? request.data.args : [];
   if (method === "initializeSession") {
-    const [shops, device] = await Promise.all([
-      listMyShopsService(user),
+    // Prepare shop data while the independent device audit is being written.
+    const [session, device] = await Promise.allSettled([
+      (async () => {
+        const shops = await listMyShopsService(user);
+        const options = args[1];
+        if (!options) return { shops };
+        const selectedShop = shops.find((shop) => shop.shopId === options.shopId) || (shops.length === 1 ? shops[0] : null);
+        const shop = selectedShop ? await requireShopAccess(user, selectedShop.shopId, "viewer") : null;
+        const bootstrap = shop ? await getShopBootstrapService(shop, options.year, options.month) : null;
+        return { shops, selectedShop: selectedShop ? { ...selectedShop, role: shop.role } : null, bootstrap };
+      })(),
       recordDeviceSession(user, request, securityHashSalt.value(), args[0]),
     ]);
-    const options = args[1];
-    if (!options) return serialize({ shops, device });
-    const selectedShop = shops.find((shop) => shop.shopId === options.shopId) || (shops.length === 1 ? shops[0] : null);
-    const shop = selectedShop ? await requireShopAccess(user, selectedShop.shopId, "viewer") : null;
-    const bootstrap = shop ? await getShopBootstrapService(shop, options.year, options.month) : null;
-    return serialize({ shops, device, selectedShop: selectedShop ? { ...selectedShop, role: shop.role } : null, bootstrap });
+    // Finish the audit even when shop data fails; do not leave a pending write.
+    if (device.status === "rejected") throw device.reason;
+    if (session.status === "rejected") throw session.reason;
+    return serialize({ ...session.value, device: device.value });
   }
   if (method === "registerDeviceSession") {
     return serialize(await recordDeviceSession(user, request, securityHashSalt.value(), args[0]));

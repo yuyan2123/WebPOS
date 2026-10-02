@@ -1,0 +1,81 @@
+name: Validate POS build
+
+on:
+  workflow_call:
+    outputs:
+      build-artifact:
+        description: Validated web and Functions Wasm build artifact.
+        value: ${{ jobs.build.outputs.artifact-name }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      artifact-name: pos-build-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - uses: ./.github/actions/setup-pos
+        with:
+          install-browsers: 'false'
+      - name: Build Rust and web assets
+        run: |
+          npm run build:rust
+          npm run build:css
+          npm run build:web
+      - run: npm run check
+      - run: cargo test --workspace
+      - run: npm --prefix functions test
+      - run: npm run test:integration
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pos-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            public/
+            functions/wasm/
+          retention-days: 7
+          if-no-files-found: error
+
+  browser:
+    name: Browser tests (shard ${{ matrix.shard }}/4)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps --only-shell chromium webkit
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+          path: .
+      - run: npx playwright test --shard=${{ matrix.shard }}/4 --reporter=line
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

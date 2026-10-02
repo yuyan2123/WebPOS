@@ -12,12 +12,15 @@ export async function getShopBootstrap(shop, yearValue, monthValue) {
   const startDate = `${prefix}-01`;
   const endDate = `${prefix}-${String(daysInMonth).padStart(2, "0")}`;
 
-  const [products, capacitySettings] = await Promise.all([
+  const [products, { capacitySettings, capacityUsage }] = await Promise.all([
     getProducts(shop),
-    // 設定頁需要所有日期覆寫；同一份設定也供當月產能計算使用。
-    getCapacitySettings(shop),
+    (async () => {
+      // 設定頁需要所有日期覆寫；同一份設定也供當月產能計算使用。
+      const capacitySettings = await getCapacitySettings(shop);
+      const capacityUsage = await getCapacityRangeData(shop, startDate, endDate, capacitySettings);
+      return { capacitySettings, capacityUsage };
+    })(),
   ]);
-  const capacityUsage = await getCapacityRangeData(shop, startDate, endDate, capacitySettings);
 
   return {
     products,
