@@ -2930,6 +2930,122 @@ function updateModalButtons(modalFooter, orderId, newStatus) {
   }
 }
 
+// src/ui/order-items-motion.js
+var detailSelector = ".order-items-row";
+function listRows(container) {
+  const table = container.querySelector(":scope > .table-responsive > table");
+  return table ? [...table.tHead?.rows || [], ...table.tBodies[0].rows] : [];
+}
+function captureOrderItemsFrame(container) {
+  const wrapper = container.querySelector(":scope > .table-responsive");
+  const rows = /* @__PURE__ */ new Map();
+  const panels2 = /* @__PURE__ */ new Map();
+  for (const row of listRows(container)) {
+    if (!row.matches(detailSelector)) {
+      rows.set(row, row.getBoundingClientRect());
+      continue;
+    }
+    const panel = row.querySelector(".order-items-expand");
+    panels2.set(panel, {
+      rect: panel.getBoundingClientRect(),
+      opacity: Number(getComputedStyle(panel).opacity),
+      height: panel.querySelector(".order-items-scroll").getBoundingClientRect().height
+    });
+  }
+  return {
+    rows,
+    panels: panels2,
+    wrapper: wrapper.getBoundingClientRect(),
+    scrollTop: container.closest("main")?.scrollTop
+  };
+}
+var milliseconds = (value, fallback) => {
+  const number = parseFloat(value);
+  return Number.isFinite(number) ? number * (value.trim().endsWith("ms") ? 1 : 1e3) : fallback;
+};
+function animateOrderItemsFrame(container, before, openingRow) {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const style = getComputedStyle(container);
+  const duration = reduced ? 0 : milliseconds(
+    style.getPropertyValue(openingRow ? "--gj-order-items-enter" : "--gj-order-items-exit"),
+    openingRow ? 280 : 220
+  );
+  const easing = openingRow ? "cubic-bezier(0.2, 0, 0, 1)" : "cubic-bezier(0.4, 0, 1, 1)";
+  const plans = [];
+  const viewport = innerHeight;
+  const main = container.closest("main");
+  const wrapper = container.querySelector(":scope > .table-responsive");
+  const wrapperRect = wrapper.getBoundingClientRect();
+  for (const row of listRows(container)) {
+    if (!row.matches(detailSelector)) {
+      const previous2 = before.rows.get(row);
+      const rect2 = row.getBoundingClientRect();
+      const offset = previous2 ? previous2.top - before.wrapper.top - (rect2.top - wrapperRect.top) : 0;
+      if (Math.abs(offset) > 0.5 && (previous2.bottom >= -160 && previous2.top <= viewport + 160 || rect2.bottom >= -160 && rect2.top <= viewport + 160)) {
+        plans.push({
+          element: row,
+          id: "order-list-move",
+          from: { transform: `translateY(${offset}px)` },
+          to: { transform: "translateY(0)" }
+        });
+      }
+      continue;
+    }
+    const panel = row.querySelector(".order-items-expand");
+    const closing = row.classList.contains("is-collapsing");
+    const previous = before.panels.get(panel);
+    const rect = panel.getBoundingClientRect();
+    const endY = closing ? -8 : 0;
+    const summary = row.previousElementSibling;
+    const summaryOffset = before.rows.has(summary) ? before.rows.get(summary).top - before.wrapper.top - (summary.getBoundingClientRect().top - wrapperRect.top) : 0;
+    const startY = previous ? previous.rect.top - before.wrapper.top - (rect.top - wrapperRect.top - endY) : summaryOffset - 8;
+    plans.push({
+      element: panel,
+      id: closing ? "order-items-collapse" : "order-items-expand",
+      from: { transform: `translateY(${startY}px)`, opacity: previous?.opacity ?? 0 },
+      to: { transform: `translateY(${endY}px)`, opacity: closing ? 0 : 1 }
+    });
+  }
+  const effects = [];
+  let cancelled = false;
+  const clear = () => {
+    plans.forEach(({ element: element2 }) => element2.classList.remove("is-order-moving"));
+    wrapper.classList.remove("is-order-morphing");
+    wrapper.style.height = "";
+  };
+  const transition = {
+    cancel() {
+      cancelled = true;
+      effects.forEach((effect) => effect.cancel());
+      clear();
+    },
+    finished: null
+  };
+  if (duration) {
+    const bottomVisible = [before.wrapper.bottom, wrapperRect.bottom].some(
+      (bottom) => bottom >= -160 && bottom <= viewport + 160
+    );
+    const scrollClamped = main && Math.abs(main.scrollTop - before.scrollTop) > 0.5;
+    if (Math.abs(before.wrapper.height - wrapperRect.height) > 0.5 && (bottomVisible || scrollClamped)) {
+      wrapper.style.height = `${wrapperRect.height}px`;
+      wrapper.classList.add("is-order-morphing");
+      plans.unshift({
+        element: wrapper,
+        id: "order-list-resize",
+        from: { height: `${before.wrapper.height}px` },
+        to: { height: `${wrapperRect.height}px` }
+      });
+    }
+    for (const { element: element2, id, from, to } of plans) {
+      if (id !== "order-list-resize") element2.classList.add("is-order-moving");
+      effects.push(element2.animate([from, to], { id, duration, easing, fill: "both" }));
+    }
+    if (main && before.scrollTop !== void 0) main.scrollTop = before.scrollTop;
+  }
+  transition.finished = Promise.allSettled(effects.map((effect) => effect.finished)).then(() => !cancelled);
+  return transition;
+}
+
 // src/app/search.js
 var searchRevision = 0;
 var searchMode = "search";
@@ -2939,6 +3055,7 @@ function resetSearchRequest() {
   state.isLoadingMoreOrders = false;
   state.searchNextCursor = null;
   state.currentSearchOrders = [];
+  state.orderItemsTransition?.cancel();
   state.orderItemsTransition = null;
   state.collapsingSearchOrderId = null;
   state.expandedSearchOrderId = null;
@@ -3040,6 +3157,7 @@ function displayOrderTable(orders, containerId, type = "search") {
     if (announcement.textContent !== message) announcement.textContent = message;
   }
   if (containerId === "searchResults" && state.orderItemsTransition) {
+    state.orderItemsTransition.cancel();
     state.orderItemsTransition = null;
     state.collapsingSearchOrderId = null;
   }
@@ -3152,12 +3270,9 @@ function toggleOrderItems(orderId) {
   const orderIndex = state.currentSearchOrders.findIndex((order2) => (order2.id || order2.orderId) === orderId);
   const order = state.currentSearchOrders[orderIndex];
   if (!button || !Array.isArray(order?.items)) return;
-  state.orderItemsTransition = null;
+  const frame = captureOrderItemsFrame(container);
+  state.orderItemsTransition?.cancel();
   state.collapsingSearchOrderId = null;
-  container.querySelectorAll(".order-items-row.is-collapsing").forEach((row) => {
-    toggles.find((toggle) => toggle.getAttribute("aria-controls") === row.id)?.removeAttribute("aria-controls");
-    row.remove();
-  });
   const nextOrderId = state.expandedSearchOrderId === orderId ? null : orderId;
   const previousButton = toggles.find((toggle) => toggle.dataset.oid === state.expandedSearchOrderId);
   if (previousButton) {
@@ -3170,35 +3285,46 @@ function toggleOrderItems(orderId) {
       previousButton.getAttribute("aria-label").replace(/^收合/, "\u5C55\u958B")
     );
     if (detail?.classList.contains("order-items-row")) {
+      const panel = detail.querySelector(".order-items-expand");
+      detail.style.setProperty("--order-items-content-height", `${frame.panels.get(panel).height}px`);
       detail.classList.add("is-collapsing");
-      const animation = detail.querySelector(".order-items-expand");
-      const transition = {};
-      state.orderItemsTransition = transition;
+      if (detail.contains(document.activeElement)) previousButton.focus({ preventScroll: true });
+      detail.inert = true;
       state.collapsingSearchOrderId = state.expandedSearchOrderId;
-      Promise.allSettled(animation.getAnimations().map((effect) => effect.finished)).then(() => {
-        requestAnimationFrame(() => {
-          if (state.orderItemsTransition !== transition) return;
-          state.orderItemsTransition = null;
-          state.collapsingSearchOrderId = null;
-          previousButton.removeAttribute("aria-controls");
-          detail.remove();
-        });
-      });
     }
   }
   state.expandedSearchOrderId = nextOrderId;
+  let openingRow = null;
   if (nextOrderId) {
     const summary = button.closest(".order-summary-row");
     const detailId = `searchResults-items-${orderIndex}`;
-    summary.insertAdjacentHTML(
-      "afterend",
-      renderExpandedOrderItems(order.items, summary.cells.length, false, detailId)
-    );
+    let detail = summary.nextElementSibling;
+    if (detail?.id !== detailId) {
+      summary.insertAdjacentHTML("afterend", renderExpandedOrderItems(order.items, summary.cells.length, false, detailId));
+      detail = summary.nextElementSibling;
+    }
+    detail.classList.remove("is-collapsing");
+    detail.inert = false;
+    openingRow = detail;
     summary.classList.add("is-expanded");
     button.setAttribute("aria-expanded", "true");
     button.setAttribute("aria-controls", detailId);
     button.setAttribute("aria-label", button.getAttribute("aria-label").replace(/^展開/, "\u6536\u5408"));
   }
+  const transition = animateOrderItemsFrame(container, frame, openingRow);
+  state.orderItemsTransition = transition;
+  transition.finished.then((finished) => {
+    requestAnimationFrame(() => {
+      if (!finished || state.orderItemsTransition !== transition) return;
+      container.querySelectorAll(".order-items-row.is-collapsing").forEach((row) => {
+        toggles.find((toggle) => toggle.getAttribute("aria-controls") === row.id)?.removeAttribute("aria-controls");
+        row.remove();
+      });
+      transition.cancel();
+      state.orderItemsTransition = null;
+      state.collapsingSearchOrderId = null;
+    });
+  });
 }
 function renderExpandedOrderItems(items, columnCount, isCollapsing = false, detailId = "") {
   const collapsingClass = isCollapsing ? " is-collapsing" : "";

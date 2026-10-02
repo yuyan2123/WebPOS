@@ -4,6 +4,7 @@ import { showAlert, setButtonLoading } from './feedback.js';
 import { escapeHtml, escapeAttr, selectSearchContactMethod } from './customers.js';
 import { escapeHandlerArgument } from '../platform/markup.js';
 import { getStatusPillClass } from './order-status.js';
+import { captureOrderItemsFrame, animateOrderItemsFrame } from '../ui/order-items-motion.js';
 
 let searchRevision = 0;
 let searchMode = 'search';
@@ -14,6 +15,7 @@ function resetSearchRequest() {
   state.isLoadingMoreOrders = false;
   state.searchNextCursor = null;
   state.currentSearchOrders = [];
+  state.orderItemsTransition?.cancel();
   state.orderItemsTransition = null;
   state.collapsingSearchOrderId = null;
   state.expandedSearchOrderId = null;
@@ -139,6 +141,7 @@ export function displayOrderTable(orders, containerId, type = 'search') {
     if (announcement.textContent !== message) announcement.textContent = message;
   }
   if (containerId === 'searchResults' && state.orderItemsTransition) {
+    state.orderItemsTransition.cancel();
     state.orderItemsTransition = null;
     state.collapsingSearchOrderId = null;
   }
@@ -275,16 +278,9 @@ export function toggleOrderItems(orderId) {
   const order = state.currentSearchOrders[orderIndex];
   if (!button || !Array.isArray(order?.items)) return;
 
-  // Finish only an outgoing detail row. Never rebuild the result list or block
-  // subsequent clicks while an animation is running.
-  state.orderItemsTransition = null;
+  const frame = captureOrderItemsFrame(container);
+  state.orderItemsTransition?.cancel();
   state.collapsingSearchOrderId = null;
-  container.querySelectorAll('.order-items-row.is-collapsing').forEach((row) => {
-    toggles
-      .find((toggle) => toggle.getAttribute('aria-controls') === row.id)
-      ?.removeAttribute('aria-controls');
-    row.remove();
-  });
   const nextOrderId = state.expandedSearchOrderId === orderId ? null : orderId;
   const previousButton = toggles.find((toggle) => toggle.dataset.oid === state.expandedSearchOrderId);
   if (previousButton) {
@@ -297,35 +293,46 @@ export function toggleOrderItems(orderId) {
       previousButton.getAttribute('aria-label').replace(/^收合/, '展開'),
     );
     if (detail?.classList.contains('order-items-row')) {
+      const panel = detail.querySelector('.order-items-expand');
+      detail.style.setProperty('--order-items-content-height', `${frame.panels.get(panel).height}px`);
       detail.classList.add('is-collapsing');
-      const animation = detail.querySelector('.order-items-expand');
-      const transition = {};
-      state.orderItemsTransition = transition;
+      if (detail.contains(document.activeElement)) previousButton.focus({ preventScroll: true });
+      detail.inert = true;
       state.collapsingSearchOrderId = state.expandedSearchOrderId;
-      Promise.allSettled(animation.getAnimations().map((effect) => effect.finished)).then(() => {
-        requestAnimationFrame(() => {
-          if (state.orderItemsTransition !== transition) return;
-          state.orderItemsTransition = null;
-          state.collapsingSearchOrderId = null;
-          previousButton.removeAttribute('aria-controls');
-          detail.remove();
-        });
-      });
     }
   }
   state.expandedSearchOrderId = nextOrderId;
+  let openingRow = null;
   if (nextOrderId) {
     const summary = button.closest('.order-summary-row');
     const detailId = `searchResults-items-${orderIndex}`;
-    summary.insertAdjacentHTML(
-      'afterend',
-      renderExpandedOrderItems(order.items, summary.cells.length, false, detailId),
-    );
+    let detail = summary.nextElementSibling;
+    if (detail?.id !== detailId) {
+      summary.insertAdjacentHTML('afterend', renderExpandedOrderItems(order.items, summary.cells.length, false, detailId));
+      detail = summary.nextElementSibling;
+    }
+    detail.classList.remove('is-collapsing');
+    detail.inert = false;
+    openingRow = detail;
     summary.classList.add('is-expanded');
     button.setAttribute('aria-expanded', 'true');
     button.setAttribute('aria-controls', detailId);
     button.setAttribute('aria-label', button.getAttribute('aria-label').replace(/^展開/, '收合'));
   }
+  const transition = animateOrderItemsFrame(container, frame, openingRow);
+  state.orderItemsTransition = transition;
+  transition.finished.then((finished) => {
+    requestAnimationFrame(() => {
+      if (!finished || state.orderItemsTransition !== transition) return;
+      container.querySelectorAll('.order-items-row.is-collapsing').forEach((row) => {
+        toggles.find((toggle) => toggle.getAttribute('aria-controls') === row.id)?.removeAttribute('aria-controls');
+        row.remove();
+      });
+      transition.cancel();
+      state.orderItemsTransition = null;
+      state.collapsingSearchOrderId = null;
+    });
+  });
 }
 
 export function renderExpandedOrderItems(items, columnCount, isCollapsing = false, detailId = '') {

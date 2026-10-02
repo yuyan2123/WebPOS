@@ -1876,13 +1876,40 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
 }
 .gj-ui .order-items-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
 .gj-ui .order-items-toggle:hover { color: var(--gj-primary); }
+/* Inline disclosure commits layout once; its content and following rows move on layers. */
+.gj-ui #searchResults { overflow-anchor: none; }
+.gj-ui #searchResults .table-responsive.is-order-morphing { position: relative; }
+.gj-ui #searchResults .table-responsive.is-order-morphing > table { position: absolute; inset: 0 auto auto 0; }
+.gj-ui .order-items-expand {
+  position: relative;
+  display: block;
+  grid-template-rows: none;
+  opacity: 1;
+  animation: none;
+}
+.gj-ui .order-items-row.is-collapsing .order-items-expand {
+  height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  animation: none;
+}
+.gj-ui .order-items-row.is-collapsing .order-items-scroll {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--order-items-content-height);
+}
+.gj-ui .is-order-moving { will-change: transform; }
+.gj-ui .order-items-expand.is-order-moving { will-change: transform, opacity; }
+.gj-ui .order-summary-row.is-order-moving {
+  position: relative;
+  z-index: 1;
+  background: var(--gj-surface);
+}
 @media (min-width: 601px) and (max-width: 1100px) {
   .gj-ui #searchResults .table > tbody > tr.order-summary-row { padding-block: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .gj-ui .order-items-toggle svg { transition: none; }
-  .gj-ui .order-items-expand { grid-template-rows: 1fr; opacity: 1; }
-  .gj-ui .order-items-row.is-collapsing .order-items-expand { grid-template-rows: 0fr; opacity: 0; }
 }
 /* Authentication keeps visible labels and scrolls safely on short viewports. */
 .gj-ui #firebaseAuthOverlay { padding: 16px; backdrop-filter: none; }

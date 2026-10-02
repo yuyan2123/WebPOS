@@ -197,6 +197,7 @@ function initializeOverlayScrollbars() {
   function update() {
     pending = 0;
     const now = performance.now();
+    const writes = [];
     for (const entry of entries.values()) {
       const { target } = entry;
       const bounds = visibleBounds(target);
@@ -216,10 +217,10 @@ function initializeOverlayScrollbars() {
         target.tabIndex < 0 &&
         !target.hasAttribute('tabindex')
       ) {
-        target.tabIndex = 0;
+        writes.push(() => { target.tabIndex = 0; });
         entry.tabIndexAdded = true;
       } else if (!axes.x && !axes.y && entry.tabIndexAdded && target.getAttribute('tabindex') === '0') {
-        target.removeAttribute('tabindex');
+        writes.push(() => target.removeAttribute('tabindex'));
         entry.tabIndexAdded = false;
       }
       for (const axis of ['x', 'y']) {
@@ -243,38 +244,42 @@ function initializeOverlayScrollbars() {
             travel > 0 &&
             unobstructed(target, left + (vertical ? 5 : length / 2), top + (vertical ? length / 2 : 5));
           if (visible) {
-            Object.assign(track.style, {
-              left: `${left}px`,
-              top: `${top}px`,
-              width: `${vertical ? 12 : length}px`,
-              height: `${vertical ? length : 12}px`,
-            });
-            Object.assign(thumb.style, {
-              width: vertical ? '' : `${thumbLength}px`,
-              height: vertical ? `${thumbLength}px` : '',
-              transform: `translate${vertical ? 'Y' : 'X'}(${(position / max) * travel}px)`,
+            writes.push(() => {
+              Object.assign(track.style, {
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${vertical ? 12 : length}px`,
+                height: `${vertical ? length : 12}px`,
+              });
+              Object.assign(thumb.style, {
+                width: vertical ? '' : `${thumbLength}px`,
+                height: vertical ? `${thumbLength}px` : '',
+                transform: `translate${vertical ? 'Y' : 'X'}(${(position / max) * travel}px)`,
+              });
             });
             entry.geometry[axis] = { start: vertical ? top : left, thumb: thumbLength, travel, max };
           }
         }
-        track.hidden = !visible;
         if (!visible) {
           delete entry.geometry[axis];
           if (drag?.entry === entry && drag.axis === axis) finishDrag();
         }
-        track.classList.toggle(
-          'is-visible',
-          Boolean(
-            visible &&
-            (entry.activeUntil > now ||
-              (!touchDevice.matches &&
-                (target.contains(hovered) ||
-                  (!isRoot(target) && target.contains(document.activeElement)))) ||
-              drag?.entry === entry),
-          ),
+        const active = Boolean(
+          visible &&
+          (entry.activeUntil > now ||
+            (!touchDevice.matches &&
+              (target.contains(hovered) ||
+                (!isRoot(target) && target.contains(document.activeElement)))) ||
+            drag?.entry === entry),
         );
+        writes.push(() => {
+          track.hidden = !visible;
+          track.classList.toggle('is-visible', active);
+        });
       }
     }
+    // Geometry for every scroller is read before any proxy changes its styles.
+    writes.forEach((write) => write());
     if (now < movingUntil) schedule();
   }
 

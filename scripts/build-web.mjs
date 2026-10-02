@@ -77,7 +77,7 @@ for (const path of shell) {
   );
 }
 releaseHash.update(worker.replace(/const CACHE_VERSION = .*;/, ''));
-const version = `0.15.5+${releaseHash.digest('hex').slice(0, 12)}`;
+const version = `0.15.6+${releaseHash.digest('hex').slice(0, 12)}`;
 const previousVersion = html.match(/name="app-version" content="([^"]*)"/)[1];
 const updatedAt =
   previousVersion === version

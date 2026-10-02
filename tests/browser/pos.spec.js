@@ -327,10 +327,12 @@ test('clearing a collapsing order prevents its animation from restoring the old 
   await page.locator('#searchName').fill('舊訂單');
   await page.locator('#searchName').press('Enter');
   await expect(page.locator('#searchResults')).toContainText('舊訂單');
-  await page.addStyleTag({ content: '.order-items-expand { animation-delay: 300ms !important; }' });
   await page.evaluate(() => {
     window.toggleOrderItems('animation-order');
     window.toggleOrderItems('animation-order');
+    document.getElementById('searchResults').getAnimations({ subtree: true }).forEach((animation) => {
+      if (animation.id.startsWith('order-')) animation.effect.updateTiming({ delay: 300 });
+    });
     window.clearSearch();
   });
   await page.evaluate(
@@ -2491,21 +2493,123 @@ test('viewer retains read access and cannot operate catalog or capacity mutation
   await expect(page.locator('#searchName')).toBeEnabled();
 });
 
+test('order detail motion keeps content and row positions continuous when reversed halfway', async ({ page }, testInfo) => {
+  const errors = await openWorkspace(page);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.locator('#nav-search').click();
+  await page.evaluate(() => {
+    window.__orders = Array.from({ length: 3 }, (_, index) => ({
+      orderId: `O-motion-${index}`, customerName: `動畫測試客戶 ${index}`, totalAmount: 300,
+      deliveryDate: '2026-10-02', status: '已確認',
+      items: Array.from({ length: 3 }, (_, item) => ({ productName: `商品 ${item}`, quantity: 2, unitPrice: 50, subtotal: 100 })),
+    }));
+  });
+  await page.locator('#searchName').fill('動畫');
+  await page.locator('.btn-search').click();
+  const result = await page.evaluate(async () => {
+    const container = document.getElementById('searchResults');
+    const rows = [...container.querySelectorAll('.order-summary-row')];
+    const finish = async () => {
+      container.getAnimations({ subtree: true }).filter(effect => effect.id.startsWith('order-')).forEach(effect => effect.finish());
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    };
+    const collapsedTop = rows[1].getBoundingClientRect().top;
+    window.toggleOrderItems('O-motion-0');
+    const opening = container.getAnimations({ subtree: true }).filter(effect => effect.id.startsWith('order-'));
+    opening.forEach(effect => { effect.pause(); effect.currentTime = Number(effect.effect.getComputedTiming().duration) / 2; });
+    const midwayTop = rows[1].getBoundingClientRect().top;
+    await finish();
+    const expandedTop = rows[1].getBoundingClientRect().top;
+    const panel = rows[0].nextElementSibling.querySelector('.order-items-expand');
+    const content = panel.querySelector('table');
+    window.toggleOrderItems('O-motion-0');
+    container.getAnimations({ subtree: true }).filter(effect => effect.id.startsWith('order-')).forEach(effect => {
+      effect.pause(); effect.currentTime = Number(effect.effect.getComputedTiming().duration) / 2;
+    });
+    const closing = { top: rows[1].getBoundingClientRect().top, opacity: Number(getComputedStyle(panel).opacity) };
+    window.toggleOrderItems('O-motion-0');
+    const reopened = { top: rows[1].getBoundingClientRect().top, opacity: Number(getComputedStyle(panel).opacity) };
+    const contentPreserved = panel === rows[0].nextElementSibling.querySelector('.order-items-expand') && content === panel.querySelector('table');
+    await finish();
+    return { collapsedTop, midwayTop, expandedTop, closing, reopened, contentPreserved };
+  });
+  expect(result.midwayTop).toBeGreaterThan(result.collapsedTop + 1);
+  expect(result.midwayTop).toBeLessThan(result.expandedTop - 1);
+  expect(result.closing.opacity).toBeGreaterThan(0);
+  expect(result.closing.opacity).toBeLessThan(1);
+  expect(result.reopened.top).toBeCloseTo(result.closing.top, 0);
+  expect(result.reopened.opacity).toBeCloseTo(result.closing.opacity, 2);
+  expect(result.contentPreserved).toBe(true);
+  await expect(page.locator('.order-items-row')).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath('order-motion-reopened.png') });
+  expect(errors).toEqual([]);
+});
+
+test('last order keeps its closing content visible while the list and footer shrink gradually', async ({ page }, testInfo) => {
+  const errors = await openWorkspace(page);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.locator('#nav-search').click();
+  await page.evaluate(() => {
+    window.__orders = [{ orderId: 'O-last-motion', customerName: '最後一筆動畫', totalAmount: 150,
+      deliveryDate: '2026-10-02', status: '已確認',
+      items: [{ productName: '商品明細保持可讀', quantity: 3, unitPrice: 50, subtotal: 150 }] }];
+  });
+  await page.locator('#searchName').fill('動畫');
+  await page.locator('.btn-search').click();
+  await page.locator('#searchResults .order-items-toggle').scrollIntoViewIfNeeded();
+  for (const theme of ['light', 'dark']) {
+    const frame = await page.evaluate(async (theme) => {
+      document.documentElement.dataset.theme = theme;
+      const container = document.getElementById('searchResults');
+      window.toggleOrderItems('O-last-motion');
+      await Promise.allSettled(container.getAnimations({ subtree: true }).map(effect => effect.finished));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const wrapper = container.querySelector('.table-responsive');
+      const panel = container.querySelector('.order-items-expand');
+      panel.scrollIntoView({ block: 'center', behavior: 'instant' });
+      const openHeight = wrapper.getBoundingClientRect().height;
+      window.toggleOrderItems('O-last-motion');
+      const effects = container.getAnimations({ subtree: true }).filter(effect => effect.id.startsWith('order-'));
+      effects.forEach(effect => { effect.pause(); effect.currentTime = Number(effect.effect.getComputedTiming().duration) / 2; });
+      const wrapperBounds = wrapper.getBoundingClientRect();
+      const contentBounds = panel.querySelector('.order-items-scroll').getBoundingClientRect();
+      return { openHeight, midwayHeight: wrapperBounds.height, closedHeight: wrapper.querySelector('table').getBoundingClientRect().height + 2,
+        opacity: Number(getComputedStyle(panel).opacity), contentStillInView: contentBounds.top < wrapperBounds.bottom,
+        duration: Math.min(...effects.map(effect => Number(effect.effect.getComputedTiming().duration))) };
+    }, theme);
+    expect(frame.midwayHeight).toBeLessThan(frame.openHeight - 1);
+    expect(frame.midwayHeight).toBeGreaterThan(frame.closedHeight + 1);
+    expect(frame.opacity).toBeGreaterThan(0);
+    expect(frame.opacity).toBeLessThan(1);
+    expect(frame.contentStillInView).toBe(true);
+    expect(frame.duration).toBeGreaterThanOrEqual(220);
+    await page.screenshot({ path: testInfo.outputPath(`order-motion-closing-${theme}.png`) });
+    await page.evaluate(() => document.getElementById('searchResults').getAnimations({ subtree: true }).filter(effect => effect.id.startsWith('order-')).forEach(effect => effect.finish()));
+    await expect(page.locator('.order-items-row')).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
+});
+
 // Observe the actual animation timeline and geometry before the app removes
 // the row. Native animationend delivery is not a cross-browser completion clock.
-async function observeCollapseCompletion(page) {
-  await page.evaluate(() => {
+async function observeCollapseCompletion(page, delay = 0) {
+  await page.evaluate((delay) => {
     window.__collapseResult = null;
     const observer = new MutationObserver(() => {
       const element = document.querySelector('.is-collapsing .order-items-expand');
       if (!element) return;
       const effect = element
         .getAnimations()
-        .find((animation) => animation.animationName === 'order-items-collapse');
+        .find((animation) => animation.id === 'order-items-collapse');
       if (!effect) return;
       observer.disconnect();
+      const started = performance.now();
+      if (delay) document.getElementById('searchResults').getAnimations({ subtree: true }).forEach((animation) => {
+        if (animation.id.startsWith('order-')) animation.effect.updateTiming({ delay });
+      });
       effect.finished.then(
         () => {
+          window.__collapseElapsed = performance.now() - started;
           window.__collapseResult = {
             state: effect.playState,
             connected: element.isConnected,
@@ -2523,7 +2627,7 @@ async function observeCollapseCompletion(page) {
       attributes: true,
       attributeFilter: ['class'],
     });
-  });
+  }, delay);
 }
 
 for (const width of [1366, 1180, 1024, 820, 530, 390]) {
@@ -2690,9 +2794,6 @@ for (const suppressEvents of [false, true]) {
       await page.evaluate(() => {
         document.addEventListener('animationend', (event) => event.stopImmediatePropagation(), true);
       });
-    await page.addStyleTag({
-      content: '.order-items-row.is-collapsing .order-items-expand { animation-delay: 1s; }',
-    });
     await page.locator('#nav-search').click();
     await page.evaluate(() => {
       window.__orders = [
@@ -2711,7 +2812,7 @@ for (const suppressEvents of [false, true]) {
     const name = page.locator('#searchResults td[data-label="姓名"]');
     await name.click();
     await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
-    await observeCollapseCompletion(page);
+    await observeCollapseCompletion(page, 1000);
     await name.click();
     await expect(page.locator('.order-items-row')).toHaveCount(0);
     expect(await page.evaluate(() => window.__collapseResult)).toEqual({
@@ -2719,6 +2820,7 @@ for (const suppressEvents of [false, true]) {
       connected: true,
       height: 0,
     });
+    expect(await page.evaluate(() => window.__collapseElapsed)).toBeGreaterThanOrEqual(1000);
     await name.click();
     await expect(page.locator('.order-items-expand')).toHaveCSS('opacity', '1');
     expect(errors).toEqual([]);

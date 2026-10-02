@@ -130,6 +130,8 @@
   --gj-motion: 180ms cubic-bezier(.2,0,0,1);
   --gj-cart-enter: 220ms;
   --gj-cart-exit: 160ms;
+  --gj-order-items-enter: 280ms;
+  --gj-order-items-exit: 220ms;
   --md-sys-shape-corner-extra-small: 4px;
   --md-sys-shape-corner-small: 8px;
   --md-sys-shape-corner-medium: 12px;
