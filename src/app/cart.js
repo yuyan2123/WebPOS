@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { updateCartModalDisplay } from './cart-detail.js';
+import { updateCartModalDisplay, resetCartItemActions } from './cart-detail.js';
 import { setButtonLoading, showAlert } from './feedback.js';
 import { getEffectivePrice } from './pricing.js';
 import { updateProductSpecialPrice, closeProductModal } from './product-detail.js';
@@ -125,10 +125,11 @@ export function toggleCartModal() {
   document.body.classList.toggle('cart-open', cartModal.classList.contains('active'));
   if (cartModal.classList.contains('active')) {
     updateCartModalDisplay();
-  }
+  } else resetCartItemActions();
 }
 
 export function closeCartModal() {
+  resetCartItemActions();
   document.getElementById('cartModal').classList.remove('active');
   document.getElementById('cartOverlay').classList.remove('active');
   document.body.classList.remove('cart-open');

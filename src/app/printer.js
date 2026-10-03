@@ -314,7 +314,7 @@ function createPreview() {
       <div class="printer-actions receipt-pages" hidden><button type="button" class="btn receipt-previous">上一頁</button><span class="receipt-page-label" role="status"></span><button type="button" class="btn receipt-next">下一頁</button></div>
       <details><summary>單據文字內容</summary><pre class="receipt-text"></pre></details>
       <p id="printer-result" role="status" aria-live="polite">正在讀取訂單…</p></div>
-    <div class="modal-footer"><button type="button" class="btn" id="printer-send" disabled>列印一份</button><button type="button" class="btn printer-close">關閉</button></div>
+    <div class="modal-footer gj-actions"><button type="button" class="gj-btn gj-btn--quiet printer-close" data-action="dismiss">關閉</button><button type="button" class="gj-btn gj-btn--primary" id="printer-send" data-action="primary" disabled>列印一份</button></div>
   </div>`;
   modal
     .querySelectorAll('.close-btn, .printer-close')
@@ -405,12 +405,15 @@ export function addOrderPrintButton(container, orderId) {
   if (!canPrint()) return;
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'btn';
+  const primary = container.classList.contains('gj-actions');
+  button.className = primary ? 'gj-btn gj-btn--primary' : 'gj-btn';
+  button.dataset.action = primary ? 'primary' : 'secondary';
   button.textContent = '列印訂單';
   button.dataset.printerOrder = orderId;
   button.disabled = Boolean(active);
   button.addEventListener('click', () => previewOrder(orderId));
-  container.prepend(button);
+  if (primary) container.append(button);
+  else container.prepend(button);
 }
 
 export function offerOrderPrint(orderId) {
@@ -420,15 +423,19 @@ export function offerOrderPrint(orderId) {
   const message = document.createElement('span');
   message.textContent = `訂單 ${orderId} 已建立`;
   banner.append(message);
-  addOrderPrintButton(banner, orderId);
+  const actions = document.createElement('div');
+  actions.className = 'gj-actions';
   const close = document.createElement('button');
   close.type = 'button';
-  close.className = 'btn';
+  close.className = 'gj-btn gj-btn--quiet';
+  close.dataset.action = 'dismiss';
   close.textContent = '關閉';
   close.onclick = () => {
     banner.hidden = true;
   };
-  banner.append(close);
+  actions.append(close);
+  addOrderPrintButton(actions, orderId);
+  banner.append(actions);
   banner.hidden = false;
   const config = readConfig();
   if (config.enabled && config.autoPrint) void autoPrintOrder(orderId, banner);

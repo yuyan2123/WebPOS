@@ -86,37 +86,27 @@ export function getStatusPillClass(status) {
   }
 }
 
-// 新增函數：更新modal中的按鈕
+// Keep the current detail footer's close-left / complete-right action group.
 export function updateModalButtons(modalFooter, orderId, newStatus) {
-  // 移除舊的狀態按鈕
-  const existingButtons = modalFooter.querySelectorAll('.btn-success');
-  existingButtons.forEach((btn) => {
-    if (btn.textContent.includes('已付款') || btn.textContent.includes('完成')) {
-      btn.remove();
-    }
-  });
-  // 根據新狀態添加對應按鈕
+  const actions = modalFooter.querySelector('.order-detail-primary-actions');
+  if (!actions) return;
+  const existing = actions.querySelector('[data-action="primary"]');
+  if (newStatus === '完成') {
+    const focused = existing?.contains(document.activeElement);
+    existing?.remove();
+    if (focused) actions.querySelector('[data-action="dismiss"]')?.focus({ preventScroll: true });
+    return;
+  }
   const editBtn = modalFooter.querySelector('button[onclick*="editOrder"]');
-  if (editBtn && newStatus !== '已付款' && newStatus !== '完成') {
-    if (newStatus !== '已付款') {
-      const paymentBtn = document.createElement('button');
-      paymentBtn.className = 'btn btn-success';
-      paymentBtn.textContent = '已付款';
-      paymentBtn.onclick = function () {
-        updateOrderStatus(orderId, '已付款');
-        this.closest('.modal').remove();
-      };
-      modalFooter.insertBefore(paymentBtn, editBtn.nextSibling);
-    }
-  }
-  if (newStatus !== '完成') {
-    const completeBtn = document.createElement('button');
-    completeBtn.className = 'btn btn-success';
-    completeBtn.textContent = '完成';
-    completeBtn.onclick = function () {
-      updateOrderStatus(orderId, '完成');
-      this.closest('.modal').remove();
-    };
-    modalFooter.insertBefore(completeBtn, modalFooter.lastElementChild);
-  }
+  if (existing || !editBtn || document.body.dataset.shopRole === 'viewer') return;
+  const completeBtn = document.createElement('button');
+  completeBtn.type = 'button';
+  completeBtn.className = 'gj-btn gj-btn--primary';
+  completeBtn.dataset.action = 'primary';
+  completeBtn.textContent = '標記完成';
+  completeBtn.onclick = function () {
+    window.showStatusConfirm(orderId, '完成');
+    this.closest('.modal').remove();
+  };
+  actions.append(completeBtn);
 }

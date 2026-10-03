@@ -29,7 +29,7 @@ export function showProductOrder() {
     <ol class="product-order-list" aria-label="商品排序"></ol>
     <span class="sr-only" data-announcement aria-live="polite"></span>
     <p class="product-order-error" role="status" hidden></p>
-    <div class="product-order-footer"><button type="button" data-reload>重新載入（捨棄調整）</button><div><button type="button" data-cancel>取消</button><button type="button" data-save>儲存順序</button></div></div>
+    <div class="product-order-footer"><button type="button" data-reload class="gj-btn gj-btn--quiet">重新載入（捨棄調整）</button><div class="gj-actions"><button type="button" data-cancel data-action="dismiss" class="gj-btn gj-btn--quiet">取消</button><button type="button" data-save data-action="primary" class="gj-btn gj-btn--primary">儲存順序</button></div></div>
   </div>`;
   const list = modal.querySelector('ol');
   const message = modal.querySelector('[role="status"]');

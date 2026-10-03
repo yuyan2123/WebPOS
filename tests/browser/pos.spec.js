@@ -955,6 +955,216 @@ async function settleUI(page) {
   );
 }
 
+test('decision actions keep cancel on the left across forms, dialogs and narrow landscape screens', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const { expectActionPair } = require('./helpers/actions');
+  await mockPrinter(page);
+  const errors = await openWorkspace(page);
+  const originalSize = page.viewportSize();
+  async function review(name, selector, dismissName, primaryName, primarySelector) {
+    const scope = page.locator(selector);
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => {
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      for (const size of [originalSize, { width: 320, height: 740 }, { width: 667, height: 375 }]) {
+        await page.setViewportSize(size);
+        await expectActionPair(
+          page,
+          scope.getByRole('button', { name: dismissName, exact: true }),
+          primarySelector
+            ? page.locator(primarySelector)
+            : scope.getByRole('button', { name: primaryName, exact: true }),
+        );
+        if (['customer', 'product', 'delete', 'print'].includes(name) && size.width !== originalSize.width) {
+          await page.screenshot({
+            path: testInfo.outputPath(`${theme}-${name}-actions-${size.width}.png`),
+          });
+        }
+      }
+    }
+    await page.setViewportSize(originalSize);
+  }
+  await review('customer', '.customer-actions', '清空資料', '儲存並下一步');
+  await page.evaluate(() => window.showSection('search'));
+  await review('search', '.search-actions', '清空條件', '搜尋訂單');
+  await page.evaluate(() => window.showSection('giftbox'));
+  await page.locator('#giftboxStep1 button[onclick="selectGiftboxSize(6)"]').click();
+  await review('giftbox-select', '#giftboxStep2 > .gj-actions', '重選規格', '下一步');
+  await page.locator('#giftboxProducts input').first().fill('6');
+  await page.locator('#giftboxProducts input').first().dispatchEvent('change');
+  await page.locator('#proceedStep3').click();
+  await review('giftbox', '.giftbox-action-buttons', '上一步', '加入購物車');
+  await page.evaluate(() => window.showProductDetail('P1'));
+  await review('product', '.product-detail-footer', '取消', '加入購物車');
+  await page.locator('.product-detail-footer').getByRole('button', { name: '取消', exact: true }).click();
+  await openManagementPanel(page, 'products');
+  await page.getByRole('button', { name: '新增商品', exact: true }).click();
+  await review('product-edit', '#productEditModal .gj-actions', '取消', '儲存');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.deleteProduct('P1'));
+  await review('product-delete', '#confirmModal .gj-actions', '取消', '刪除商品');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.showDepositModal('O1', 100, 0));
+  await review('deposit', '.deposit-dialog-footer', '取消', '確認設定');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.showStatusConfirm('O1', '完成'));
+  await review('complete', '.status-confirm-footer', '取消', '', '#statusSliderThumb');
+  await expect(page.locator('#statusConfirmModal .btn-cancel')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.showDeleteConfirm('O1', '測試客戶'));
+  await review('delete', '.delete-confirm-footer', '取消', '', '#deleteSliderThumb');
+  await expect(page.locator('#deleteConfirmModal .btn-cancel')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.showProductOrder());
+  await review('sort', '.product-order-footer .gj-actions', '取消', '儲存順序');
+  await page.keyboard.press('Escape');
+  await configurePrinter(page);
+  await review('printer-settings', '.printer-page-actions', '測試列印', '儲存列印設定');
+  await page.locator('#printer-test').click();
+  await expect(page.locator('#printer-send')).toBeEnabled();
+  await review('print', '#printer-preview .gj-actions', '關閉', '列印一份');
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
+test('shared confirmations cancel safely, trap focus and consume each approval once', async ({ page }) => {
+  await openWorkspace(page);
+  await openManagementPanel(page, 'products');
+  const opener = page.getByRole('button', { name: '新增商品', exact: true });
+  await opener.focus();
+  await page.evaluate(() => window.deleteProduct('P1'));
+  await expect(page.locator('#confirmCancelBtn')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#confirmBtn')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#confirmCancelBtn')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#confirmModal')).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect(
+    await page.evaluate(() => window.__calls.filter((call) => call.method === 'deleteProduct').length),
+  ).toBe(0);
+  await page.evaluate(() => {
+    const original = window.posApi.call;
+    window.posApi.call = async (method, args) => {
+      if (method !== 'deleteProduct') return original(method, args);
+      window.__calls.push({ method, args });
+      return new Promise((resolve) => {
+        window.__finishDelete = () => resolve({ success: true });
+      });
+    };
+    window.deleteProduct('P1');
+  });
+  await page.locator('#confirmBtn').evaluate((button) => {
+    button.click();
+    button.click();
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.__calls.filter((call) => call.method === 'deleteProduct').length))
+    .toBe(1);
+  await page.evaluate(() => {
+    window.__decision = null;
+    window.requestConfirmation('另一個操作').then((result) => {
+      window.__decision = result;
+    });
+    window.__finishDelete();
+  });
+  await expect(page.locator('#confirmModalMessage')).toHaveText('另一個操作');
+  await expect(page.locator('#confirmModal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.__decision)).toBe(false);
+  await page.evaluate(() => {
+    window.deleteDateOverrideById('D1');
+  });
+  await expect(page.locator('#confirmBtn')).toHaveText('刪除設定');
+  await page.keyboard.press('Escape');
+  expect(
+    await page.evaluate(
+      () => window.__calls.filter((call) => call.method === 'deleteDateOverrideCapacity').length,
+    ),
+  ).toBe(0);
+});
+
+test('late order status updates preserve one primary action inside the detail footer', async ({ page }) => {
+  const { expectActionPair } = require('./helpers/actions');
+  const errors = await openWorkspace(page);
+  await page.evaluate(() => {
+    window.__orderDetails = {
+      orderId: 'O-test',
+      customerName: '狀態更新客戶',
+      status: '已確認',
+      totalAmount: 100,
+      depositAmount: 0,
+      remainingAmount: 100,
+      items: [{ productName: '原味餅', quantity: 2, unitPrice: 50, subtotal: 100 }],
+    };
+    const original = window.posApi.call;
+    window.posApi.call = async (method, args) => {
+      if (method !== 'updateOrderStatus') return original(method, args);
+      window.__calls.push({ method, args });
+      return new Promise((resolve) => {
+        window.__finishStatus = () => resolve({ success: true, newStatus: args[1] });
+      });
+    };
+  });
+  for (const status of ['已付訂金', '完成']) {
+    await page.evaluate((status) => {
+      window.__finishStatus = null;
+      window.showStatusConfirm('O-test', status);
+    }, status);
+    await page.locator('#statusSliderThumb').press('Enter');
+    await expect.poll(() => page.evaluate(() => typeof window.__finishStatus)).toBe('function');
+    await page.evaluate(() => window.viewOrderDetails('O-test'));
+    const modal = page.locator('.order-detail-modal');
+    await expect(modal).toBeVisible();
+    await page.evaluate(() => window.__finishStatus());
+    await expect(modal.locator('.modal-footer > button')).toHaveCount(0);
+    const group = modal.locator('.order-detail-primary-actions');
+    if (status === '完成') {
+      await expect(group.getByRole('button', { name: '標記完成', exact: true })).toHaveCount(0);
+    } else {
+      await expect(group.getByRole('button', { name: '標記完成', exact: true })).toHaveCount(1);
+      await expectActionPair(
+        page,
+        group.getByRole('button', { name: '關閉', exact: true }),
+        group.getByRole('button', { name: '標記完成', exact: true }),
+      );
+    }
+    await page.keyboard.press('Escape');
+  }
+  expect(errors).toEqual([]);
+});
+
+test('install prompts keep dismiss on the left and never install when dismissed', async ({ page }) => {
+  const { expectActionPair } = require('./helpers/actions');
+  await openWorkspace(page);
+  async function prompt() {
+    await page.evaluate(() => {
+      const event = new Event('beforeinstallprompt');
+      event.prompt = async () => {
+        window.__installCalls = (window.__installCalls || 0) + 1;
+      };
+      event.userChoice = Promise.resolve({ outcome: 'accepted' });
+      window.dispatchEvent(event);
+    });
+  }
+  await prompt();
+  for (const size of [page.viewportSize(), { width: 320, height: 740 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(size);
+    await expectActionPair(page, page.locator('#pwaDismiss'), page.locator('#pwaInstall'));
+  }
+  await page.locator('#pwaDismiss').click();
+  await expect(page.locator('#pwaBanner')).toBeHidden();
+  expect(await page.evaluate(() => window.__installCalls || 0)).toBe(0);
+  await prompt();
+  await page.locator('#pwaInstall').click();
+  await expect.poll(() => page.evaluate(() => window.__installCalls)).toBe(1);
+  await expect(page.locator('#pwaBanner')).toBeHidden();
+});
+
 test('UI Kit keeps outlined fields, editable steppers and readable checkout states', async ({ page }) => {
   await openWorkspace(page);
   await expect(page.locator('#customerName')).toHaveCSS('min-height', '56px');
@@ -2272,6 +2482,8 @@ for (const field of ['customerName', 'customerPhone']) {
       .poll(() => page.evaluate(() => window.__calls.some((call) => call.method === 'submitOrder')))
       .toBe(true);
     await expect(page.locator('#printer-last-order')).toContainText('訂單 O-test 已建立');
+    const actions = page.locator('#printer-last-order .gj-actions');
+    await require('./helpers/actions').expectActionPair(page, actions.getByRole('button', { name: '關閉', exact: true }), actions.getByRole('button', { name: '列印訂單', exact: true }));
     await expect(page.locator('#printer-last-order [data-printer-order]')).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -2417,6 +2629,8 @@ test('catalog uses gift-box cards with details and quantities synchronized to th
   await page.locator('#cartModalBody .cart-qty-btn').last().click();
   await expect(quantity).toHaveValue('3');
   await page.locator('#cartModalBody .cart-delete-btn').click();
+  await expect(quantity).toHaveValue('3');
+  await page.locator('#cartModalBody .cart-swipe-delete').click();
   await expect(quantity).toHaveValue('0');
   await expect(minus).toBeDisabled();
   await page.keyboard.press('Escape');
@@ -2461,6 +2675,7 @@ test('capacity cancel releases submit lock and confirmed submission keeps reques
   await page.locator('#workspaceCart').click();
   await page.locator('#checkoutBtn').click();
   await expect(page.locator('#capacityWarningModal')).toHaveClass(/active/);
+  await require('./helpers/actions').expectActionPair(page, page.locator('#capacityWarningModal [data-action="dismiss"]'), page.locator('#btnCapacityConfirm'));
   await page.keyboard.press('Escape');
   await expect(page.locator('#orderSubmitOverlay')).not.toHaveClass(/active/);
   await page.locator('#workspaceCart').click();
@@ -3404,6 +3619,7 @@ test('update reminder points to Management and opens details before any reload',
   const errors = await openWorkspace(page);
   const notice = page.locator('#pwaUpdateNotice');
   await expect(notice).toBeVisible();
+  await require('./helpers/actions').expectActionPair(page, page.locator('#pwaUpdateDismiss'), page.locator('#pwaUpdateDetails'));
   await expect(notice).toContainText('更新會重新載入頁面');
   await expect(page.locator('#managementToggle')).toHaveAttribute('data-update-available', 'true');
   const viewports = testInfo.project.name === 'phone'
@@ -3691,6 +3907,8 @@ test('custom categories support unified catalog, cart and order editing', async 
   await page.locator('#cartModalBody .cart-qty-btn').last().click();
   await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
   await page.locator('#cartModalBody .cart-delete-btn').click();
+  await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
+  await page.locator('#cartModalBody .cart-swipe-delete').click();
   await expect(page.locator('#workspaceQuantity')).toHaveText('0 件商品');
   await page.keyboard.press('Escape');
   await page.evaluate(() => {

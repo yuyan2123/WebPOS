@@ -1,6 +1,22 @@
 const { test, expect } = require('@playwright/test');
 const { readFileSync } = require('node:fs');
+const { buildSync } = require('esbuild');
 const AxeBuilder = require('@axe-core/playwright').default;
+
+// Keep startup RPCs isolated while exercising the production confirmation and
+// modal keyboard/focus implementation used by the real bridge.
+const dialogUI = buildSync({
+  stdin: {
+    contents: `import { initializeAccessibility } from './src/ui/accessibility.js';
+      import { requestConfirmation, closeConfirmModal, executeConfirmCallback } from './src/app/dialogs.js';
+      Object.assign(window, { requestConfirmation, closeConfirmModal, executeConfirmCallback });
+      initializeAccessibility();`,
+    resolveDir: process.cwd(),
+  },
+  bundle: true,
+  write: false,
+  format: "esm",
+}).outputFiles[0].text;
 
 const shops = [
   { shopId: 'onlyme', name: 'onlyme', role: 'owner', ownerUid: 'another-owner' },
@@ -73,9 +89,8 @@ async function openMembers(page, data = members) {
 test.beforeEach(async ({ page }) => {
   // Isolate the bridge: app startup awaits WASM, then makes its own RPCs.
   // Those calls can otherwise race with the manager's deferred RPC in WebKit.
-  await page.route('**/js/{app,rpc-bridge}.js', (route) =>
-    route.fulfill({ contentType: 'text/javascript', body: '' }),
-  );
+  await page.route('**/js/rpc-bridge.js', (route) => route.fulfill({ contentType: 'text/javascript', body: '' }));
+  await page.route('**/js/app.js', (route) => route.fulfill({ contentType: 'text/javascript', body: dialogUI }));
 });
 
 test('shop manager opens before RPC completes and stays closed after dismissal', async ({ page }) => {
@@ -232,12 +247,76 @@ test('members use readable rows and a separate editor with owner protection', as
   await expect(page.locator('#firebaseMemberList')).toBeVisible();
   await expect(page.locator('[data-member-uid="editor"]')).toContainText('僅檢視');
   await page.locator('[data-member-uid="editor"] button').click();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('#firebaseRemoveMember').click();
+  await expect(page.locator('#confirmModalTitle')).toHaveText('移除店鋪成員？');
+  await page.locator('#confirmBtn').click();
   await expect.poll(() => page.evaluate(() => window.pendingShopRpc.method)).toBe('removeShopMember');
   await page.evaluate(() => window.pendingShopRpc.resolve({ success: true }));
   await expect(page.locator('[data-member-uid="editor"]')).toHaveCount(0);
   await expect(page.locator('#firebaseMemberCount')).toHaveText('2 位成員');
+});
+
+test("shop forms use cancel-left actions and nested member removal cancels without writing", async ({
+  page,
+}) => {
+  const { expectActionPair } = require("./helpers/actions");
+  await openManager(page);
+  await finishShopRefresh(page);
+  await page.locator("#firebaseOpenCreateShop").click();
+  await page.locator("#firebaseNewShopName").fill("尚未建立的店鋪");
+  await expectActionPair(
+    page,
+    page.locator("#firebaseShopCancel"),
+    page.locator("#firebaseCreateShop"),
+  );
+  await page.locator("#firebaseShopCancel").click();
+  await expect(page.locator("#firebaseShopList")).toBeVisible();
+  await page.locator("#firebaseOpenShopSettings").click();
+  await expectActionPair(
+    page,
+    page.locator("#firebaseShopCancel"),
+    page.locator("#firebaseRenameShop"),
+  );
+  await page.locator("#firebaseShopCancel").click();
+  await openMembers(page);
+  await page.locator("#firebaseOpenAddMember").click();
+  await expectActionPair(
+    page,
+    page.locator("#firebaseShopCancel"),
+    page.locator("#firebaseAddMember"),
+  );
+  await page.locator("#firebaseShopCancel").click();
+  await page.locator('[data-member-uid="editor"] button').click();
+  await expectActionPair(
+    page,
+    page.locator("#firebaseShopCancel"),
+    page.locator("#firebaseSaveMember"),
+  );
+  await page.locator("#firebaseRemoveMember").click();
+  await expectActionPair(
+    page,
+    page.locator("#confirmCancelBtn"),
+    page.locator("#confirmBtn"),
+  );
+  await expect(page.locator("#confirmCancelBtn")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#confirmModal")).toBeHidden();
+  await expect(page.locator("#firebaseShopOverlay")).toBeVisible();
+  await expect(page.locator("#firebaseRemoveMember")).toBeFocused();
+  await expect(page.locator("#firebaseShopTitle")).toHaveText("成員設定");
+  expect(
+    await page.evaluate(() =>
+      window.shopRpcCalls.some((call) =>
+        [
+          "createShop",
+          "renameShop",
+          "addShopMember",
+          "removeShopMember",
+          "updateShopMemberRole",
+        ].includes(call.method),
+      ),
+    ),
+  ).toBe(false);
 });
 
 test('member invitation has full width fields and returns to the refreshed list', async ({

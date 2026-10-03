@@ -59,15 +59,10 @@ test('one session request keeps real progress pending until data and draft resto
   await page.evaluate(() => window.saveOrderDraftNow());
   await page.reload();
   await expect.poll(() => page.evaluate(() => typeof window.completeStartup)).toBe('function');
-  let acceptDraft;
-  const draftDialog = new Promise((resolve) => {
-    acceptDraft = resolve;
-  });
-  page.once('dialog', (dialog) => acceptDraft(dialog));
   await page.evaluate(() => window.completeStartup());
-  const dialog = await draftDialog;
-  expect(dialog.message()).toContain('未完成的訂單草稿');
-  await dialog.accept();
+  await expect(page.locator('#confirmModalMessage')).toContainText('未完成的訂單草稿');
+  await expect(page.locator('#confirmCancelBtn')).toBeFocused();
+  await page.locator('#confirmBtn').click();
   await expect(page.locator('#startupStatus')).toBeHidden();
   await expect(page.locator('#customerName')).toHaveValue('草稿客戶');
   expect(await page.evaluate(() => window.startupCalls.map((call) => call.method))).toEqual([
@@ -80,6 +75,34 @@ test('one session request keeps real progress pending until data and draft resto
     'getMonthCapacityStatus',
     'getMonthCapacityStatus',
   ]);
+});
+
+test("skipping draft recovery keeps the stored order available on the next reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect
+    .poll(() => page.evaluate(() => typeof window.completeStartup))
+    .toBe("function");
+  await page.evaluate(() => window.completeStartup());
+  await expect(page.locator("#startupStatus")).toBeHidden();
+  await page.locator("#customerName").fill("保留的草稿");
+  await page.evaluate(() => window.saveOrderDraftNow());
+  for (const recover of [false, true]) {
+    await page.reload();
+    await expect
+      .poll(() => page.evaluate(() => typeof window.completeStartup))
+      .toBe("function");
+    await page.evaluate(() => window.completeStartup());
+    await expect(page.locator("#confirmModalTitle")).toHaveText(
+      "恢復訂單草稿？",
+    );
+    await page.locator(recover ? "#confirmBtn" : "#confirmCancelBtn").click();
+    await expect(page.locator("#startupStatus")).toBeHidden();
+    await expect(page.locator("#customerName")).toHaveValue(
+      recover ? "保留的草稿" : "",
+    );
+  }
 });
 
 for (const savedShop of [null, 'unavailable-shop']) {

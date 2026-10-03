@@ -3,6 +3,7 @@ import { state } from './state.js';
 import { showAlert } from './feedback.js';
 import { escapeHtml, escapeAttr } from './customers.js';
 import { applyRoleCapabilities } from './drafts.js';
+import { requestConfirmation } from './dialogs.js';
 
 export function loadCapacitySettings(forceReload) {
   if (state.capacitySettingsLoaded && !forceReload) {
@@ -138,7 +139,7 @@ export function renderOverrideTable() {
             escapeAttr(o.date) +
             ' 日期覆寫" onclick="deleteDateOverrideById(\'' +
             escapeAttr(o.id) +
-            '\')" style="padding: 4px 10px; background: var(--gj-surface); color: var(--gj-danger); border: 1px solid var(--gj-surface); border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
+            '\', this)" style="padding: 4px 10px; background: var(--gj-surface); color: var(--gj-danger); border: 1px solid var(--gj-surface); border-radius: 6px; font-size: 0.8rem; cursor: pointer;">' +
             '<i class="fas fa-trash-alt" aria-hidden="true"></i>' +
             '</button>';
       return (
@@ -300,12 +301,20 @@ export function addDateOverride() {
   }
 }
 
-export function deleteDateOverrideById(id) {
+export async function deleteDateOverrideById(id, opener) {
   if (document.body.dataset.shopRole === 'viewer') {
     showAlert('此帳號只有檢視權限', 'error');
     return;
   }
-  if (!confirm('確定要刪除此日期覆寫設定？')) return;
+  const shopId = document.body.dataset.shopId;
+  const accepted = await requestConfirmation('刪除後，此日期會改用原本的星期供應量設定。', {
+    title: '刪除日期覆寫設定？',
+    confirmLabel: '刪除設定',
+    danger: true,
+    opener,
+  });
+  if (!accepted || document.body.dataset.shopId !== shopId || document.body.dataset.shopRole === 'viewer')
+    return;
   if (isConnected()) {
     rpc
       .withSuccessHandler(function () {

@@ -2631,21 +2631,387 @@ function preventDoubleClick(buttonId, func, delay = 1e3) {
   };
 }
 
+// src/ui/cart-swipe.js
+var actionWidth = 88;
+var snapDuration = 180;
+var exitDuration = 160;
+var reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function initializeCartSwipe(body, onDelete) {
+  const states = /* @__PURE__ */ new Map();
+  let opened = null;
+  let drag = null;
+  let suppressClick = false;
+  const status = document.getElementById("cartSwipeStatus");
+  const announce = (message) => {
+    if (status) status.textContent = message;
+  };
+  const rowFor = (target) => {
+    const row = target instanceof Element ? target.closest("[data-cart-item-key]") : null;
+    return row && body.contains(row) ? row : null;
+  };
+  function stateFor(row) {
+    if (!states.has(row))
+      states.set(row, {
+        row,
+        front: row.querySelector(".cart-item-card"),
+        actions: row.querySelector(".cart-swipe-actions"),
+        button: row.querySelector(".cart-swipe-delete"),
+        opener: row.querySelector(".cart-delete-btn"),
+        offset: 0,
+        width: 0,
+        base: null,
+        snap: null,
+        armed: false
+      });
+    return states.get(row);
+  }
+  function paint(state2, offset) {
+    if (!state2.base) {
+      state2.width = state2.row.getBoundingClientRect().width;
+      state2.base = state2.front.animate(
+        [{ transform: "translateX(0)" }, { transform: `translateX(-${state2.width + 1}px)` }],
+        { duration: state2.width + 1, iterations: Infinity, fill: "both", easing: "linear" }
+      );
+      state2.base.pause();
+    }
+    state2.offset = Math.max(0, Math.min(state2.width, offset));
+    state2.base.currentTime = state2.offset;
+  }
+  function disarm(state2) {
+    if (!state2.armed) return;
+    state2.armed = false;
+    state2.row.classList.remove("is-swipe-armed");
+    state2.button.querySelector("span").textContent = "\u522A\u9664";
+  }
+  function snap(state2, offset) {
+    const from = state2.base ? Math.max(0, -new DOMMatrix(getComputedStyle(state2.front).transform).m41) : 0;
+    state2.snap?.cancel();
+    paint(state2, offset);
+    const finish = () => {
+      if (state2.offset === 0) {
+        state2.base?.cancel();
+        state2.base = null;
+        state2.actions.hidden = true;
+      }
+    };
+    if (reducedMotion() || Math.abs(from - offset) < 1) {
+      finish();
+      return;
+    }
+    const animation = state2.front.animate(
+      [{ transform: `translateX(-${from}px)` }, { transform: `translateX(-${offset}px)` }],
+      { duration: snapDuration, easing: "cubic-bezier(.2,0,0,1)" }
+    );
+    state2.snap = animation;
+    animation.finished.then(() => {
+      if (state2.snap !== animation) return;
+      state2.snap = null;
+      finish();
+    }).catch(() => {
+    });
+  }
+  function close2(state2, focus = false, animate = true) {
+    if (!state2) return;
+    disarm(state2);
+    state2.row.classList.remove("is-swipe-open", "is-swiping");
+    state2.opener.setAttribute("aria-expanded", "false");
+    state2.front.inert = false;
+    state2.actions.inert = true;
+    if (animate) snap(state2, 0);
+    else {
+      state2.snap?.cancel();
+      state2.base?.cancel();
+      state2.snap = state2.base = null;
+      state2.offset = 0;
+      state2.actions.hidden = true;
+    }
+    if (opened === state2) opened = null;
+    if (focus && state2.opener.isConnected) state2.opener.focus({ preventScroll: true });
+  }
+  function open(state2, focus = false) {
+    if (opened && opened !== state2) close2(opened);
+    disarm(state2);
+    opened = state2;
+    state2.row.classList.remove("is-swiping");
+    state2.row.classList.add("is-swipe-open");
+    state2.actions.hidden = false;
+    state2.actions.inert = false;
+    state2.front.inert = true;
+    state2.opener.setAttribute("aria-expanded", "true");
+    snap(state2, actionWidth);
+    if (focus) state2.button.focus({ preventScroll: true });
+    announce(`\u5DF2\u986F\u793A ${state2.row.dataset.cartItemName} \u7684\u522A\u9664\u6309\u9215\uFF0C\u53EF\u6309 Escape \u6536\u8D77\u3002`);
+  }
+  function cancelDrag() {
+    if (!drag) return;
+    const current = drag;
+    drag = null;
+    if (current.state.row.hasPointerCapture?.(current.id))
+      current.state.row.releasePointerCapture(current.id);
+    close2(current.state, false, false);
+  }
+  function down(event) {
+    suppressClick = false;
+    if (drag && event.pointerId !== drag.id) {
+      cancelDrag();
+      return;
+    }
+    const row = rowFor(event.target);
+    if (opened && opened.row !== row) close2(opened);
+    if (!row || event.isPrimary === false || event.button !== 0 || event.target.closest("button,a,input,select,textarea"))
+      return;
+    const state2 = stateFor(row);
+    const initial = state2.base ? Math.max(0, -new DOMMatrix(getComputedStyle(state2.front).transform).m41) : 0;
+    state2.snap?.cancel();
+    state2.snap = null;
+    paint(state2, initial);
+    drag = { state: state2, id: event.pointerId, x: event.clientX, y: event.clientY, initial, axis: null };
+    if (event.pointerType === "mouse") event.preventDefault();
+  }
+  function move(event) {
+    if (!drag || event.pointerId !== drag.id) return;
+    if (!drag.state.row.isConnected) {
+      cancelDrag();
+      return;
+    }
+    const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+    if (!drag.axis) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) {
+        cancelDrag();
+        return;
+      }
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+      drag.axis = "x";
+      drag.state.actions.hidden = false;
+      drag.state.actions.inert = true;
+      drag.state.row.classList.add("is-swiping");
+      try {
+        drag.state.row.setPointerCapture(event.pointerId);
+      } catch {
+      }
+    }
+    event.preventDefault();
+    const state2 = drag.state;
+    paint(state2, drag.initial - dx);
+    const armed = state2.offset >= Math.max(actionWidth + 72, state2.width * 0.65);
+    if (armed !== state2.armed) {
+      state2.armed = armed;
+      state2.row.classList.toggle("is-swipe-armed", armed);
+      state2.button.querySelector("span").textContent = armed ? "\u653E\u958B\u522A\u9664" : "\u522A\u9664";
+      if (armed) announce(`\u653E\u958B\u5373\u53EF\u522A\u9664 ${state2.row.dataset.cartItemName}\uFF0C\u5F80\u53F3\u6ED1\u56DE\u53EF\u53D6\u6D88\u3002`);
+    }
+  }
+  function up(event) {
+    if (!drag || event.pointerId !== drag.id) return;
+    if (drag.axis) move(event);
+    const current = drag;
+    drag = null;
+    if (current.state.row.hasPointerCapture?.(current.id))
+      current.state.row.releasePointerCapture(current.id);
+    if (!current.axis) {
+      if (!current.state.offset) close2(current.state, false, false);
+      return;
+    }
+    suppressClick = true;
+    if (current.state.armed && current.state.row.isConnected) {
+      opened = null;
+      announce(`\u5DF2\u522A\u9664 ${current.state.row.dataset.cartItemName}\u3002`);
+      onDelete(current.state.row);
+    } else if (current.state.offset >= actionWidth / 2) open(current.state);
+    else close2(current.state);
+  }
+  function cancelled(event) {
+    if (drag?.id === event.pointerId) cancelDrag();
+  }
+  function lostCapture(event) {
+    if (drag?.id === event.pointerId && event.target === drag.state.row && !drag.state.row.hasPointerCapture(event.pointerId))
+      cancelDrag();
+  }
+  function click(event) {
+    if (suppressClick && event.detail > 0 && body.contains(event.target)) {
+      suppressClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    const row = rowFor(event.target);
+    if (!row) return;
+    const state2 = stateFor(row);
+    if (event.target.closest(".cart-delete-btn")) {
+      event.preventDefault();
+      open(state2, true);
+    } else if (event.target.closest(".cart-swipe-delete") && opened === state2) {
+      opened = null;
+      announce(`\u5DF2\u522A\u9664 ${row.dataset.cartItemName}\u3002`);
+      onDelete(row);
+    } else if (opened === state2) close2(state2, true);
+  }
+  function keydown(event) {
+    if (event.key === "ArrowLeft" && event.target.closest(".cart-delete-btn")) {
+      event.preventDefault();
+      open(stateFor(rowFor(event.target)), true);
+    } else if (event.key === "ArrowRight" && opened && opened.row.contains(event.target)) {
+      event.preventDefault();
+      close2(opened, true);
+    }
+  }
+  function reset() {
+    cancelDrag();
+    states.forEach((state2) => close2(state2, false, false));
+    opened = null;
+    suppressClick = false;
+  }
+  document.addEventListener("pointerdown", down, { capture: true });
+  document.addEventListener("pointermove", move, { capture: true, passive: false });
+  document.addEventListener("pointerup", up, true);
+  document.addEventListener("pointercancel", cancelled, true);
+  body.addEventListener("lostpointercapture", lostCapture, true);
+  document.addEventListener("click", click, true);
+  body.addEventListener("keydown", keydown);
+  window.addEventListener("resize", reset);
+  return {
+    closeOpen() {
+      if (!opened && !drag) return false;
+      const state2 = opened || drag.state;
+      cancelDrag();
+      close2(state2, true);
+      return true;
+    },
+    reset,
+    destroy() {
+      reset();
+      document.removeEventListener("pointerdown", down, true);
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", up, true);
+      document.removeEventListener("pointercancel", cancelled, true);
+      body.removeEventListener("lostpointercapture", lostCapture, true);
+      document.removeEventListener("click", click, true);
+      body.removeEventListener("keydown", keydown);
+      window.removeEventListener("resize", reset);
+    }
+  };
+}
+var removalMotions = /* @__PURE__ */ new WeakMap();
+function cartMotionLayer(body) {
+  return removalMotions.get(body)?.layer;
+}
+function clearCartRemovalMotion(body) {
+  const motion = removalMotions.get(body);
+  if (!motion) return;
+  motion.animations.forEach((animation) => animation.cancel());
+  motion.layer.remove();
+  removalMotions.delete(body);
+}
+function animateCartRemoval(body, row, remove) {
+  if (reducedMotion()) {
+    remove();
+    return;
+  }
+  const rows = [...body.querySelectorAll("[data-cart-item-key]")];
+  const before = new Map(rows.map((item) => [item.dataset.cartItemKey, item.getBoundingClientRect().top]));
+  const bounds = row.getBoundingClientRect(), bodyBounds = body.getBoundingClientRect();
+  const frontTransform = getComputedStyle(row.querySelector(".cart-item-card")).transform;
+  let motion = removalMotions.get(body);
+  if (!motion) {
+    const layer = document.createElement("div");
+    layer.className = "cart-removal-layer";
+    layer.setAttribute("aria-hidden", "true");
+    layer.inert = true;
+    motion = { layer, animations: /* @__PURE__ */ new Set() };
+    removalMotions.set(body, motion);
+  }
+  const ghost = row.cloneNode(true);
+  ghost.removeAttribute("data-cart-item-key");
+  ghost.querySelectorAll("[id]").forEach((element2) => element2.removeAttribute("id"));
+  ghost.classList.add("cart-removal-ghost");
+  Object.assign(ghost.style, {
+    top: `${bounds.top - bodyBounds.top + body.scrollTop}px`,
+    left: `${bounds.left - bodyBounds.left + body.scrollLeft}px`,
+    width: `${bounds.width}px`,
+    height: `${bounds.height}px`
+  });
+  ghost.querySelector(".cart-item-card").style.transform = frontTransform;
+  remove();
+  ghost.style.top = `${bounds.top - bodyBounds.top + body.scrollTop}px`;
+  motion.layer.append(ghost);
+  if (!motion.layer.isConnected) body.append(motion.layer);
+  const after = [...body.querySelectorAll("[data-cart-item-key]")].map((item) => ({
+    item,
+    delta: (before.get(item.dataset.cartItemKey) ?? item.getBoundingClientRect().top) - item.getBoundingClientRect().top
+  }));
+  function track(animation, done = () => {
+  }) {
+    motion.animations.add(animation);
+    animation.finished.catch(() => {
+    }).then(() => {
+      motion.animations.delete(animation);
+      done();
+    });
+  }
+  track(
+    ghost.animate(
+      [
+        { transform: "translateX(0)", opacity: 1 },
+        { transform: `translateX(-${bounds.width}px)`, opacity: 0 }
+      ],
+      { duration: exitDuration, easing: "ease-out", fill: "forwards" }
+    ),
+    () => ghost.remove()
+  );
+  for (const { item, delta } of after) {
+    if (Math.abs(delta) < 1) continue;
+    track(
+      item.animate([{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }], {
+        duration: snapDuration,
+        easing: "cubic-bezier(.2,0,0,1)"
+      })
+    );
+  }
+}
+
 // src/app/cart-detail.js
 var renderedBody = null;
 var renderedMarkup = null;
 var renderedFirstChild = null;
-function renderCartBody(body, markup) {
+var swipeController = null;
+var itemKeys = /* @__PURE__ */ new WeakMap();
+var nextItemKey = 0;
+function itemKey(item) {
+  if (!itemKeys.has(item)) itemKeys.set(item, `cart-item-${++nextItemKey}`);
+  return itemKeys.get(item);
+}
+function closeCartItemActions() {
+  return swipeController?.closeOpen() || false;
+}
+function resetCartItemActions() {
+  swipeController?.reset();
+  clearCartRemovalMotion(document.getElementById("cartModalBody"));
+}
+function renderCartBody(body, markup, items = []) {
   if (body === renderedBody && markup === renderedMarkup && body.firstChild === renderedFirstChild) return;
   const focusedButton = document.activeElement;
-  const focusIndex = body.contains(focusedButton) ? [...body.querySelectorAll("button")].indexOf(focusedButton) : -1;
+  const focusedRow = body.contains(focusedButton) ? focusedButton.closest("[data-cart-item-key]") : null;
+  const focusKey = focusedRow?.dataset.cartItemKey;
+  const focusControl = focusedButton?.dataset.cartControl === "delete" ? "options" : focusedButton?.dataset.cartControl;
+  const focusIndex = focusedRow ? [...body.querySelectorAll("[data-cart-item-key]")].indexOf(focusedRow) : -1;
+  swipeController?.destroy();
+  const layer = cartMotionLayer(body);
   body.innerHTML = markup;
+  if (layer) body.append(layer);
+  const byKey = new Map(items.map((item) => [itemKey(item), item]));
+  swipeController = initializeCartSwipe(body, (row) => {
+    const item = byKey.get(row.dataset.cartItemKey);
+    const index = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart].indexOf(item);
+    if (index >= 0) removeFromCartModal(index);
+  });
   renderedBody = body;
   renderedMarkup = markup;
   renderedFirstChild = body.firstChild;
   if (focusIndex >= 0 && document.getElementById("cartModal").classList.contains("active")) {
-    const buttons = [...body.querySelectorAll("button")];
-    (buttons[focusIndex] || buttons.at(-1) || document.getElementById("checkoutBtn")).focus({
+    const rows = [...body.querySelectorAll("[data-cart-item-key]")];
+    const retained = rows.find((row) => row.dataset.cartItemKey === focusKey);
+    const target = retained?.querySelector(`[data-cart-control="${focusControl}"]`) || (rows[focusIndex] || rows.at(-1))?.querySelector(".cart-delete-btn") || document.querySelector("#cartModal .cart-close");
+    target?.focus({
       preventScroll: true
     });
   }
@@ -2664,7 +3030,12 @@ function updateCartModalDisplay() {
     const money3 = (value) => `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
     const special = item.isSpecialPrice && item.originalPrice && item.originalPrice !== item.price;
     const giftboxDetails = isGiftbox ? generateGiftboxDetailsHtml(item) : "";
-    return `<div class="cart-item-card gj-pos-card">
+    const key2 = itemKey(item);
+    return `<div class="cart-swipe-row" data-cart-item-key="${key2}" data-cart-item-name="${accessibleName}" role="group" aria-label="${accessibleName}">
+        <div class="cart-swipe-actions" id="${key2}-delete" hidden inert>
+          <button type="button" class="cart-swipe-delete" data-cart-control="delete" aria-label="\u522A\u9664 ${accessibleName}"><i class="fas fa-trash-alt" aria-hidden="true"></i><span>\u522A\u9664</span></button>
+        </div>
+        <div class="cart-item-card gj-pos-card">
         <div class="cart-item-header">
           <div class="cart-item-details">
             <h3 class="cart-item-name">${name}</h3>
@@ -2677,18 +3048,19 @@ function updateCartModalDisplay() {
         ${item.notes ? `<div class="cart-giftbox-notes"><span>\u5099\u8A3B</span> ${escapeHtml(item.notes)}</div>` : ""}
         <div class="cart-item-controls">
           <div class="cart-qty-group" role="group" aria-label="${accessibleName} \u6578\u91CF">
-            <button type="button" class="cart-qty-btn" aria-label="\u6E1B\u5C11 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
+            <button type="button" class="cart-qty-btn" data-cart-control="decrease" aria-label="\u6E1B\u5C11 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, -1)"><i class="fas fa-minus" aria-hidden="true"></i></button>
             <span class="cart-qty-value">${escapeHtml(item.quantity)}</span>
-            <button type="button" class="cart-qty-btn" aria-label="\u589E\u52A0 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
+            <button type="button" class="cart-qty-btn" data-cart-control="increase" aria-label="\u589E\u52A0 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
           </div>
           <div class="cart-item-actions">
-            ${isGiftbox ? `<button type="button" class="cart-edit-btn" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u5167\u5BB9</button>` : ""}
-            <button type="button" class="cart-delete-btn" aria-label="\u79FB\u9664 ${accessibleName}" onclick="event.stopPropagation(); removeFromCartModal(${escapeHandlerArgument(index)})"><i class="fas fa-trash-alt" aria-hidden="true"></i> \u79FB\u9664</button>
+            ${isGiftbox ? `<button type="button" class="cart-edit-btn" data-cart-control="edit" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u5167\u5BB9</button>` : ""}
+            <button type="button" class="cart-delete-btn" data-cart-control="options" aria-label="\u986F\u793A ${accessibleName} \u7684\u522A\u9664\u9078\u9805" aria-expanded="false" aria-controls="${key2}-delete" title="\u986F\u793A\u522A\u9664\u9078\u9805"><i class="fas fa-ellipsis-h" aria-hidden="true"></i> \u66F4\u591A</button>
           </div>
+        </div>
         </div>
       </div>`;
   }).join("");
-  renderCartBody(cartBody, markup);
+  renderCartBody(cartBody, markup, allItems);
 }
 function updateCartItemQuantity(index, change) {
   const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
@@ -2715,10 +3087,17 @@ function removeFromCartModal(index) {
   const allItems = [...state.giftCart, ...state.cakeCart, ...state.giftboxCart];
   const item = allItems[index];
   if (!item) return;
-  if (item.type === "giftbox") state.giftboxCart = state.giftboxCart.filter((i) => i.id !== item.id);
-  else if (state.giftCart.includes(item)) state.giftCart = state.giftCart.filter((i) => i !== item);
-  else state.cakeCart = state.cakeCart.filter((i) => i !== item);
-  updateCartDisplay();
+  const remove = () => {
+    if (item.type === "giftbox") state.giftboxCart = state.giftboxCart.filter((i) => i.id !== item.id);
+    else if (state.giftCart.includes(item)) state.giftCart = state.giftCart.filter((i) => i !== item);
+    else state.cakeCart = state.cakeCart.filter((i) => i !== item);
+    updateCartDisplay();
+  };
+  const body = document.getElementById("cartModalBody");
+  const row = body.querySelector(`[data-cart-item-key="${itemKey(item)}"]`);
+  if (row && document.getElementById("cartModal").classList.contains("active"))
+    animateCartRemoval(body, row, remove);
+  else remove();
 }
 
 // src/app/product-detail.js
@@ -2899,35 +3278,27 @@ function getStatusPillClass(status) {
   }
 }
 function updateModalButtons(modalFooter, orderId, newStatus) {
-  const existingButtons = modalFooter.querySelectorAll(".btn-success");
-  existingButtons.forEach((btn) => {
-    if (btn.textContent.includes("\u5DF2\u4ED8\u6B3E") || btn.textContent.includes("\u5B8C\u6210")) {
-      btn.remove();
-    }
-  });
+  const actions = modalFooter.querySelector(".order-detail-primary-actions");
+  if (!actions) return;
+  const existing = actions.querySelector('[data-action="primary"]');
+  if (newStatus === "\u5B8C\u6210") {
+    const focused = existing?.contains(document.activeElement);
+    existing?.remove();
+    if (focused) actions.querySelector('[data-action="dismiss"]')?.focus({ preventScroll: true });
+    return;
+  }
   const editBtn = modalFooter.querySelector('button[onclick*="editOrder"]');
-  if (editBtn && newStatus !== "\u5DF2\u4ED8\u6B3E" && newStatus !== "\u5B8C\u6210") {
-    if (newStatus !== "\u5DF2\u4ED8\u6B3E") {
-      const paymentBtn = document.createElement("button");
-      paymentBtn.className = "btn btn-success";
-      paymentBtn.textContent = "\u5DF2\u4ED8\u6B3E";
-      paymentBtn.onclick = function() {
-        updateOrderStatus(orderId, "\u5DF2\u4ED8\u6B3E");
-        this.closest(".modal").remove();
-      };
-      modalFooter.insertBefore(paymentBtn, editBtn.nextSibling);
-    }
-  }
-  if (newStatus !== "\u5B8C\u6210") {
-    const completeBtn = document.createElement("button");
-    completeBtn.className = "btn btn-success";
-    completeBtn.textContent = "\u5B8C\u6210";
-    completeBtn.onclick = function() {
-      updateOrderStatus(orderId, "\u5B8C\u6210");
-      this.closest(".modal").remove();
-    };
-    modalFooter.insertBefore(completeBtn, modalFooter.lastElementChild);
-  }
+  if (existing || !editBtn || document.body.dataset.shopRole === "viewer") return;
+  const completeBtn = document.createElement("button");
+  completeBtn.type = "button";
+  completeBtn.className = "gj-btn gj-btn--primary";
+  completeBtn.dataset.action = "primary";
+  completeBtn.textContent = "\u6A19\u8A18\u5B8C\u6210";
+  completeBtn.onclick = function() {
+    window.showStatusConfirm(orderId, "\u5B8C\u6210");
+    this.closest(".modal").remove();
+  };
+  actions.append(completeBtn);
 }
 
 // src/ui/order-items-motion.js
@@ -3462,6 +3833,43 @@ function handleOverdueResults(orders) {
   displayOrderTable(orders, "searchResults", "overdue");
 }
 
+// src/app/dialogs.js
+var cancelCallback = null;
+function showConfirmModal(message, callback, options = {}) {
+  if (options.opener?.isConnected) options.opener.focus({ preventScroll: true });
+  closeConfirmModal();
+  document.getElementById("confirmModalTitle").textContent = options.title || "\u78BA\u8A8D\u64CD\u4F5C";
+  document.getElementById("confirmModalMessage").textContent = message;
+  document.getElementById("confirmCancelBtn").textContent = options.cancelLabel || "\u53D6\u6D88";
+  const button = document.getElementById("confirmBtn");
+  button.textContent = options.confirmLabel || "\u78BA\u8A8D";
+  button.className = `gj-btn gj-btn--${options.danger ? "danger" : "primary"}`;
+  state.confirmCallback = callback;
+  cancelCallback = options.onCancel || null;
+  const dialog = document.getElementById("confirmModal");
+  dialog.classList.add("active");
+  if (!dialog.inert) document.getElementById("confirmCancelBtn").focus({ preventScroll: true });
+}
+function closeConfirmModal() {
+  document.getElementById("confirmModal").classList.remove("active");
+  state.confirmCallback = null;
+  const cancel = cancelCallback;
+  cancelCallback = null;
+  cancel?.();
+}
+function executeConfirmCallback() {
+  const callback = state.confirmCallback;
+  if (!callback) return;
+  cancelCallback = null;
+  closeConfirmModal();
+  callback();
+}
+function requestConfirmation(message, options = {}) {
+  return new Promise((resolve) => {
+    showConfirmModal(message, () => resolve(true), { ...options, onCancel: () => resolve(false) });
+  });
+}
+
 // src/app/capacity.js
 function loadCapacitySettings(forceReload) {
   if (state.capacitySettingsLoaded && !forceReload) {
@@ -3556,7 +3964,7 @@ function renderOverrideTable() {
       statusBadge = '<span style="color: var(--gj-muted);">\u505C\u7528</span>';
     }
     var rowStyle = isExpired ? ' style="opacity: 0.5;"' : "";
-    var deleteButton = document.body.dataset.shopRole === "viewer" ? "" : '<button class="requires-editor" aria-label="\u522A\u9664 ' + escapeAttr(o.date) + ` \u65E5\u671F\u8986\u5BEB" onclick="deleteDateOverrideById('` + escapeAttr(o.id) + `')" style="padding: 4px 10px; background: var(--gj-surface); color: var(--gj-danger); border: 1px solid var(--gj-surface); border-radius: 6px; font-size: 0.8rem; cursor: pointer;"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`;
+    var deleteButton = document.body.dataset.shopRole === "viewer" ? "" : '<button class="requires-editor" aria-label="\u522A\u9664 ' + escapeAttr(o.date) + ` \u65E5\u671F\u8986\u5BEB" onclick="deleteDateOverrideById('` + escapeAttr(o.id) + `', this)" style="padding: 4px 10px; background: var(--gj-surface); color: var(--gj-danger); border: 1px solid var(--gj-surface); border-radius: 6px; font-size: 0.8rem; cursor: pointer;"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`;
     return "<tr" + rowStyle + "><td>" + escapeHtml(o.date) + "</td><td>" + dayStr + '</td><td style="font-weight: 600;">' + maxStr + "</td><td>" + statusBadge + '</td><td style="text-align: center;">' + deleteButton + "</td></tr>";
   }).join("");
 }
@@ -3685,12 +4093,20 @@ function addDateOverride() {
     showAlert("\u5C1A\u672A\u9023\u63A5 Firebase\uFF0C\u8A2D\u5B9A\u672A\u5132\u5B58", "error");
   }
 }
-function deleteDateOverrideById(id) {
+async function deleteDateOverrideById(id, opener) {
   if (document.body.dataset.shopRole === "viewer") {
     showAlert("\u6B64\u5E33\u865F\u53EA\u6709\u6AA2\u8996\u6B0A\u9650", "error");
     return;
   }
-  if (!confirm("\u78BA\u5B9A\u8981\u522A\u9664\u6B64\u65E5\u671F\u8986\u5BEB\u8A2D\u5B9A\uFF1F")) return;
+  const shopId = document.body.dataset.shopId;
+  const accepted = await requestConfirmation("\u522A\u9664\u5F8C\uFF0C\u6B64\u65E5\u671F\u6703\u6539\u7528\u539F\u672C\u7684\u661F\u671F\u4F9B\u61C9\u91CF\u8A2D\u5B9A\u3002", {
+    title: "\u522A\u9664\u65E5\u671F\u8986\u5BEB\u8A2D\u5B9A\uFF1F",
+    confirmLabel: "\u522A\u9664\u8A2D\u5B9A",
+    danger: true,
+    opener
+  });
+  if (!accepted || document.body.dataset.shopId !== shopId || document.body.dataset.shopRole === "viewer")
+    return;
   if (isConnected()) {
     rpc.withSuccessHandler(function() {
       showAlert("\u5DF2\u522A\u9664\u65E5\u671F\u8986\u5BEB\u8A2D\u5B9A", "success");
@@ -4179,9 +4595,10 @@ function toggleCartModal() {
   document.body.classList.toggle("cart-open", cartModal.classList.contains("active"));
   if (cartModal.classList.contains("active")) {
     updateCartModalDisplay();
-  }
+  } else resetCartItemActions();
 }
 function closeCartModal() {
+  resetCartItemActions();
   document.getElementById("cartModal").classList.remove("active");
   document.getElementById("cartOverlay").classList.remove("active");
   document.body.classList.remove("cart-open");
@@ -4233,22 +4650,6 @@ function generateGiftboxDetailsHtml(giftboxItem) {
                     <ul>${detailItems.join("")}</ul>
                 </div>
             `;
-}
-
-// src/app/dialogs.js
-function showConfirmModal(message, callback) {
-  document.getElementById("confirmModalMessage").textContent = message;
-  state.confirmCallback = callback;
-  document.getElementById("confirmModal").classList.add("active");
-}
-function closeConfirmModal() {
-  document.getElementById("confirmModal").classList.remove("active");
-  state.confirmCallback = null;
-}
-function executeConfirmCallback() {
-  if (state.confirmCallback) {
-    state.confirmCallback();
-  }
 }
 
 // src/app/platform.js
@@ -4701,7 +5102,7 @@ function renderProductCards() {
                         <button class="btn-card-edit" onclick="editProduct('${escapeHandlerArgument(p.productId)}')">
                             <i class="fas fa-edit"></i> \u7DE8\u8F2F
                         </button>
-                        <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${escapeHandlerArgument(p.productId)}')">
+                        <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${escapeHandlerArgument(p.productId)}', this)">
                             <i class="fas fa-trash-alt"></i> \u522A\u9664
                         </button>
                     </div>`}
@@ -4826,21 +5227,25 @@ function editProduct(productId) {
   document.getElementById("productEditModal").classList.add("active");
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }
-function deleteProduct(productId) {
-  showConfirmModal("\u78BA\u5B9A\u8981\u522A\u9664\u6B64\u5546\u54C1\u55CE\uFF1F", () => {
-    rpc.withSuccessHandler(function() {
-      closeConfirmModal();
-      showAlert("\u5546\u54C1\u5DF2\u522A\u9664", "success");
-      state.allProducts = state.allProducts.filter((p) => p.productId !== productId);
-      cacheProducts(state.allProducts);
-      renderProductCards();
-      updateProductDisplays();
-      updateNavVisibility();
-    }).withFailureHandler(function(error) {
-      closeConfirmModal();
-      handleError(error);
-    }).deleteProduct(productId);
-  });
+function deleteProduct(productId, opener) {
+  const shopId = document.body.dataset.shopId;
+  showConfirmModal(
+    "\u78BA\u5B9A\u8981\u522A\u9664\u6B64\u5546\u54C1\u55CE\uFF1F",
+    () => {
+      if (document.body.dataset.shopId !== shopId || document.body.dataset.shopRole === "viewer") return;
+      rpc.withSuccessHandler(function() {
+        showAlert("\u5546\u54C1\u5DF2\u522A\u9664", "success");
+        state.allProducts = state.allProducts.filter((p) => p.productId !== productId);
+        cacheProducts(state.allProducts);
+        renderProductCards();
+        updateProductDisplays();
+        updateNavVisibility();
+      }).withFailureHandler(function(error) {
+        handleError(error);
+      }).deleteProduct(productId);
+    },
+    { title: "\u522A\u9664\u5546\u54C1\uFF1F", confirmLabel: "\u522A\u9664\u5546\u54C1", danger: true, opener }
+  );
 }
 
 // src/app/drafts.js
@@ -5058,8 +5463,15 @@ async function restoreOrderDraftOnce() {
     await localDbDelete("drafts", key2);
     return;
   }
-  if (confirm("\u627E\u5230\u4E0A\u6B21\u672A\u5B8C\u6210\u7684\u8A02\u55AE\u8349\u7A3F\uFF0C\u662F\u5426\u7E7C\u7E8C\uFF1F")) applyDraft(draft);
-  else await clearOrderDraft();
+  const accepted = await requestConfirmation(
+    "\u627E\u5230\u4E0A\u6B21\u672A\u5B8C\u6210\u7684\u8A02\u55AE\u8349\u7A3F\uFF0C\u662F\u5426\u7E7C\u7E8C\u7DE8\u8F2F\uFF1F\u66AB\u4E0D\u6062\u5FA9\u6703\u4FDD\u7559\u9019\u4EFD\u8349\u7A3F\u3002",
+    {
+      title: "\u6062\u5FA9\u8A02\u55AE\u8349\u7A3F\uFF1F",
+      cancelLabel: "\u66AB\u4E0D\u6062\u5FA9",
+      confirmLabel: "\u7E7C\u7E8C\u7DE8\u8F2F"
+    }
+  );
+  if (accepted && draftStorageKey() === key2) applyDraft(draft);
 }
 function initOrderDraftPersistence() {
   const form = document.getElementById("customer");
@@ -6144,7 +6556,7 @@ function showProductOrder() {
   let backdropPressed = false;
   let finishDrop = null;
   const motions = /* @__PURE__ */ new Map();
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const reducedMotion2 = window.matchMedia("(prefers-reduced-motion: reduce)");
   const modal = document.createElement("div");
   modal.id = "productOrderModal";
   modal.className = "modal active";
@@ -6154,7 +6566,7 @@ function showProductOrder() {
     <ol class="product-order-list" aria-label="\u5546\u54C1\u6392\u5E8F"></ol>
     <span class="sr-only" data-announcement aria-live="polite"></span>
     <p class="product-order-error" role="status" hidden></p>
-    <div class="product-order-footer"><button type="button" data-reload>\u91CD\u65B0\u8F09\u5165\uFF08\u6368\u68C4\u8ABF\u6574\uFF09</button><div><button type="button" data-cancel>\u53D6\u6D88</button><button type="button" data-save>\u5132\u5B58\u9806\u5E8F</button></div></div>
+    <div class="product-order-footer"><button type="button" data-reload class="gj-btn gj-btn--quiet">\u91CD\u65B0\u8F09\u5165\uFF08\u6368\u68C4\u8ABF\u6574\uFF09</button><div class="gj-actions"><button type="button" data-cancel data-action="dismiss" class="gj-btn gj-btn--quiet">\u53D6\u6D88</button><button type="button" data-save data-action="primary" class="gj-btn gj-btn--primary">\u5132\u5B58\u9806\u5E8F</button></div></div>
   </div>`;
   const list = modal.querySelector("ol");
   const message = modal.querySelector('[role="status"]');
@@ -6190,7 +6602,7 @@ function showProductOrder() {
     const row = rows.get(product.productId);
     list.insertBefore(row, from < to ? list.children[to].nextSibling : list.children[to]);
     controls();
-    if (!reducedMotion.matches) {
+    if (!reducedMotion2.matches) {
       for (const [item, top] of before) {
         if (item.dataset.productId === drag?.id) continue;
         const distance = top - item.getBoundingClientRect().top;
@@ -6269,7 +6681,7 @@ function showProductOrder() {
       if (finishDrop === clean2) finishDrop = null;
     };
     finishDrop = clean2;
-    if (!animateDrop || reducedMotion.matches || !row?.isConnected) {
+    if (!animateDrop || reducedMotion2.matches || !row?.isConnected) {
       clean2();
       return;
     }
@@ -7202,7 +7614,7 @@ function createPreview() {
       <div class="printer-actions receipt-pages" hidden><button type="button" class="btn receipt-previous">\u4E0A\u4E00\u9801</button><span class="receipt-page-label" role="status"></span><button type="button" class="btn receipt-next">\u4E0B\u4E00\u9801</button></div>
       <details><summary>\u55AE\u64DA\u6587\u5B57\u5167\u5BB9</summary><pre class="receipt-text"></pre></details>
       <p id="printer-result" role="status" aria-live="polite">\u6B63\u5728\u8B80\u53D6\u8A02\u55AE\u2026</p></div>
-    <div class="modal-footer"><button type="button" class="btn" id="printer-send" disabled>\u5217\u5370\u4E00\u4EFD</button><button type="button" class="btn printer-close">\u95DC\u9589</button></div>
+    <div class="modal-footer gj-actions"><button type="button" class="gj-btn gj-btn--quiet printer-close" data-action="dismiss">\u95DC\u9589</button><button type="button" class="gj-btn gj-btn--primary" id="printer-send" data-action="primary" disabled>\u5217\u5370\u4E00\u4EFD</button></div>
   </div>`;
   modal.querySelectorAll(".close-btn, .printer-close").forEach((button) => button.addEventListener("click", () => modal.remove()));
   document.body.append(modal);
@@ -7283,12 +7695,15 @@ function addOrderPrintButton(container, orderId) {
   if (!canPrint()) return;
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "btn";
+  const primary = container.classList.contains("gj-actions");
+  button.className = primary ? "gj-btn gj-btn--primary" : "gj-btn";
+  button.dataset.action = primary ? "primary" : "secondary";
   button.textContent = "\u5217\u5370\u8A02\u55AE";
   button.dataset.printerOrder = orderId;
   button.disabled = Boolean(active);
   button.addEventListener("click", () => previewOrder(orderId));
-  container.prepend(button);
+  if (primary) container.append(button);
+  else container.prepend(button);
 }
 function offerOrderPrint(orderId) {
   const banner = element("printer-last-order");
@@ -7297,15 +7712,19 @@ function offerOrderPrint(orderId) {
   const message = document.createElement("span");
   message.textContent = `\u8A02\u55AE ${orderId} \u5DF2\u5EFA\u7ACB`;
   banner.append(message);
-  addOrderPrintButton(banner, orderId);
+  const actions = document.createElement("div");
+  actions.className = "gj-actions";
   const close2 = document.createElement("button");
   close2.type = "button";
-  close2.className = "btn";
+  close2.className = "gj-btn gj-btn--quiet";
+  close2.dataset.action = "dismiss";
   close2.textContent = "\u95DC\u9589";
   close2.onclick = () => {
     banner.hidden = true;
   };
-  banner.append(close2);
+  actions.append(close2);
+  addOrderPrintButton(actions, orderId);
+  banner.append(actions);
   banner.hidden = false;
   const config = readConfig();
   if (config.enabled && config.autoPrint) void autoPrintOrder(orderId, banner);
@@ -7800,7 +8219,7 @@ function showStatusConfirm(orderId, newStatus) {
   const completing = newStatus === "\u5B8C\u6210";
   document.getElementById("statusConfirmTitle").textContent = completing ? "\u5B8C\u6210\u9019\u7B46\u8A02\u55AE\uFF1F" : "\u66F4\u65B0\u8A02\u55AE\u72C0\u614B\uFF1F";
   document.getElementById("statusConfirmDescription").textContent = completing ? "\u8ACB\u78BA\u8A8D\u8A02\u55AE\u5DF2\u8655\u7406\u5B8C\u7562\uFF0C\u518D\u5C07\u72C0\u614B\u6A19\u8A18\u70BA\u5B8C\u6210\u3002" : "\u8ACB\u78BA\u8A8D\u4E0B\u65B9\u8A02\u55AE\u8CC7\u8A0A\uFF0C\u518D\u66F4\u65B0\u8A02\u55AE\u72C0\u614B\u3002";
-  document.querySelector("#statusConfirmModal .slider-track").dataset.confirmLabel = completing ? "\u5411\u53F3\u6ED1\u52D5\uFF0C\u78BA\u8A8D\u5B8C\u6210" : "\u5411\u53F3\u6ED1\u52D5\uFF0C\u78BA\u8A8D\u66F4\u65B0";
+  document.querySelector("#statusConfirmModal .slider-track").dataset.confirmLabel = completing ? "\u6ED1\u52D5\u5B8C\u6210" : "\u6ED1\u52D5\u66F4\u65B0";
   document.getElementById("statusOrderId").textContent = `\u8A02\u55AE\u7DE8\u865F\uFF1A${orderId}`;
   document.getElementById("statusUpdateInfo").textContent = `\u5C07\u66F4\u65B0\u70BA\uFF1A${newStatus}`;
   document.getElementById("statusUpdateStatus").textContent = "";
@@ -8231,9 +8650,9 @@ function handleOrderDetails(details) {
                     <div class="order-detail-secondary-actions">
                       ${canEditOrders ? `<button type="button" class="gj-btn requires-editor" onclick="editOrder('${handlerId}'); this.closest('.modal').remove();"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u8A02\u55AE</button>` : ""}
                     </div>
-                    <div class="order-detail-primary-actions">
-                      <button type="button" class="gj-btn gj-btn--quiet" onclick="this.closest('.modal').remove()">\u95DC\u9589</button>
-                      ${canUpdate ? `<button type="button" class="gj-btn gj-btn--primary" onclick="showStatusConfirm('${handlerId}', '\u5B8C\u6210'); this.closest('.modal').remove();">\u6A19\u8A18\u5B8C\u6210</button>` : ""}
+                    <div class="order-detail-primary-actions gj-actions">
+                      <button type="button" class="gj-btn gj-btn--quiet" data-action="dismiss" onclick="this.closest('.modal').remove()">\u95DC\u9589</button>
+                      ${canUpdate ? `<button type="button" class="gj-btn gj-btn--primary" data-action="primary" onclick="showStatusConfirm('${handlerId}', '\u5B8C\u6210'); this.closest('.modal').remove();">\u6A19\u8A18\u5B8C\u6210</button>` : ""}
                     </div>
                 </div>
             </div>`;
@@ -8286,6 +8705,7 @@ Object.assign(window, {
   saveProduct,
   closeConfirmModal,
   executeConfirmCallback,
+  requestConfirmation,
   closeStatusConfirmModal,
   closeDeleteConfirmModal,
   updateDepositCalculation,
@@ -8478,6 +8898,8 @@ var close = {
 };
 var visible = (element2) => element2.getClientRects().length > 0 && !element2.closest("[inert]");
 var initialFocusTarget = (dialog) => {
+  const preferred = dialog.querySelector("[data-dialog-initial-focus]:not(:disabled)");
+  if (preferred && visible(preferred)) return preferred;
   const first = [...dialog.querySelectorAll(focusable)].find(visible);
   return first?.matches("input,select,textarea,[contenteditable]") ? dialog : first || dialog;
 };
@@ -8574,6 +8996,7 @@ function initializeAccessibility() {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (active2.id === "cartModal" && closeCartItemActions()) return;
         if (active2.id === "productEditModal" && !document.getElementById("productCategoryOptions").hidden) {
           closeCategoryOptions();
           document.getElementById("productCategoryToggle").focus();
@@ -8695,8 +9118,8 @@ async function startApplication() {
     await loadInitialShopData();
     await startupProgress(2, "\u6B63\u5728\u6AA2\u67E5\u8207\u6062\u5FA9\u672C\u6A5F\u672A\u9001\u51FA\u8A02\u55AE\u2026");
     await restoreOrderDraftOnce();
-    state.suppressDraftSave = false;
     applyRoleCapabilities();
+    state.suppressDraftSave = false;
     initializePrinter();
     await startupProgress(3, "\u6B63\u5728\u5B8C\u6210\u756B\u9762\u6E32\u67D3\u2026");
     initializeWorkspace();

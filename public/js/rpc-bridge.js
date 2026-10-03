@@ -126,19 +126,21 @@
                         <p id="firebaseAuthPasswordError" class="gj-field-error" hidden></p>
                         <p id="firebasePasswordHint" class="firebase-auth-hint">至少 6 個字元</p>
                     </div>
-                    <div class="firebase-auth-row">
-                        <button id="firebaseEmailSignIn" class="firebase-auth-primary gj-btn gj-btn--primary" type="submit">Email 登入</button>
-                        <button id="firebaseEmailRegister" class="firebase-auth-primary firebase-auth-create gj-btn gj-btn--tonal" type="button">建立帳號</button>
-                    </div>
                     <button id="firebaseResetPassword" type="button">忘記密碼？寄送重設信</button>
                 </form>
-                <button id="firebasePasswordSetupCancel" class="firebase-auth-secondary" type="button" hidden>取消</button>
+                <div class="firebase-auth-row gj-actions" id="firebaseCredentialActions">
+                    <button id="firebasePasswordSetupCancel" class="gj-btn gj-btn--quiet" data-action="dismiss" type="button" hidden>取消</button>
+                    <button id="firebaseEmailRegister" class="firebase-auth-primary firebase-auth-create gj-btn gj-btn--tonal" data-action="secondary" type="button">建立帳號</button>
+                    <button id="firebaseEmailSignIn" class="firebase-auth-primary gj-btn gj-btn--primary" data-action="primary" type="submit" form="firebaseEmailAuth">Email 登入</button>
+                </div>
                 <div id="firebaseAuthDivider" class="firebase-auth-divider">或</div>
-                <button id="firebaseGoogleSignIn" class="gj-social-button" type="button"><span class="gj-social-logo" aria-hidden="true"><img src="/icons/google-signin.svg" width="20" height="20" alt=""></span><span class="firebase-auth-action-label">使用 Google 帳號登入</span></button>
+                <button id="firebaseGoogleSignIn" class="gj-social-button" type="button"><span class="gj-social-logo" aria-hidden="true"><img src="/icons/google-signin.png" width="20" height="20" alt=""></span><span class="firebase-auth-action-label">使用 Google 帳號登入</span></button>
                 <div id="firebaseVerificationActions">
                     <button id="firebaseSendVerification" class="firebase-auth-secondary" type="button">重新寄送驗證信</button>
-                    <button id="firebaseRefreshVerification" class="firebase-auth-secondary" type="button">我已驗證，重新檢查</button>
-                    <button id="firebaseVerificationSignOut" class="firebase-auth-secondary firebase-auth-muted" type="button">改用其他帳號</button>
+                    <div class="gj-actions">
+                        <button id="firebaseVerificationSignOut" class="gj-btn gj-btn--quiet" data-action="dismiss" type="button">改用其他帳號</button>
+                        <button id="firebaseRefreshVerification" class="gj-btn gj-btn--primary" data-action="primary" type="button">我已驗證，重新檢查</button>
+                    </div>
                 </div>
                 <div id="firebaseAuthError" role="alert"></div>
                 <p id="firebaseAuthProgress" class="firebase-auth-hint" role="status" hidden></p>
@@ -242,11 +244,14 @@
                         <button id="firebaseOpenCreateShop" class="firebase-shop-secondary" type="button"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>建立店鋪</button>
                         <button id="firebaseOpenShopSettings" class="firebase-shop-secondary" type="button"><svg class="gj-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h4m4 0h8M4 12h10m4 0h2M4 18h2m4 0h10"/><circle cx="10" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg>店鋪設定</button>
                     </div>
-                    <button id="firebaseCreateShop" data-shop-actions="create" class="firebase-shop-action" type="submit" form="firebaseCreateShopForm" hidden>建立並切換</button>
-                    <button id="firebaseRenameShop" data-shop-actions="settings" class="firebase-shop-action" type="submit" form="firebaseRenameShopForm" hidden>儲存名稱</button>
-                    <button id="firebaseOpenAddMember" data-shop-actions="members" class="firebase-shop-action" type="button" hidden>新增成員</button>
-                    <button id="firebaseAddMember" data-shop-actions="invite" class="firebase-shop-action" type="submit" form="firebaseAddMemberForm" hidden>新增成員</button>
-                    <button id="firebaseSaveMember" data-shop-actions="member" class="firebase-shop-action" type="submit" form="firebaseMemberSettingsForm" hidden>儲存變更</button>
+                    <div id="firebaseShopFormActions" class="gj-actions" hidden>
+                        <button id="firebaseShopCancel" class="gj-btn gj-btn--quiet" data-action="dismiss" type="button">取消</button>
+                        <button id="firebaseCreateShop" data-shop-actions="create" data-action="primary" class="firebase-shop-action gj-btn gj-btn--primary" type="submit" form="firebaseCreateShopForm" hidden>建立並切換</button>
+                        <button id="firebaseRenameShop" data-shop-actions="settings" data-action="primary" class="firebase-shop-action gj-btn gj-btn--primary" type="submit" form="firebaseRenameShopForm" hidden>儲存名稱</button>
+                        <button id="firebaseOpenAddMember" data-shop-actions="members" data-action="primary" class="firebase-shop-action gj-btn gj-btn--primary" type="button" hidden>新增成員</button>
+                        <button id="firebaseAddMember" data-shop-actions="invite" data-action="primary" class="firebase-shop-action gj-btn gj-btn--primary" type="submit" form="firebaseAddMemberForm" hidden>新增成員</button>
+                        <button id="firebaseSaveMember" data-shop-actions="member" data-action="primary" class="firebase-shop-action gj-btn gj-btn--primary" type="submit" form="firebaseMemberSettingsForm" hidden>儲存變更</button>
+                    </div>
                 </div>
             </div>`;
         document.body.appendChild(shopOverlay);
@@ -281,10 +286,16 @@
         email.readOnly = passwordMode;
         if (passwordMode) email.value = user.email;
         document.getElementById('firebaseAuthPassword').autocomplete = passwordMode ? 'new-password' : 'current-password';
-        document.getElementById('firebaseEmailSignIn').hidden = passwordMode;
-        document.getElementById('firebaseEmailRegister').textContent = passwordMode ? '設定登入密碼' : '建立帳號';
+        document.getElementById('firebaseEmailSignIn').hidden = passwordMode || verificationMode;
+        const register = document.getElementById('firebaseEmailRegister');
+        register.textContent = passwordMode ? '設定登入密碼' : '建立帳號';
+        register.hidden = passwordComplete || verificationMode;
+        register.classList.toggle('firebase-auth-create', !passwordMode);
+        register.classList.toggle('gj-btn--tonal', !passwordMode);
+        register.classList.toggle('gj-btn--primary', passwordMode);
+        register.dataset.action = passwordMode ? 'primary' : 'secondary';
+        document.getElementById('firebaseCredentialActions').hidden = verificationMode;
         document.getElementById('firebaseResetPassword').hidden = passwordMode;
-        emailAuth.querySelector('.firebase-auth-row').style.gridTemplateColumns = passwordMode ? '1fr' : '';
         const cancel = document.getElementById('firebasePasswordSetupCancel');
         cancel.hidden = !passwordMode;
         cancel.textContent = passwordComplete ? '返回工作台' : '取消';
@@ -477,6 +488,8 @@
         overlay.querySelector('.firebase-shop-card').dataset.view = view;
         overlay.querySelectorAll('[data-shop-view]').forEach((panel) => { panel.hidden = panel.dataset.shopView !== view; });
         overlay.querySelectorAll('[data-shop-actions]').forEach((actions) => { actions.hidden = actions.dataset.shopActions !== view; });
+        document.getElementById('firebaseShopFormActions').hidden = view === 'select';
+        document.getElementById('firebaseShopCancel').textContent = view === 'members' ? '返回店鋪列表' : '取消';
         const titles = { select: '切換店鋪', create: '建立店鋪', settings: '店鋪設定', members: '店鋪設定', invite: '新增成員', member: '成員設定' };
         const title = document.getElementById('firebaseShopTitle');
         title.textContent = titles[view];
@@ -705,6 +718,9 @@
             if (['invite', 'member'].includes(shopManagerView)) showShopMembers();
             else showShopView('select');
         });
+        document.getElementById('firebaseShopCancel').addEventListener('click', () => {
+            document.getElementById('firebaseShopBack').click();
+        });
         document.getElementById('firebaseOpenCreateShop').addEventListener('click', () => showShopView('create'));
         document.getElementById('firebaseOpenShopSettings').addEventListener('click', () => showShopView('settings'));
         document.getElementById('firebaseShopDetailsTab').addEventListener('click', () => showShopView('settings'));
@@ -787,9 +803,15 @@
             });
         });
         document.getElementById('firebaseRemoveMember').addEventListener('click', async () => {
-            if (!selectedMember || selectedMember.role === 'owner' || !confirm(`確定要將 ${selectedMember.email || selectedMember.uid} 移出此店鋪？`)) return;
+            if (!selectedMember || selectedMember.role === 'owner') return;
             const uid = selectedMember.uid;
             const shopId = activeShop.shopId;
+            const revision = shopViewRevision;
+            const accepted = await window.requestConfirmation(`確定要將 ${selectedMember.email || selectedMember.uid} 移出此店鋪？`, {
+                title: '移除店鋪成員？', confirmLabel: '移除成員', danger: true,
+                opener: document.getElementById('firebaseRemoveMember'),
+            });
+            if (!accepted || activeShop?.shopId !== shopId || activeShop.role !== 'owner' || selectedMember?.uid !== uid || shopViewRevision !== revision) return;
             await runShopAction('firebaseRemoveMember', '移除中…', async () => {
                 const state = await ensureSignedIn();
                 await rawRpc(state, 'removeShopMember', [uid], shopId);
@@ -922,7 +944,7 @@
             async function runAuthAction(button, label, action, onError) {
                 if (authActionPending) return;
                 authActionPending = true;
-                const controls = [...document.querySelectorAll('#firebaseEmailAuth input, #firebaseEmailAuth button, #firebaseGoogleSignIn, #firebasePasswordSetupCancel')];
+                const controls = [...document.querySelectorAll('#firebaseEmailAuth input, #firebaseEmailAuth button, #firebaseCredentialActions button, #firebaseGoogleSignIn')];
                 const previousDisabled = controls.map(control => control.disabled);
                 const buttonLabel = button.querySelector('.firebase-auth-action-label') || button;
                 const previousLabel = buttonLabel.textContent;

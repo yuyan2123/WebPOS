@@ -136,9 +136,9 @@ export function handleOrderDetails(details) {
                     <div class="order-detail-secondary-actions">
                       ${canEditOrders ? `<button type="button" class="gj-btn requires-editor" onclick="editOrder('${handlerId}'); this.closest('.modal').remove();"><i class="fas fa-edit" aria-hidden="true"></i> 編輯訂單</button>` : ''}
                     </div>
-                    <div class="order-detail-primary-actions">
-                      <button type="button" class="gj-btn gj-btn--quiet" onclick="this.closest('.modal').remove()">關閉</button>
-                      ${canUpdate ? `<button type="button" class="gj-btn gj-btn--primary" onclick="showStatusConfirm('${handlerId}', '完成'); this.closest('.modal').remove();">標記完成</button>` : ''}
+                    <div class="order-detail-primary-actions gj-actions">
+                      <button type="button" class="gj-btn gj-btn--quiet" data-action="dismiss" onclick="this.closest('.modal').remove()">關閉</button>
+                      ${canUpdate ? `<button type="button" class="gj-btn gj-btn--primary" data-action="primary" onclick="showStatusConfirm('${handlerId}', '完成'); this.closest('.modal').remove();">標記完成</button>` : ''}
                     </div>
                 </div>
             </div>`;

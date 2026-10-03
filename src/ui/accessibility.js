@@ -1,4 +1,5 @@
 import { closeCartModal } from '../app/cart.js';
+import { closeCartItemActions } from '../app/cart-detail.js';
 import { closeCapacityWarningModal } from '../app/checkout.js';
 import { closeDeleteConfirmModal, closeStatusConfirmModal, closeDepositModal } from '../app/payments.js';
 import { closeConfirmModal } from '../app/dialogs.js';
@@ -22,6 +23,8 @@ const close = {
 };
 const visible = (element) => element.getClientRects().length > 0 && !element.closest('[inert]');
 const initialFocusTarget = (dialog) => {
+  const preferred = dialog.querySelector('[data-dialog-initial-focus]:not(:disabled)');
+  if (preferred && visible(preferred)) return preferred;
   const first = [...dialog.querySelectorAll(focusable)].find(visible);
   // Opening a dialog must not summon the mobile keyboard. Tab still reaches every field.
   return first?.matches('input,select,textarea,[contenteditable]') ? dialog : first || dialog;
@@ -140,6 +143,7 @@ export function initializeAccessibility() {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (active.id === 'cartModal' && closeCartItemActions()) return;
         if (active.id === 'productEditModal' && !document.getElementById('productCategoryOptions').hidden) {
           closeCategoryOptions();
           document.getElementById('productCategoryToggle').focus();

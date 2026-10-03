@@ -5,7 +5,7 @@ import { state } from './state.js';
 import { initializeModalCloseHandlers } from './platform.js';
 import { showAlert, setButtonLoading, handleError } from './feedback.js';
 import { updateProductDisplays, updateNavVisibility, cacheProducts } from './catalog.js';
-import { showConfirmModal, closeConfirmModal } from './dialogs.js';
+import { showConfirmModal } from './dialogs.js';
 
 const productFieldIds = ['productName', 'productCategory', 'productPrice'];
 const productErrors = new Map();
@@ -313,7 +313,7 @@ export function renderProductCards() {
                         <button class="btn-card-edit" onclick="editProduct('${escapeHandlerArgument(p.productId)}')">
                             <i class="fas fa-edit"></i> 編輯
                         </button>
-                        <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${escapeHandlerArgument(p.productId)}')">
+                        <button class="btn-card-delete" onclick="event.stopPropagation(); deleteProduct('${escapeHandlerArgument(p.productId)}', this)">
                             <i class="fas fa-trash-alt"></i> 刪除
                         </button>
                     </div>`
@@ -458,22 +458,26 @@ export function editProduct(productId) {
   setTimeout(() => initializeModalCloseHandlers(), 50);
 }
 
-export function deleteProduct(productId) {
-  showConfirmModal('確定要刪除此商品嗎？', () => {
-    rpc
-      .withSuccessHandler(function () {
-        closeConfirmModal();
-        showAlert('商品已刪除', 'success');
-        state.allProducts = state.allProducts.filter((p) => p.productId !== productId);
-        cacheProducts(state.allProducts);
-        renderProductCards();
-        updateProductDisplays();
-        updateNavVisibility();
-      })
-      .withFailureHandler(function (error) {
-        closeConfirmModal();
-        handleError(error);
-      })
-      .deleteProduct(productId);
-  });
+export function deleteProduct(productId, opener) {
+  const shopId = document.body.dataset.shopId;
+  showConfirmModal(
+    '確定要刪除此商品嗎？',
+    () => {
+      if (document.body.dataset.shopId !== shopId || document.body.dataset.shopRole === 'viewer') return;
+      rpc
+        .withSuccessHandler(function () {
+          showAlert('商品已刪除', 'success');
+          state.allProducts = state.allProducts.filter((p) => p.productId !== productId);
+          cacheProducts(state.allProducts);
+          renderProductCards();
+          updateProductDisplays();
+          updateNavVisibility();
+        })
+        .withFailureHandler(function (error) {
+          handleError(error);
+        })
+        .deleteProduct(productId);
+    },
+    { title: '刪除商品？', confirmLabel: '刪除商品', danger: true, opener },
+  );
 }

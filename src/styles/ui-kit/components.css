@@ -23,8 +23,8 @@
 .gj-ui .gj-social-button:active:not(:disabled)::after { opacity: .12; }
 .gj-ui .gj-social-button:focus-visible { outline: 2px solid var(--gj-primary); outline-offset: 3px; }
 .gj-ui .gj-social-button:disabled { opacity: .45; cursor: not-allowed; }
-.gj-social-logo { flex: 0 0 24px; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; background: #fff; }
-.gj-social-logo img { display: block; width: 20px; height: 20px; }
+.gj-social-logo { flex: 0 0 24px; display: inline-grid; place-items: center; width: 24px; height: 24px; background: transparent; }
+.gj-social-logo img { display: block; width: 20px; height: 20px; object-fit: contain; }
 .gj-btn[aria-busy=true]::before { content: ''; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gj-spin .8s linear infinite; }
 @keyframes gj-spin { to { transform: rotate(360deg); } }
 .gj-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -207,3 +207,17 @@ body.gj-ui .gj-combobox .gj-input:focus-visible { outline: 0 !important; box-sha
 .gj-ui .gj-form-feedback a { display: inline-block; padding-block: 4px; color: var(--gj-danger); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .gj-ui :is(.gj-field-error, .gj-form-feedback)[hidden] { display: none; }
 .gj-ui .gj-combobox.gj-invalid { border-color: var(--gj-danger); }
+
+/* Decision actions follow DOM order: dismiss/secondary first, primary last.
+   Keep both slots on one row on phones; long labels wrap inside their slot. */
+.gj-ui .gj-actions { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+.gj-ui .gj-actions > :is(button, a) { flex: 0 1 auto; width: auto; min-width: 88px; min-height: 48px; white-space: normal; overflow-wrap: anywhere; text-align: center; line-height: 1.5; }
+.gj-ui .gj-actions > :is([data-action="dismiss"], .gj-btn--quiet) { border-color: transparent; background: transparent; color: var(--gj-muted); }
+.gj-ui .gj-actions > .gj-btn--primary { border-color: var(--gj-primary); background: var(--gj-primary); color: var(--gj-on-primary); }
+.gj-ui .gj-actions > .gj-btn--danger { border-color: var(--gj-danger); background: var(--gj-danger); color: var(--gj-on-danger); }
+.gj-ui .gj-actions > :is(button, a) > :is(i, svg) { flex-shrink: 0; }
+.gj-ui .gj-actions[hidden], .gj-ui .gj-actions > [hidden] { display: none; }
+@media (max-width: 600px) {
+  .gj-ui .gj-actions { gap: 8px; }
+  .gj-ui .gj-actions > :is(button, a) { flex: 1 1 0; min-width: 0; padding-inline: 12px; }
+}

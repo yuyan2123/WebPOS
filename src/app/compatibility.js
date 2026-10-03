@@ -49,7 +49,7 @@ import {
   updateModalPrice,
   showProductDetail,
 } from './product-detail.js';
-import { closeConfirmModal, executeConfirmCallback } from './dialogs.js';
+import { closeConfirmModal, executeConfirmCallback, requestConfirmation } from './dialogs.js';
 import {
   closeStatusConfirmModal,
   closeDeleteConfirmModal,
@@ -106,6 +106,7 @@ Object.assign(window, {
   saveProduct,
   closeConfirmModal,
   executeConfirmCallback,
+  requestConfirmation,
   closeStatusConfirmModal,
   closeDeleteConfirmModal,
   updateDepositCalculation,

@@ -353,15 +353,95 @@ test('password linking preserves failed input, blocks overlapping actions and ca
   await expect(page.locator('#firebaseSetPassword')).toBeVisible();
 });
 
-test('new Email registrations still create a verified-email flow', async ({ page }) => {
+test("credential actions keep the same left and right positions when adding a password", async ({
+  page,
+}, testInfo) => {
+  const { expectActionPair } = require("./helpers/actions");
+  await loginPage(page, { styled: true });
+  async function review(name, dismissId, primaryId) {
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((value) => {
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      for (const size of [
+        page.viewportSize(),
+        { width: 320, height: 740 },
+        { width: 667, height: 375 },
+      ]) {
+        await page.setViewportSize(size);
+        await expectActionPair(
+          page,
+          page.locator("#" + dismissId),
+          page.locator("#" + primaryId),
+        );
+        await page.screenshot({
+          path: testInfo.outputPath(
+            `${theme}-${name}-actions-${size.width}.png`,
+          ),
+        });
+      }
+    }
+  }
+  await review("login", "firebaseEmailRegister", "firebaseEmailSignIn");
+  await page.locator("#firebaseGoogleSignIn").click();
+  await page.locator("#firebaseAccountToggle").click();
+  await page.locator("#firebaseSetPassword").click();
+  await review(
+    "password",
+    "firebasePasswordSetupCancel",
+    "firebaseEmailRegister",
+  );
+  await expect(page.locator("#firebaseEmailRegister")).toHaveClass(
+    /gj-btn--primary/,
+  );
+  await page.locator("#firebasePasswordSetupCancel").click();
+  await expect(page.locator("#firebaseAuthOverlay")).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => window.__authCalls.filter((call) => call === "link").length,
+    ),
+  ).toBe(0);
+});
+
+test("new Email registrations still create a verified-email flow", async ({
+  page,
+}) => {
   await loginPage(page);
-  await page.locator('#firebaseAuthEmail').fill('new@example.test');
-  await page.locator('#firebaseAuthPassword').fill('new-password-123');
-  await page.locator('#firebaseEmailRegister').click();
-  await expect(page.locator('#firebaseAuthTitle')).toHaveText('請驗證 Email');
-  await expect(page.locator('#firebaseAuthError')).toContainText('驗證信已寄出');
-  expect(await page.evaluate(() => window.__verificationUid)).toBe('email-account');
-  expect(await page.evaluate(() => window.__authCalls.includes('link'))).toBe(false);
+  await page.locator("#firebaseAuthEmail").fill("new@example.test");
+  await page.locator("#firebaseAuthPassword").fill("new-password-123");
+  await page.locator("#firebaseEmailRegister").click();
+  await expect(page.locator("#firebaseAuthTitle")).toHaveText("請驗證 Email");
+  await expect(page.locator("#firebaseAuthError")).toContainText(
+    "驗證信已寄出",
+  );
+  expect(await page.evaluate(() => window.__verificationUid)).toBe(
+    "email-account",
+  );
+  expect(await page.evaluate(() => window.__authCalls.includes("link"))).toBe(
+    false,
+  );
+});
+
+test("Email verification keeps switching accounts left of the verification action", async ({
+  page,
+}) => {
+  const { expectActionPair } = require("./helpers/actions");
+  await loginPage(page, { styled: true });
+  await page.locator("#firebaseAuthEmail").fill("new@example.test");
+  await page.locator("#firebaseAuthPassword").fill("new-password-123");
+  await page.locator("#firebaseEmailRegister").click();
+  for (const size of [
+    page.viewportSize(),
+    { width: 320, height: 740 },
+    { width: 667, height: 375 },
+  ]) {
+    await page.setViewportSize(size);
+    await expectActionPair(
+      page,
+      page.locator("#firebaseVerificationSignOut"),
+      page.locator("#firebaseRefreshVerification"),
+    );
+  }
 });
 
 test('password reset reports delivery errors and only conceals missing accounts', async ({ page }) => {
@@ -396,12 +476,21 @@ test('labeled Google button loads its local logo and stays readable in both them
   await expect(button).toBeVisible();
   const logo = button.locator('img');
   await expect.poll(() => logo.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+  expect(await logo.evaluate((image) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+    return context.getImageData(0, 0, 1, 1).data[3];
+  })).toBe(0);
   for (const theme of ['light', 'dark']) {
     await page.evaluate((value) => {
       document.documentElement.dataset.theme = value;
     }, theme);
     await expect(button).toHaveCSS('display', 'flex');
     await expect(button).toHaveCSS('border-radius', '8px');
+    await expect(button.locator('.gj-social-logo')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     const result = await new (require('@axe-core/playwright').default)({ page })
       .include('#firebaseGoogleSignIn')
       .withRules(['color-contrast'])

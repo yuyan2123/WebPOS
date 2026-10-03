@@ -47,7 +47,7 @@ npm run test:browser
 
 輸入框依使用者指定的 [Mirrorstack Combobox](https://mirrorstack-ai.github.io/web-ui-kit/?path=/story/ui-inputs-combobox--with-objects) 改為 8px 圓角、surface-container-low 淡色底與 primary 焦點環。商品類別的 input 與箭頭共用 `gj-combobox` 容器，浮層維持原定位、鍵盤、觸控及新類別輸入行為。`--gj-input-radius`／`--gj-input-surface` 定義於共用 tokens；元件库 `#forms` 可檢視同版輸入與選單。
 
-Google 登入套用 [Mirrorstack SocialButton with label](https://mirrorstack-ai.github.io/web-ui-kit/?path=/story/ui-actions-socialbutton--with-label) 的圖示／標籤組合：`gj-social-button`、8px 圓角、中性淡底、48px 觸控區。使用 Google 官方目前的漸層 G 向量標誌，來源見 `web-ui-kit/assets/README.md`；同步到 `public/icons/google-signin.svg` 並納入 PWA shell。保留 `firebaseGoogleSignIn` ID、停用、驗證模式的顯示切換、原 popup／PWA redirect 與錯誤重試流程。元件庫 `#buttons` 包含正常／停用示範，未增加新的登入服務。
+Google 登入套用 [Mirrorstack SocialButton with label](https://mirrorstack-ai.github.io/web-ui-kit/?path=/story/ui-actions-socialbutton--with-label) 的圖示／標籤組合：`gj-social-button`、8px 圓角、中性淡底、48px 觸控區。圖示採用 [Google 官方透明背景漸層 G PNG](https://developers.google.com/static/identity/images/g-logo.png) 原圖，外層移除白底；以 `object-fit: contain` 保留比例，來源與原圖指紋見 `web-ui-kit/assets/README.md`。同步到 `public/icons/google-signin.png` 並納入 PWA shell。保留 `firebaseGoogleSignIn` ID、停用、驗證模式的顯示切換、原 popup／PWA redirect 與錯誤重試流程。元件庫 `#buttons` 包含正常／停用示範，未增加新的登入服務。
 
 手機商品編輯欄位改為單欄；日期覆寫與報表操作依斷點排列；星期上限使用 3／4／7 欄的 Tailwind grid。禮盒商品卡以分類、品名、每粒價格與數量控制呈現，移除泛用商品圖示；已選數量透過文字標記與邊框顯示，零數量停用減號。48px 按鈕與輸入欄位保持 8px 間距，手機使用完整寬度，保留直接輸入、數量上限、分類篩選及編輯還原。新增與編輯共用商品卡，企業價與原價分開顯示，價格採文字色；整體選取進度以單一狀態區宣告。Dialog 移除殘留漸層與瀏覽器預設標題 margin，保留開關、焦點、Esc 與動畫生命週期。
 

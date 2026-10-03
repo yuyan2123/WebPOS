@@ -130,8 +130,8 @@ export function showStatusConfirm(orderId, newStatus) {
     ? '請確認訂單已處理完畢，再將狀態標記為完成。'
     : '請確認下方訂單資訊，再更新訂單狀態。';
   document.querySelector('#statusConfirmModal .slider-track').dataset.confirmLabel = completing
-    ? '向右滑動，確認完成'
-    : '向右滑動，確認更新';
+    ? '滑動完成'
+    : '滑動更新';
   // 更新顯示資訊
   document.getElementById('statusOrderId').textContent = `訂單編號：${orderId}`;
   document.getElementById('statusUpdateInfo').textContent = `將更新為：${newStatus}`;

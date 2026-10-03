@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#006973">
-    <meta name="app-version" content="0.15.8+e09344d290b4">
-    <meta name="app-updated-at" content="2026-10-02T22:36:33.765Z">
+    <meta name="app-version" content="0.15.9+9479ff30da39">
+    <meta name="app-updated-at" content="2026-10-03T05:17:15.087Z">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="WebPOS">
@@ -152,9 +152,9 @@
                 <input type="text" id="customerAddress" class="w-full p-4 bg-md-surface border border-md-outline-variant rounded-xl outline-none gj-input" placeholder="請輸入完整地址">
             </div>
 
-            <div class="flex gap-4 customer-actions">
-                <button onclick="clearCustomerForm()" class="flex-1 py-4 text-md-on-surface-variant rounded-xl font-medium text-base gj-btn gj-btn--quiet">清空資料</button>
-                <button onclick="saveCustomer()" class="flex-1 py-4 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg hover:bg-md-primary transition shadow-lg flex items-center justify-center gap-2 gj-btn gj-btn--primary">
+            <div class="customer-actions gj-actions">
+                <button onclick="clearCustomerForm()" data-action="secondary" class="gj-btn gj-btn--quiet">清空資料</button>
+                <button onclick="saveCustomer()" data-action="primary" class="gj-btn gj-btn--primary">
                     儲存並下一步 <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
@@ -248,9 +248,9 @@
                 </div>
                 <div id="giftboxFilterTabs" class="products-filter-tabs" role="group" aria-label="禮盒商品類別"></div>
                 <div id="giftboxProducts" class="giftbox-product-list bg-md-content border rounded-xl p-4 mb-4">載入中...</div>
-                <div class="flex gap-4">
-                    <button onclick="backToStep1()" class="px-8 py-3 bg-md-surface-container rounded-xl font-bold text-md-on-surface-variant gj-btn gj-btn--tonal">重選規格</button>
-                    <button id="proceedStep3" onclick="proceedToStep3()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-xl font-bold text-lg gj-btn gj-btn--primary">下一步</button>
+                <div class="gj-actions">
+                    <button onclick="backToStep1()" data-action="dismiss" class="gj-btn gj-btn--quiet">重選規格</button>
+                    <button id="proceedStep3" onclick="proceedToStep3()" data-action="primary" class="gj-btn gj-btn--primary">下一步</button>
                 </div>
             </div>
 
@@ -291,8 +291,10 @@
 
                     <div class="giftbox-action-buttons">
                         <output id="giftboxTotalAmount" aria-live="polite" class="giftbox-total-preview"></output>
-                        <button onclick="backToStep2()" class="btn-back gj-btn gj-btn--quiet"><i class="fas fa-arrow-left"></i> 上一步</button>
-                        <button onclick="addGiftboxToCart()" class="btn-add-cart gj-btn gj-btn--primary"><i class="fas fa-cart-plus"></i> 加入購物車</button>
+                        <div class="gj-actions">
+                            <button onclick="backToStep2()" data-action="dismiss" class="btn-back gj-btn gj-btn--quiet"><i class="fas fa-arrow-left"></i> 上一步</button>
+                            <button onclick="addGiftboxToCart()" data-action="primary" class="btn-add-cart gj-btn gj-btn--primary"><i class="fas fa-cart-plus"></i> 加入購物車</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -339,12 +341,12 @@
                             </select>
                         </div>
                     </div>
-                    <div class="search-actions">
-                        <button onclick="searchOrders()" class="btn-search gj-btn gj-btn--primary">
-                            <i class="fas fa-search"></i> 搜尋訂單
-                        </button>
-                        <button onclick="clearSearch()" class="btn-clear gj-btn gj-btn--quiet">
+                    <div class="search-actions gj-actions">
+                        <button onclick="clearSearch()" data-action="secondary" class="btn-clear gj-btn gj-btn--quiet">
                             <i class="fas fa-eraser"></i> 清空條件
+                        </button>
+                        <button onclick="searchOrders()" data-action="primary" class="btn-search gj-btn gj-btn--primary">
+                            <i class="fas fa-search"></i> 搜尋訂單
                         </button>
                     </div>
                 </div>
@@ -479,7 +481,7 @@
                                 <div class="printer-field"><label for="printer-fontSize">字體大小</label><select id="printer-fontSize" class="gj-input"><option value="24">24 點（小）</option><option value="28">28 點（預設）</option><option value="32">32 點</option><option value="40">40 點（大）</option></select></div>
                                 <label class="printer-toggle-row" for="printer-cut"><span><strong>列印後切紙</strong><small>進紙後半切，需出單機支援。</small></span><input id="printer-cut" type="checkbox" role="switch"></label>
                             </section>
-                            <div class="printer-actions printer-page-actions"><button class="btn printer-primary gj-btn gj-btn--primary" type="submit">儲存列印設定</button><button class="btn" type="button" id="printer-test">測試列印</button></div>
+                            <div class="printer-actions printer-page-actions gj-actions"><button class="gj-btn gj-btn--quiet" data-action="secondary" type="button" id="printer-test">測試列印</button><button class="printer-primary gj-btn gj-btn--primary" data-action="primary" type="submit">儲存列印設定</button></div>
                         </div>
                         <div id="printer-page-device" class="printer-page" hidden>
                             <section class="printer-card printer-connection gj-pos-card">
@@ -563,7 +565,7 @@
         <!-- Footer 版權宣告（跟隨內容捲動，不固定在畫面底部） -->
         <footer class="footer">
             <p>WebPOS 訂單工作台 &copy; 2025. All Rights Reserved.</p>
-            <p>Website content edited by yuyan2123. Version 0.15.8</p>
+            <p>Website content edited by yuyan2123. Version 0.15.9</p>
         </footer>
 
     </main>
@@ -576,13 +578,14 @@
 
     <!-- 購物車側邊欄 -->
     <div class="cart-overlay" id="cartOverlay" onclick="toggleCartModal()"></div>
-    <div class="cart-sidebar" id="cartModal">
+    <div class="cart-sidebar" id="cartModal" aria-describedby="cartSwipeHint">
         <div class="flex justify-between items-center p-6 border-b">
-            <h2 class="text-2xl font-bold text-md-on-surface">購物車清單</h2>
+            <div class="cart-heading"><h2 class="text-2xl font-bold text-md-on-surface">購物車清單</h2><p id="cartSwipeHint">左滑顯示刪除，繼續滑動後放開刪除</p></div>
             <button type="button" onclick="toggleCartModal()" class="cart-close" aria-label="關閉購物車">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg>
             </button>
         </div>
+        <p id="cartSwipeStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="flex-1 overflow-y-auto p-6" id="cartModalBody">
             <div class="text-center mt-20">
                 <i class="fas fa-shopping-basket text-6xl text-md-on-surface-variant mb-4"></i>
@@ -662,10 +665,13 @@
 
             <div class="product-detail-footer">
                 <output id="modalProductTotal" aria-live="polite"></output>
-                <button type="button" onclick="addToCartFromModal()" class="gj-btn gj-btn--primary w-full flex items-center justify-center gap-2">
-                    <span>加入購物車</span>
-                    <i class="fas fa-shopping-cart"></i>
-                </button>
+                <div class="gj-actions">
+                    <button type="button" onclick="closeProductModal()" data-action="dismiss" class="gj-btn gj-btn--quiet">取消</button>
+                    <button type="button" onclick="addToCartFromModal()" data-action="primary" class="gj-btn gj-btn--primary">
+                        <span>加入購物車</span>
+                        <i class="fas fa-shopping-cart"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -741,25 +747,25 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6 border-t flex gap-3">
-                <button onclick="closeProductEditModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
-                <button id="productSaveButton" onclick="saveProduct()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-lg font-medium hover:bg-md-primary gj-btn gj-btn--primary">儲存</button>
+            <div class="p-6 border-t gj-actions">
+                <button onclick="closeProductEditModal()" data-action="dismiss" class="gj-btn gj-btn--quiet">取消</button>
+                <button id="productSaveButton" onclick="saveProduct()" data-action="primary" class="gj-btn gj-btn--primary">儲存</button>
             </div>
         </div>
     </div>
 
     <!-- 確認 Modal -->
-    <div id="confirmModal" class="modal">
+    <div id="confirmModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
         <div class="modal-content gj-pos-dialog" onclick="event.stopPropagation()">
             <div class="p-6 border-b">
-                <h3 class="text-2xl font-bold text-md-on-surface">確認操作</h3>
+                <h3 id="confirmModalTitle" class="text-2xl font-bold text-md-on-surface">確認操作</h3>
             </div>
             <div class="p-6">
                 <p id="confirmModalMessage" class="text-md-on-surface-variant text-lg">您確定要執行此操作嗎？</p>
             </div>
-            <div class="p-6 border-t flex gap-3">
-                <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
-                <button id="confirmBtn" onclick="executeConfirmCallback()" class="flex-1 py-3 bg-md-error text-md-on-primary rounded-lg font-medium hover:bg-md-error gj-btn gj-btn--danger">確定</button>
+            <div class="p-6 border-t gj-actions">
+                <button id="confirmCancelBtn" onclick="closeConfirmModal()" data-action="dismiss" data-dialog-initial-focus class="gj-btn gj-btn--quiet">取消</button>
+                <button id="confirmBtn" onclick="executeConfirmCallback()" data-action="primary" class="gj-btn gj-btn--primary">確認</button>
             </div>
         </div>
     </div>
@@ -778,16 +784,16 @@
                     <div class="order-id" id="statusOrderId">訂單編號</div>
                     <div class="status-change" id="statusUpdateInfo">即將更新訂單狀態</div>
                 </div>
-                <div class="slider-container status-slider">
-                    <div class="slider-track" data-confirm-label="向右滑動，確認完成">
-                        <div class="slider-progress" id="statusSliderProgress"></div>
-                        <div class="slider-thumb" id="statusSliderThumb"><i class="fas fa-chevron-right"></i></div>
-                    </div>
-                </div>
                 <div id="statusUpdateStatus" class="status-update-status" role="status" aria-live="polite"></div>
             </div>
-            <div class="status-confirm-footer">
-                <button class="btn-cancel gj-btn gj-btn--quiet" onclick="closeStatusConfirmModal()">返回訂單</button>
+            <div class="status-confirm-footer gj-actions">
+                <button class="btn-cancel gj-btn gj-btn--quiet" data-action="dismiss" data-dialog-initial-focus onclick="closeStatusConfirmModal()">取消</button>
+                <div class="slider-container status-slider">
+                    <div class="slider-track" data-confirm-label="滑動完成">
+                        <div class="slider-progress" id="statusSliderProgress"></div>
+                        <div class="slider-thumb" id="statusSliderThumb" data-action="primary"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -806,16 +812,16 @@
                     <div class="order-id" id="deleteOrderId">訂單編號</div>
                     <div class="customer-name" id="deleteCustomerName">客戶名稱</div>
                 </div>
-                <div class="slider-container">
-                    <div class="slider-track" data-confirm-label="向右滑動，確認刪除">
-                        <div class="slider-progress" id="deleteSliderProgress"></div>
-                        <div class="slider-thumb" id="deleteSliderThumb"><i class="fas fa-chevron-right"></i></div>
-                    </div>
-                </div>
                 <div id="deleteStatus" class="delete-status" role="status" aria-live="polite"></div>
             </div>
-            <div class="delete-confirm-footer">
-                <button class="btn-cancel gj-btn gj-btn--quiet" onclick="closeDeleteConfirmModal()">保留訂單</button>
+            <div class="delete-confirm-footer gj-actions">
+                <button class="btn-cancel gj-btn gj-btn--quiet" data-action="dismiss" data-dialog-initial-focus onclick="closeDeleteConfirmModal()">取消</button>
+                <div class="slider-container">
+                    <div class="slider-track" data-confirm-label="滑動刪除">
+                        <div class="slider-progress" id="deleteSliderProgress"></div>
+                        <div class="slider-thumb" id="deleteSliderThumb" data-action="primary"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -863,9 +869,9 @@
                     </div>
                 </div>
             </div>
-            <div class="deposit-dialog-footer">
-                <button onclick="closeDepositModal()" class="flex-1 py-3 bg-md-surface-container text-md-on-surface-variant rounded-lg font-medium hover:bg-md-surface-container gj-btn gj-btn--tonal">取消</button>
-                <button id="confirmDepositBtn" onclick="confirmDepositUpdate()" class="flex-1 py-3 bg-md-primary text-md-on-primary rounded-lg font-medium hover:bg-md-primary gj-btn gj-btn--primary">確認設定</button>
+            <div class="deposit-dialog-footer gj-actions">
+                <button onclick="closeDepositModal()" data-action="dismiss" class="gj-btn gj-btn--quiet">取消</button>
+                <button id="confirmDepositBtn" onclick="confirmDepositUpdate()" data-action="primary" class="gj-btn gj-btn--primary">確認設定</button>
             </div>
         </div>
     </div>
@@ -898,11 +904,11 @@
             </div>
             <div class="modal-body" id="capacityWarningBody">
             </div>
-            <div class="modal-footer" style="justify-content: stretch; gap: 12px;">
-                <button onclick="closeCapacityWarningModal()" class="btn" style="flex: 1; background: var(--gj-bg); color: var(--gj-muted); border: 1px solid var(--gj-border);">
+            <div class="modal-footer gj-actions">
+                <button onclick="closeCapacityWarningModal()" data-action="dismiss" data-dialog-initial-focus class="gj-btn gj-btn--quiet">
                     <i class="fas fa-arrow-left" style="margin-right: 6px;"></i>返回修改日期
                 </button>
-                <button onclick="confirmCapacityOverride()" id="btnCapacityConfirm" class="btn" style="flex: 1; background: linear-gradient(135deg, var(--gj-warning), var(--gj-warning)); color: var(--gj-on-primary);">
+                <button onclick="confirmCapacityOverride()" id="btnCapacityConfirm" data-action="primary" class="gj-btn gj-btn--primary">
                     <i class="fas fa-check" style="margin-right: 6px;"></i>確認送出訂單
                 </button>
             </div>

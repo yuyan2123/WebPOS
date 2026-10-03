@@ -82,8 +82,9 @@ export async function startApplication() {
     await loadInitialShopData();
     await startupProgress(2, '正在檢查與恢復本機未送出訂單…');
     await restoreOrderDraftOnce();
-    state.suppressDraftSave = false;
     applyRoleCapabilities();
+    // Initial role/cart rendering must not overwrite a draft the user skipped.
+    state.suppressDraftSave = false;
     initializePrinter();
     await startupProgress(3, '正在完成畫面渲染…');
     initializeWorkspace();

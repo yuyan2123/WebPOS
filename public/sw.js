@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gin-jia-pos-2f6d2efa96e9";
+const CACHE_VERSION = "gin-jia-pos-8850f73218ba";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -21,7 +21,7 @@ const APP_SHELL = [
   "/vendor/fontawesome/webfonts/fa-regular-400.woff2",
   "/vendor/fontawesome/webfonts/fa-brands-400.woff2",
   "/icons/icon-192.png",
-  "/icons/google-signin.svg",
+  "/icons/google-signin.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png"
 ];

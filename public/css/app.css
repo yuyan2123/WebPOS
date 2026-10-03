@@ -167,8 +167,8 @@
 .gj-ui .gj-social-button:active:not(:disabled)::after { opacity: .12; }
 .gj-ui .gj-social-button:focus-visible { outline: 2px solid var(--gj-primary); outline-offset: 3px; }
 .gj-ui .gj-social-button:disabled { opacity: .45; cursor: not-allowed; }
-.gj-social-logo { flex: 0 0 24px; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; background: #fff; }
-.gj-social-logo img { display: block; width: 20px; height: 20px; }
+.gj-social-logo { flex: 0 0 24px; display: inline-grid; place-items: center; width: 24px; height: 24px; background: transparent; }
+.gj-social-logo img { display: block; width: 20px; height: 20px; object-fit: contain; }
 .gj-btn[aria-busy=true]::before { content: ''; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gj-spin .8s linear infinite; }
 @keyframes gj-spin { to { transform: rotate(360deg); } }
 .gj-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -351,6 +351,20 @@ body.gj-ui .gj-combobox .gj-input:focus-visible { outline: 0 !important; box-sha
 .gj-ui .gj-form-feedback a { display: inline-block; padding-block: 4px; color: var(--gj-danger); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .gj-ui :is(.gj-field-error, .gj-form-feedback)[hidden] { display: none; }
 .gj-ui .gj-combobox.gj-invalid { border-color: var(--gj-danger); }
+
+/* Decision actions follow DOM order: dismiss/secondary first, primary last.
+   Keep both slots on one row on phones; long labels wrap inside their slot. */
+.gj-ui .gj-actions { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+.gj-ui .gj-actions > :is(button, a) { flex: 0 1 auto; width: auto; min-width: 88px; min-height: 48px; white-space: normal; overflow-wrap: anywhere; text-align: center; line-height: 1.5; }
+.gj-ui .gj-actions > :is([data-action="dismiss"], .gj-btn--quiet) { border-color: transparent; background: transparent; color: var(--gj-muted); }
+.gj-ui .gj-actions > .gj-btn--primary { border-color: var(--gj-primary); background: var(--gj-primary); color: var(--gj-on-primary); }
+.gj-ui .gj-actions > .gj-btn--danger { border-color: var(--gj-danger); background: var(--gj-danger); color: var(--gj-on-danger); }
+.gj-ui .gj-actions > :is(button, a) > :is(i, svg) { flex-shrink: 0; }
+.gj-ui .gj-actions[hidden], .gj-ui .gj-actions > [hidden] { display: none; }
+@media (max-width: 600px) {
+  .gj-ui .gj-actions { gap: 8px; }
+  .gj-ui .gj-actions > :is(button, a) { flex: 1 1 0; min-width: 0; padding-inline: 12px; }
+}
 
 /* ==========================================
            iframe 內嵌捲動控制（Google Sites）
@@ -8457,10 +8471,6 @@ body.gj-ui #firebaseGoogleSignIn.gj-social-button {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
-.gj-ui #pwaUpdateDismiss {
-  background: var(--gj-subtle);
-  color: var(--gj-text);
-}
 .gj-ui .pwa-banner--update button:active {
   filter: brightness(0.92);
 }
@@ -8991,7 +9001,7 @@ body.gj-ui
   background: transparent;
   color: var(--gj-muted);
 }
-.gj-ui #firebaseEmailRegister {
+.gj-ui #firebaseEmailRegister.firebase-auth-create {
   background: var(--gj-secondary-soft) !important;
   color: var(--gj-on-secondary-soft) !important;
 }
@@ -9915,6 +9925,56 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
   .gj-ui .cart-checkout-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 1fr); align-items: center; gap: 16px; }
   .gj-ui .cart-checkout-actions > div { flex-direction: column; align-items: flex-start; margin-bottom: 0; font-size: 18px; }
   .gj-ui .cart-checkout-actions #checkoutBtn { min-height: 48px; padding-block: 10px; }
+}
+
+/* Shared action groups replace per-screen button order and width overrides. */
+.gj-ui #confirmModal { z-index: 210000; }
+.gj-ui .pwa-banner-actions.gj-actions > button { min-height: 48px; }
+.gj-ui #pwaUpdateDismiss { background: transparent; color: var(--gj-muted); }
+.gj-ui :is(.search-actions, .firebase-auth-row).gj-actions { display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: flex-end; gap: 12px; }
+.gj-ui .search-actions.gj-actions > button { width: auto; flex: 0 1 auto; }
+.gj-ui #firebaseCredentialActions > button { flex: 1 1 0; min-width: 0; width: auto; padding-inline: 8px; }
+.gj-ui #printer-last-order { max-width: 360px; }
+.gj-ui #printer-last-order > .gj-actions { margin-left: auto; }
+.gj-ui #firebaseShopFormActions > button { flex: 0 1 auto; width: auto; min-width: 88px; padding-inline: 16px; }
+.gj-ui #productOrderModal .gj-actions { justify-content: flex-end; }
+.gj-ui #productOrderModal .gj-actions > button { min-height: 48px; }
+.gj-ui #productOrderModal [data-cancel] { border-color: transparent; background: transparent; color: var(--gj-muted); }
+.gj-ui .order-detail-primary-actions.gj-actions { flex-wrap: nowrap; }
+.gj-ui #productModal .product-detail-footer > .gj-actions { flex-shrink: 0; }
+.gj-ui #giftboxStep3 .giftbox-action-buttons > .gj-actions { width: 100%; }
+.gj-ui .order-action-modal .gj-actions > button { flex: 0 0 72px; min-width: 72px; min-height: 48px; padding-inline: 8px; }
+.gj-ui .order-action-modal .gj-actions > .slider-container { flex: 1 1 0; min-width: 0; }
+.gj-ui .order-action-modal :is(.status-confirm-footer, .delete-confirm-footer) { padding-inline: 20px; }
+@media (max-width: 899px) {
+  .gj-ui:is([data-section="customer"], [data-section="date"], [data-section="gift"], [data-section="giftbox"]) .workspace-main { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; scroll-padding-bottom: 96px; }
+}
+@media (max-width: 600px) {
+  .gj-ui #printer-last-order > .gj-actions { width: 100%; }
+  .gj-ui .search-actions.gj-actions { gap: 8px; }
+  .gj-ui .search-actions.gj-actions > button,
+  .gj-ui #firebaseShopFormActions > button { flex: 1 1 0; min-width: 0; padding-inline: 12px; }
+  .gj-ui #productModal .product-detail-footer > .gj-actions { flex: 1 1 100%; }
+  .gj-ui #productOrderModal .product-order-footer { flex-direction: column; align-items: stretch; }
+  .gj-ui #productOrderModal .product-order-footer > .gj-actions { width: 100%; margin-left: 0; }
+}
+
+/* Cart gestures and deletion animate composited transforms/opacity only. */
+.gj-ui #cartSwipeHint { margin: 4px 0 0; color: var(--gj-muted); font-size: 12px; line-height: 1.5; }
+.gj-ui #cartModalBody { position: relative; }
+.gj-ui #cartModalBody .cart-swipe-row { position: relative; overflow: hidden; margin-bottom: 12px; border: 1px solid var(--gj-border); border-radius: 16px; isolation: isolate; touch-action: pan-y; }
+.gj-ui #cartModalBody .cart-swipe-row > .cart-item-card { position: relative; z-index: 1; margin: 0; border: 0 !important; background: var(--gj-surface) !important; box-shadow: none !important; touch-action: pan-y; }
+.gj-ui #cartModalBody .cart-swipe-actions { position: absolute; inset: 0; background: var(--gj-danger); }
+.gj-ui #cartModalBody .cart-swipe-delete { position: absolute; inset-block: 0; right: 0; width: 88px; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; border: 0; border-radius: 0; background: var(--gj-danger) !important; color: var(--gj-on-danger) !important; font-size: 14px; line-height: 1.4; }
+.gj-ui #cartModalBody .cart-swipe-delete:focus-visible { outline-color: var(--gj-on-danger) !important; outline-offset: -4px; }
+.gj-ui #cartModalBody .cart-delete-btn { border-color: transparent; background: transparent; color: var(--gj-muted); }
+.gj-ui #cartModalBody .cart-delete-btn:hover { border-color: var(--gj-border); color: var(--gj-text); }
+.gj-ui #cartModalBody .is-swiping { cursor: grabbing; }
+.gj-ui #cartModalBody .is-swipe-armed .cart-swipe-delete span { font-weight: 700; }
+.gj-ui #cartModalBody .cart-removal-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.gj-ui #cartModalBody .cart-removal-ghost { position: absolute; margin: 0; pointer-events: none; }
+@media (max-height: 500px) {
+  .gj-ui #cartSwipeHint { display: none; }
 }
 
 /* Shop switching is a short sheet; management screens share a bounded frame. */

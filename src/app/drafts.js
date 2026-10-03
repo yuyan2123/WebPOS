@@ -12,6 +12,7 @@ import { updateCartDisplay } from './cart.js';
 import { generateUniqueId } from './pricing.js';
 import { renderCalendar } from './calendar.js';
 import { showAlert } from './feedback.js';
+import { requestConfirmation } from './dialogs.js';
 
 export function openPosLocalDb() {
   if (!('indexedDB' in window)) return Promise.resolve(null);
@@ -252,8 +253,15 @@ export async function restoreOrderDraftOnce() {
     await localDbDelete('drafts', key);
     return;
   }
-  if (confirm('找到上次未完成的訂單草稿，是否繼續？')) applyDraft(draft);
-  else await clearOrderDraft();
+  const accepted = await requestConfirmation(
+    '找到上次未完成的訂單草稿，是否繼續編輯？暫不恢復會保留這份草稿。',
+    {
+      title: '恢復訂單草稿？',
+      cancelLabel: '暫不恢復',
+      confirmLabel: '繼續編輯',
+    },
+  );
+  if (accepted && draftStorageKey() === key) applyDraft(draft);
 }
 
 export function initOrderDraftPersistence() {

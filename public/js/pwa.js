@@ -24,7 +24,7 @@
         <strong>${title}</strong>
         <span class="pwa-banner-message">${message}</span>
       </span>
-      <span class="pwa-banner-actions">${actions || ""}</span>`;
+      <span class="pwa-banner-actions gj-actions">${actions || ""}</span>`;
     banner.classList.add("active");
     return banner;
   }
@@ -48,7 +48,7 @@
     event.preventDefault();
     installPrompt = event;
     if (updateAvailable) return;
-    const banner = showMessage("安裝 WebPOS", "加入主畫面，快速開啟訂單工作台。", '<button id="pwaInstall" type="button">安裝</button><button id="pwaDismiss" type="button">稍後</button>');
+    const banner = showMessage("安裝 WebPOS", "加入主畫面，快速開啟訂單工作台。", '<button id="pwaDismiss" class="gj-btn gj-btn--quiet" data-action="dismiss" type="button">稍後</button><button id="pwaInstall" class="gj-btn gj-btn--primary" data-action="primary" type="button">安裝</button>');
     banner.querySelector("#pwaInstall")?.addEventListener("click", async () => {
       await installPrompt?.prompt();
       installPrompt = null;
@@ -157,7 +157,7 @@
         document.getElementById('pwaBanner')?.classList.remove('active');
         if (noticeDismissed || document.body.dataset.panel === 'device') return;
         if (document.getElementById('pwaUpdateNotice')?.classList.contains('active')) return;
-        const banner = showMessage("有新版本可用", "更新會重新載入頁面，可以先完成手邊工作。", '<button id="pwaUpdateDismiss" type="button">稍後再說</button><button id="pwaUpdateDetails" type="button">查看更新</button>', "fa-sync-alt", true);
+        const banner = showMessage("有新版本可用", "更新會重新載入頁面，可以先完成手邊工作。", '<button id="pwaUpdateDismiss" class="gj-btn gj-btn--quiet" data-action="dismiss" type="button">稍後再說</button><button id="pwaUpdateDetails" class="gj-btn gj-btn--primary" data-action="primary" type="button">查看更新</button>', "fa-sync-alt", true);
         banner.querySelector('#pwaUpdateDismiss').addEventListener('click', () => dismissUpdateNotice());
         banner.querySelector('#pwaUpdateDetails').addEventListener('click', () => {
           dismissUpdateNotice(false);
