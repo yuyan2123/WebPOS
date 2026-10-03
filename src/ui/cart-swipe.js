@@ -23,7 +23,7 @@ export function initializeCartSwipe(body, onDelete) {
         front: row.querySelector('.cart-item-card'),
         actions: row.querySelector('.cart-swipe-actions'),
         button: row.querySelector('.cart-swipe-delete'),
-        opener: row.querySelector('.cart-delete-btn'),
+        opener: row.querySelector('[data-cart-control="options"]'),
         offset: 0,
         width: 0,
         base: null,
@@ -132,7 +132,7 @@ export function initializeCartSwipe(body, onDelete) {
       !row ||
       event.isPrimary === false ||
       event.button !== 0 ||
-      event.target.closest('button,a,input,select,textarea')
+      event.target.closest('button:not([data-cart-control="options"]),a,input,select,textarea')
     )
       return;
     const state = stateFor(row);
@@ -152,11 +152,12 @@ export function initializeCartSwipe(body, onDelete) {
     const dx = event.clientX - drag.x,
       dy = event.clientY - drag.y;
     if (!drag.axis) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) {
+      // Allow diagonal starts and small vertical drift before committing to a scroll.
+      if (Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx) * 1.6) {
         cancelDrag();
         return;
       }
-      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 0.65) return;
       drag.axis = 'x';
       drag.state.actions.hidden = false;
       drag.state.actions.inert = true;
@@ -200,6 +201,11 @@ export function initializeCartSwipe(body, onDelete) {
   function cancelled(event) {
     if (drag?.id === event.pointerId) cancelDrag();
   }
+  function touchmove(event) {
+    // Once a swipe is locked, native pan-y must not steal a drifting touch.
+    // Uncommitted and vertical gestures retain the drawer's native scrolling.
+    if (drag?.axis === 'x' && event.touches.length === 1) event.preventDefault();
+  }
   function lostCapture(event) {
     // Touch starts with implicit capture on the touched child. Transferring it
     // to the row emits a loss on that child; only losing the row is cancellation.
@@ -220,7 +226,7 @@ export function initializeCartSwipe(body, onDelete) {
     const row = rowFor(event.target);
     if (!row) return;
     const state = stateFor(row);
-    if (event.target.closest('.cart-delete-btn')) {
+    if (event.target.closest('[data-cart-control="options"]')) {
       event.preventDefault();
       open(state, true);
     } else if (event.target.closest('.cart-swipe-delete') && opened === state) {
@@ -230,7 +236,7 @@ export function initializeCartSwipe(body, onDelete) {
     } else if (opened === state) close(state, true);
   }
   function keydown(event) {
-    if (event.key === 'ArrowLeft' && event.target.closest('.cart-delete-btn')) {
+    if (event.key === 'ArrowLeft' && event.target.closest('[data-cart-control="options"]')) {
       event.preventDefault();
       open(stateFor(rowFor(event.target)), true);
     } else if (event.key === 'ArrowRight' && opened && opened.row.contains(event.target)) {
@@ -249,6 +255,7 @@ export function initializeCartSwipe(body, onDelete) {
   document.addEventListener('pointerup', up, true);
   document.addEventListener('pointercancel', cancelled, true);
   body.addEventListener('lostpointercapture', lostCapture, true);
+  body.addEventListener('touchmove', touchmove, { passive: false });
   document.addEventListener('click', click, true);
   body.addEventListener('keydown', keydown);
   window.addEventListener('resize', reset);
@@ -268,6 +275,7 @@ export function initializeCartSwipe(body, onDelete) {
       document.removeEventListener('pointerup', up, true);
       document.removeEventListener('pointercancel', cancelled, true);
       body.removeEventListener('lostpointercapture', lostCapture, true);
+      body.removeEventListener('touchmove', touchmove);
       document.removeEventListener('click', click, true);
       body.removeEventListener('keydown', keydown);
       window.removeEventListener('resize', reset);

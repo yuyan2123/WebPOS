@@ -58,7 +58,8 @@ test('cart delete requires a second action and Escape returns to the same item',
 }, testInfo) => {
   const errors = await openCart(page);
   const row = page.locator('[data-cart-item-key]').first();
-  const opener = row.locator('.cart-delete-btn');
+  const opener = row.locator('.cart-item-options');
+  await expect(row.getByText('更多', { exact: true })).toHaveCount(0);
   await expect(row.locator('.cart-swipe-delete')).toBeHidden();
   await opener.click();
   await expect(row.locator('.cart-swipe-delete')).toBeFocused();
@@ -81,7 +82,7 @@ test('cart delete requires a second action and Escape returns to the same item',
   await expect(page.locator('#workspaceQuantity')).toHaveText('1 件商品');
   await expect(page.locator('#cartTotalAmount')).toHaveText('100');
   await expect(page.locator('[data-cart-item-key] .cart-item-name')).toHaveText('喜餅');
-  await expect(page.locator('[data-cart-item-key] .cart-delete-btn')).toBeFocused();
+  await expect(page.locator('[data-cart-item-key] .cart-item-options')).toBeFocused();
   await expect(page.locator('.cart-removal-ghost')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -122,7 +123,7 @@ test('cart deletion fades and slides, keeps rapid removals safe and respects red
   page,
 }) => {
   const errors = await openCart(page);
-  await page.locator('[data-cart-item-key] .cart-delete-btn').first().click();
+  await page.locator('[data-cart-item-key] .cart-item-options').first().click();
   await page.evaluate(() => {
     document.querySelector('[data-cart-item-key] .cart-swipe-delete').click();
     const animation = document.querySelector('.cart-removal-ghost').getAnimations()[0];
@@ -137,7 +138,7 @@ test('cart deletion fades and slides, keeps rapid removals safe and respects red
   expect(middle.opacity).toBeGreaterThan(0);
   expect(middle.opacity).toBeLessThan(1);
   expect(middle.x).toBeLessThan(0);
-  await page.locator('[data-cart-item-key] .cart-delete-btn').click();
+  await page.locator('[data-cart-item-key] .cart-item-options').click();
   await page.locator('[data-cart-item-key] .cart-swipe-delete').click();
   await expect(page.locator('#workspaceQuantity')).toHaveText('0 件商品');
   await page.evaluate(() =>
@@ -150,7 +151,7 @@ test('cart deletion fades and slides, keeps rapid removals safe and respects red
   await page.getByRole('button', { name: '加入 原味餅 到購物車', exact: true }).click();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.locator('#workspaceCart').click();
-  await page.locator('.cart-delete-btn').click();
+  await page.locator('.cart-item-options').click();
   await page.locator('.cart-swipe-delete').click();
   await expect(page.locator('.cart-removal-ghost')).toHaveCount(0);
   await expect(page.locator('#cartModalBody')).toContainText('購物車是空的');
@@ -174,7 +175,7 @@ test('cart swipes cancel on model changes, pointer cancellation and drawer dismi
   await page.evaluate(() => window.updateCartItemQuantity(0, 1));
   await page.mouse.up();
   await expect(page.locator('#workspaceQuantity')).toHaveText('3 件商品');
-  await page.locator('[data-cart-item-key] .cart-delete-btn').first().click();
+  await page.locator('[data-cart-item-key] .cart-item-options').first().click();
   await page.locator('#cartModal .cart-close').click();
   await page.locator('#workspaceCart').click();
   await expect(page.locator('.is-swipe-open')).toHaveCount(0);
@@ -254,6 +255,66 @@ test('cart touch swipes keep vertical movement safe and finish a continuous full
   expect(errors).toEqual([]);
 });
 
+test('cart touch swipes tolerate diagonal starts and downward drift from names and the former more area', async ({
+  page,
+  context,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'Real touch dispatch uses the Chromium phone project.');
+  const errors = await openCart(page);
+  const touch = await context.newCDPSession(page);
+  const row = page.locator('[data-cart-item-key]').first();
+  const name = await row.locator('.cart-item-options').boundingBox();
+  let origin = { x: name.x + name.width / 2, y: name.y + name.height / 2 };
+  async function send(type, dx = 0, dy = 0) {
+    await touch.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: type === 'touchEnd' ? [] : [{ x: origin.x + dx, y: origin.y + dy, id: 1 }],
+    });
+  }
+  await send('touchStart');
+  await send('touchMove', -16, 18);
+  await send('touchMove', -44, 46);
+  await send('touchMove', -84, 90);
+  await send('touchEnd');
+  await expect(row).toHaveClass(/is-swipe-open/);
+  await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
+  await page.keyboard.press('Escape');
+  await settle(page);
+
+  const controls = await row.locator('.cart-item-controls').boundingBox();
+  origin = { x: controls.x + controls.width - 24, y: controls.y + controls.height / 2 };
+  await send('touchStart');
+  await send('touchMove', -16, 18);
+  await send('touchMove', -84, 90);
+  await send('touchEnd');
+  await expect(row).toHaveClass(/is-swipe-open/);
+  await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
+  await page.keyboard.press('Escape');
+  await settle(page);
+
+  // Make the drawer scrollable to verify that predominantly vertical touch still scrolls natively.
+  await page.locator('#cartModalBody').evaluate((body) => {
+    const spacer = document.createElement('div');
+    spacer.style.height = '800px';
+    spacer.setAttribute('aria-hidden', 'true');
+    body.append(spacer);
+    body.scrollTop = 0;
+  });
+  const box = await row.boundingBox();
+  origin = { x: box.x + box.width - 24, y: box.y + 60 };
+  await send('touchStart');
+  await send('touchMove', -3, -30);
+  await send('touchMove', -5, -90);
+  await send('touchEnd');
+  await expect(row).not.toHaveClass(/is-swipe-open|is-swipe-armed/);
+  await expect
+    .poll(() => page.locator('#cartModalBody').evaluate((body) => body.scrollTop))
+    .toBeGreaterThan(0);
+  await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
+  await touch.detach();
+  expect(errors).toEqual([]);
+});
+
 test('gift box swipe deletion preserves other items, notes and immediate totals', async ({ page }) => {
   const errors = await openCart(page);
   await page.keyboard.press('Escape');
@@ -269,7 +330,7 @@ test('gift box swipe deletion preserves other items, notes and immediate totals'
   const row = page.locator('[data-cart-item-key]').last();
   await expect(row).toContainText('保留完整禮盒內容與備註');
   await expect(row.locator('.cart-giftbox-details')).toContainText('每盒 6 粒');
-  await row.locator('.cart-delete-btn').click();
+  await row.locator('.cart-item-options').click();
   await expect(page.locator('#cartTotalAmount')).toHaveText('450');
   await row.locator('.cart-swipe-delete').click();
   await expect(page.locator('#cartTotalAmount')).toHaveText('150');

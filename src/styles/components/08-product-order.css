@@ -1,3 +1,9 @@
+#productOrderModal,
+#productOrderModal * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 #productOrderModal .product-order-content {
   width: min(680px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);
@@ -52,6 +58,7 @@
   overscroll-behavior: contain;
   min-height: 0;
   padding: 4px;
+  padding-right: calc(4px + var(--pos-scrollbar-clearance));
   margin: 0;
   list-style: none;
 }

@@ -54,7 +54,7 @@ function renderCartBody(body, markup, items = []) {
     const retained = rows.find((row) => row.dataset.cartItemKey === focusKey);
     const target =
       retained?.querySelector(`[data-cart-control="${focusControl}"]`) ||
-      (rows[focusIndex] || rows.at(-1))?.querySelector('.cart-delete-btn') ||
+      (rows[focusIndex] || rows.at(-1))?.querySelector('[data-cart-control="options"]') ||
       document.querySelector('#cartModal .cart-close');
     target?.focus({
       preventScroll: true,
@@ -85,7 +85,7 @@ export function updateCartModalDisplay() {
         <div class="cart-item-card gj-pos-card">
         <div class="cart-item-header">
           <div class="cart-item-details">
-            <h3 class="cart-item-name">${name}</h3>
+            <h3 class="cart-item-name"><button type="button" class="cart-item-options" data-cart-control="options" aria-label="顯示 ${accessibleName} 的刪除選項" aria-expanded="false" aria-controls="${key}-delete">${name}</button></h3>
             <div class="cart-item-price">${special ? '<span class="cart-price-label">特價</span>' : ''}${money(item.price)}<span class="cart-price-label">／${isGiftbox ? '盒' : '件'}</span>${item.isCompanyPrice && !special ? '<span class="company-price-tag">企業價</span>' : ''}</div>
             ${special ? `<span class="cart-original-price">原價 ${money(item.originalPrice)}</span>` : ''}
           </div>
@@ -99,10 +99,7 @@ export function updateCartModalDisplay() {
             <span class="cart-qty-value">${escapeHtml(item.quantity)}</span>
             <button type="button" class="cart-qty-btn" data-cart-control="increase" aria-label="增加 ${accessibleName} 數量" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
           </div>
-          <div class="cart-item-actions">
-            ${isGiftbox ? `<button type="button" class="cart-edit-btn" data-cart-control="edit" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> 編輯內容</button>` : ''}
-            <button type="button" class="cart-delete-btn" data-cart-control="options" aria-label="顯示 ${accessibleName} 的刪除選項" aria-expanded="false" aria-controls="${key}-delete" title="顯示刪除選項"><i class="fas fa-ellipsis-h" aria-hidden="true"></i> 更多</button>
-          </div>
+          ${isGiftbox ? `<div class="cart-item-actions"><button type="button" class="cart-edit-btn" data-cart-control="edit" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> 編輯內容</button></div>` : ''}
         </div>
         </div>
       </div>`;

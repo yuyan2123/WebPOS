@@ -486,7 +486,6 @@ input[readonly] {
 }
 
 .cart-qty-btn,
-.cart-delete-btn,
 .cart-edit-btn {
   width: 38px;
   height: 38px;

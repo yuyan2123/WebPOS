@@ -2656,7 +2656,7 @@ function initializeCartSwipe(body, onDelete) {
         front: row.querySelector(".cart-item-card"),
         actions: row.querySelector(".cart-swipe-actions"),
         button: row.querySelector(".cart-swipe-delete"),
-        opener: row.querySelector(".cart-delete-btn"),
+        opener: row.querySelector('[data-cart-control="options"]'),
         offset: 0,
         width: 0,
         base: null,
@@ -2758,7 +2758,7 @@ function initializeCartSwipe(body, onDelete) {
     }
     const row = rowFor(event.target);
     if (opened && opened.row !== row) close2(opened);
-    if (!row || event.isPrimary === false || event.button !== 0 || event.target.closest("button,a,input,select,textarea"))
+    if (!row || event.isPrimary === false || event.button !== 0 || event.target.closest('button:not([data-cart-control="options"]),a,input,select,textarea'))
       return;
     const state2 = stateFor(row);
     const initial = state2.base ? Math.max(0, -new DOMMatrix(getComputedStyle(state2.front).transform).m41) : 0;
@@ -2776,11 +2776,11 @@ function initializeCartSwipe(body, onDelete) {
     }
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
     if (!drag.axis) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) {
+      if (Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx) * 1.6) {
         cancelDrag();
         return;
       }
-      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 0.65) return;
       drag.axis = "x";
       drag.state.actions.hidden = false;
       drag.state.actions.inert = true;
@@ -2823,6 +2823,9 @@ function initializeCartSwipe(body, onDelete) {
   function cancelled(event) {
     if (drag?.id === event.pointerId) cancelDrag();
   }
+  function touchmove(event) {
+    if (drag?.axis === "x" && event.touches.length === 1) event.preventDefault();
+  }
   function lostCapture(event) {
     if (drag?.id === event.pointerId && event.target === drag.state.row && !drag.state.row.hasPointerCapture(event.pointerId))
       cancelDrag();
@@ -2837,7 +2840,7 @@ function initializeCartSwipe(body, onDelete) {
     const row = rowFor(event.target);
     if (!row) return;
     const state2 = stateFor(row);
-    if (event.target.closest(".cart-delete-btn")) {
+    if (event.target.closest('[data-cart-control="options"]')) {
       event.preventDefault();
       open(state2, true);
     } else if (event.target.closest(".cart-swipe-delete") && opened === state2) {
@@ -2847,7 +2850,7 @@ function initializeCartSwipe(body, onDelete) {
     } else if (opened === state2) close2(state2, true);
   }
   function keydown(event) {
-    if (event.key === "ArrowLeft" && event.target.closest(".cart-delete-btn")) {
+    if (event.key === "ArrowLeft" && event.target.closest('[data-cart-control="options"]')) {
       event.preventDefault();
       open(stateFor(rowFor(event.target)), true);
     } else if (event.key === "ArrowRight" && opened && opened.row.contains(event.target)) {
@@ -2866,6 +2869,7 @@ function initializeCartSwipe(body, onDelete) {
   document.addEventListener("pointerup", up, true);
   document.addEventListener("pointercancel", cancelled, true);
   body.addEventListener("lostpointercapture", lostCapture, true);
+  body.addEventListener("touchmove", touchmove, { passive: false });
   document.addEventListener("click", click, true);
   body.addEventListener("keydown", keydown);
   window.addEventListener("resize", reset);
@@ -2885,6 +2889,7 @@ function initializeCartSwipe(body, onDelete) {
       document.removeEventListener("pointerup", up, true);
       document.removeEventListener("pointercancel", cancelled, true);
       body.removeEventListener("lostpointercapture", lostCapture, true);
+      body.removeEventListener("touchmove", touchmove);
       document.removeEventListener("click", click, true);
       body.removeEventListener("keydown", keydown);
       window.removeEventListener("resize", reset);
@@ -3010,7 +3015,7 @@ function renderCartBody(body, markup, items = []) {
   if (focusIndex >= 0 && document.getElementById("cartModal").classList.contains("active")) {
     const rows = [...body.querySelectorAll("[data-cart-item-key]")];
     const retained = rows.find((row) => row.dataset.cartItemKey === focusKey);
-    const target = retained?.querySelector(`[data-cart-control="${focusControl}"]`) || (rows[focusIndex] || rows.at(-1))?.querySelector(".cart-delete-btn") || document.querySelector("#cartModal .cart-close");
+    const target = retained?.querySelector(`[data-cart-control="${focusControl}"]`) || (rows[focusIndex] || rows.at(-1))?.querySelector('[data-cart-control="options"]') || document.querySelector("#cartModal .cart-close");
     target?.focus({
       preventScroll: true
     });
@@ -3038,7 +3043,7 @@ function updateCartModalDisplay() {
         <div class="cart-item-card gj-pos-card">
         <div class="cart-item-header">
           <div class="cart-item-details">
-            <h3 class="cart-item-name">${name}</h3>
+            <h3 class="cart-item-name"><button type="button" class="cart-item-options" data-cart-control="options" aria-label="\u986F\u793A ${accessibleName} \u7684\u522A\u9664\u9078\u9805" aria-expanded="false" aria-controls="${key2}-delete">${name}</button></h3>
             <div class="cart-item-price">${special ? '<span class="cart-price-label">\u7279\u50F9</span>' : ""}${money3(item.price)}<span class="cart-price-label">\uFF0F${isGiftbox ? "\u76D2" : "\u4EF6"}</span>${item.isCompanyPrice && !special ? '<span class="company-price-tag">\u4F01\u696D\u50F9</span>' : ""}</div>
             ${special ? `<span class="cart-original-price">\u539F\u50F9 ${money3(item.originalPrice)}</span>` : ""}
           </div>
@@ -3052,10 +3057,7 @@ function updateCartModalDisplay() {
             <span class="cart-qty-value">${escapeHtml(item.quantity)}</span>
             <button type="button" class="cart-qty-btn" data-cart-control="increase" aria-label="\u589E\u52A0 ${accessibleName} \u6578\u91CF" onclick="event.stopPropagation(); updateCartItemQuantity(${escapeHandlerArgument(index)}, 1)"><i class="fas fa-plus" aria-hidden="true"></i></button>
           </div>
-          <div class="cart-item-actions">
-            ${isGiftbox ? `<button type="button" class="cart-edit-btn" data-cart-control="edit" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u5167\u5BB9</button>` : ""}
-            <button type="button" class="cart-delete-btn" data-cart-control="options" aria-label="\u986F\u793A ${accessibleName} \u7684\u522A\u9664\u9078\u9805" aria-expanded="false" aria-controls="${key2}-delete" title="\u986F\u793A\u522A\u9664\u9078\u9805"><i class="fas fa-ellipsis-h" aria-hidden="true"></i> \u66F4\u591A</button>
-          </div>
+          ${isGiftbox ? `<div class="cart-item-actions"><button type="button" class="cart-edit-btn" data-cart-control="edit" onclick="event.stopPropagation(); editGiftboxItem(${escapeHandlerArgument(index)})"><i class="fas fa-edit" aria-hidden="true"></i> \u7DE8\u8F2F\u5167\u5BB9</button></div>` : ""}
         </div>
         </div>
       </div>`;
@@ -8974,7 +8976,7 @@ function initializeAccessibility() {
   let pending = false;
   new MutationObserver((records) => {
     if (records.every(
-      (record) => record.target instanceof Element && record.target.closest("#overlayScrollbars")
+      (record) => record.target instanceof Element && record.target.closest("#overlayScrollbars,.product-order-floating,.cart-removal-layer")
     ))
       return;
     if (pending) return;

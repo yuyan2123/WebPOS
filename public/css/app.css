@@ -2504,26 +2504,6 @@ button.loading[data-loading-text]:not([data-loading-text=""])::after {
   justify-content: center;
 }
 
-.cart-delete-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--gj-surface);
-  background: var(--gj-surface);
-  color: var(--gj-danger);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cart-delete-btn:hover {
-  background: var(--gj-surface);
-  border-color: var(--gj-danger);
-}
-
 .cart-edit-btn {
   width: 32px;
   height: 32px;
@@ -4531,6 +4511,12 @@ button.loading[data-loading-text]:not([data-loading-text=""])::after {
   }
 }
 
+#productOrderModal,
+#productOrderModal * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 #productOrderModal .product-order-content {
   width: min(680px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);
@@ -4585,6 +4571,7 @@ button.loading[data-loading-text]:not([data-loading-text=""])::after {
   overscroll-behavior: contain;
   min-height: 0;
   padding: 4px;
+  padding-right: calc(4px + var(--pos-scrollbar-clearance));
   margin: 0;
   list-style: none;
 }
@@ -5630,7 +5617,6 @@ input[readonly] {
 }
 
 .cart-qty-btn,
-.cart-delete-btn,
 .cart-edit-btn {
   width: 38px;
   height: 38px;
@@ -6835,6 +6821,7 @@ textarea:focus-visible {
   --pos-ring: var(--gj-focus);
   --pos-nav-size: 220px;
   --pos-cart-button-size: 56px;
+  --pos-scrollbar-clearance: 6px;
   color-scheme: light;
 }
 html {
@@ -7022,6 +7009,7 @@ button:disabled {
   grid-row: 1;
   min-width: 0;
   padding: 32px clamp(20px, 4vw, 64px) !important;
+  padding-right: calc(clamp(20px, 4vw, 64px) + var(--pos-scrollbar-clearance)) !important;
   overflow-y: auto;
   background: var(--pos-bg);
 }
@@ -7114,6 +7102,12 @@ button:disabled {
 .content-section.active {
   flex: 1 0 auto;
   min-height: 0;
+  animation: workspace-in 0.18s ease-out;
+}
+#settings.content-section.active {
+  animation: none;
+}
+.settings-section.active {
   animation: workspace-in 0.18s ease-out;
 }
 @keyframes workspace-in {
@@ -7447,6 +7441,7 @@ body #firebaseSignOut { flex-shrink: 0; }
   }
   .workspace-main {
     padding-inline: 24px !important;
+    padding-right: calc(24px + var(--pos-scrollbar-clearance)) !important;
   }
 }
 @media (min-width: 900px) and (max-width: 1366px) {
@@ -7568,6 +7563,7 @@ body #firebaseSignOut { flex-shrink: 0; }
   .workspace-main {
     flex: 1;
     padding: 22px 20px !important;
+    padding-right: calc(20px + var(--pos-scrollbar-clearance)) !important;
   }
   .workspace-heading {
     padding-right: 210px;
@@ -7598,6 +7594,7 @@ body #firebaseSignOut { flex-shrink: 0; }
   }
   .workspace-main {
     padding: 18px 14px !important;
+    padding-right: calc(14px + var(--pos-scrollbar-clearance)) !important;
   }
   .workspace-heading {
     padding-right: 0;
@@ -9471,6 +9468,7 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
 .gj-ui #cartModalBody {
   min-height: 0;
   padding: 16px;
+  padding-right: calc(16px + var(--pos-scrollbar-clearance)) !important;
   overscroll-behavior: contain;
   scroll-padding: 16px;
 }
@@ -9552,7 +9550,7 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
   gap: 8px;
   margin-left: auto;
 }
-.gj-ui #cartModalBody :is(.cart-edit-btn, .cart-delete-btn) {
+.gj-ui #cartModalBody .cart-edit-btn {
   width: auto;
   min-width: 48px;
   min-height: 48px;
@@ -9967,8 +9965,7 @@ body.gj-ui :is(#giftboxProducts, #giftProducts, #cakeProducts) .giftbox-quantity
 .gj-ui #cartModalBody .cart-swipe-actions { position: absolute; inset: 0; background: var(--gj-danger); }
 .gj-ui #cartModalBody .cart-swipe-delete { position: absolute; inset-block: 0; right: 0; width: 88px; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; border: 0; border-radius: 0; background: var(--gj-danger) !important; color: var(--gj-on-danger) !important; font-size: 14px; line-height: 1.4; }
 .gj-ui #cartModalBody .cart-swipe-delete:focus-visible { outline-color: var(--gj-on-danger) !important; outline-offset: -4px; }
-.gj-ui #cartModalBody .cart-delete-btn { border-color: transparent; background: transparent; color: var(--gj-muted); }
-.gj-ui #cartModalBody .cart-delete-btn:hover { border-color: var(--gj-border); color: var(--gj-text); }
+.gj-ui #cartModalBody .cart-item-options { display: block; width: 100%; min-height: 44px; margin: -10px 0; padding: 10px 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; text-align: left; touch-action: pan-y; }
 .gj-ui #cartModalBody .is-swiping { cursor: grabbing; }
 .gj-ui #cartModalBody .is-swipe-armed .cart-swipe-delete span { font-weight: 700; }
 .gj-ui #cartModalBody .cart-removal-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }

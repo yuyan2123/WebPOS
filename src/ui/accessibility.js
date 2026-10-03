@@ -120,7 +120,9 @@ export function initializeAccessibility() {
   new MutationObserver((records) => {
     if (
       records.every(
-        (record) => record.target instanceof Element && record.target.closest('#overlayScrollbars'),
+        (record) =>
+          record.target instanceof Element &&
+          record.target.closest('#overlayScrollbars,.product-order-floating,.cart-removal-layer'),
       )
     )
       return;

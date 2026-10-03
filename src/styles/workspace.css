@@ -25,6 +25,7 @@
   --pos-ring: var(--gj-focus);
   --pos-nav-size: 220px;
   --pos-cart-button-size: 56px;
+  --pos-scrollbar-clearance: 6px;
   color-scheme: light;
 }
 html {
@@ -212,6 +213,7 @@ button:disabled {
   grid-row: 1;
   min-width: 0;
   padding: 32px clamp(20px, 4vw, 64px) !important;
+  padding-right: calc(clamp(20px, 4vw, 64px) + var(--pos-scrollbar-clearance)) !important;
   overflow-y: auto;
   background: var(--pos-bg);
 }
@@ -304,6 +306,12 @@ button:disabled {
 .content-section.active {
   flex: 1 0 auto;
   min-height: 0;
+  animation: workspace-in 0.18s ease-out;
+}
+#settings.content-section.active {
+  animation: none;
+}
+.settings-section.active {
   animation: workspace-in 0.18s ease-out;
 }
 @keyframes workspace-in {
@@ -637,6 +645,7 @@ body #firebaseSignOut { flex-shrink: 0; }
   }
   .workspace-main {
     padding-inline: 24px !important;
+    padding-right: calc(24px + var(--pos-scrollbar-clearance)) !important;
   }
 }
 @media (min-width: 900px) and (max-width: 1366px) {
@@ -758,6 +767,7 @@ body #firebaseSignOut { flex-shrink: 0; }
   .workspace-main {
     flex: 1;
     padding: 22px 20px !important;
+    padding-right: calc(20px + var(--pos-scrollbar-clearance)) !important;
   }
   .workspace-heading {
     padding-right: 210px;
@@ -788,6 +798,7 @@ body #firebaseSignOut { flex-shrink: 0; }
   }
   .workspace-main {
     padding: 18px 14px !important;
+    padding-right: calc(14px + var(--pos-scrollbar-clearance)) !important;
   }
   .workspace-heading {
     padding-right: 0;

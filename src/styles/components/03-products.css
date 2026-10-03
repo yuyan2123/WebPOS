@@ -177,26 +177,6 @@
   justify-content: center;
 }
 
-.cart-delete-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--gj-surface);
-  background: var(--gj-surface);
-  color: var(--gj-danger);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cart-delete-btn:hover {
-  background: var(--gj-surface);
-  border-color: var(--gj-danger);
-}
-
 .cart-edit-btn {
   width: 32px;
   height: 32px;

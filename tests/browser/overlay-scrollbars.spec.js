@@ -26,7 +26,7 @@ test('overlay scrollbars drag both axes without reserving layout space', async (
     el.style.height = '1400px';
   });
   await target.hover();
-  await target.evaluate((el) => el.scrollTop = 1);
+  await target.evaluate((el) => (el.scrollTop = 1));
   const y = page.locator('.overlay-scrollbar-y[data-scroll-target="scrollFixture"]');
   const x = page.locator('.overlay-scrollbar-x[data-scroll-target="scrollFixture"]');
   await expect(y).toBeVisible();
@@ -107,7 +107,7 @@ test('floating scrollbar dragging does not trigger outside-click handlers', asyn
     el.style.height = '1400px';
   });
   await page.locator('#scrollFixture').hover();
-  await page.locator('#scrollFixture').evaluate((el) => el.scrollTop = 1);
+  await page.locator('#scrollFixture').evaluate((el) => (el.scrollTop = 1));
   await page.evaluate(() => {
     window.outsideClicks = 0;
     document.addEventListener(
@@ -140,6 +140,121 @@ test('touch scrolling remains native with floating controls', async ({ page }, t
   await expect.poll(() => page.locator('#scrollFixture').evaluate((el) => el.scrollTop)).toBeGreaterThan(50);
   await touch.detach();
   expect(errors).toEqual([]);
+});
+
+test('nested floating scrollbars follow parent scrolling and clipping', async ({ page }) => {
+  const errors = await fixture(page);
+  await page.locator('#scrollContent').evaluate((content) => {
+    content.style.height = '1400px';
+    const nested = document.createElement('div');
+    nested.id = 'nestedScrollFixture';
+    nested.style.cssText = 'position:relative;top:300px;width:160px;height:100px;overflow:auto';
+    nested.innerHTML = '<div style="height:800px">內層捲動區</div>';
+    content.append(nested);
+  });
+  const track = page.locator('.overlay-scrollbar-y[data-scroll-target="nestedScrollFixture"]');
+  await expect(track).toHaveCount(1);
+  await expect(track).toBeHidden();
+  await page.locator('#scrollFixture').evaluate((target) => {
+    target.scrollTop = 280;
+  });
+  await expect(track).toBeVisible();
+  const position = await track.boundingBox();
+  await page.locator('#scrollFixture').evaluate((target) => {
+    target.scrollTop = 300;
+  });
+  await expect.poll(async () => (await track.boundingBox())?.y).toBeLessThan(position.y - 15);
+  await page.locator('#scrollFixture').evaluate((target) => {
+    target.scrollTop = 440;
+  });
+  await expect(track).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('floating scrollbars follow moving scrollers throughout a page animation', async ({ page }) => {
+  await fixture(page);
+  const target = page.locator('#scrollFixture');
+  await page.locator('#scrollContent').evaluate((content) => {
+    content.style.height = '1400px';
+  });
+  const track = page.locator('.overlay-scrollbar-y[data-scroll-target="scrollFixture"]');
+  await expect(track).toBeVisible();
+  await page.addStyleTag({
+    content:
+      '@keyframes scrollbar-fixture-slide { from { transform: translateY(0); } to { transform: translateY(80px); } } #scrollFixture.moving { animation: scrollbar-fixture-slide 1s linear; }',
+  });
+  await target.evaluate((target) => {
+    target.classList.add('moving');
+    const animation = target.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = 200;
+  });
+  const expected = await target.evaluate(
+    (target) => target.getBoundingClientRect().top + target.clientTop + 4,
+  );
+  await expect.poll(async () => Math.abs((await track.boundingBox()).y - expected)).toBeLessThan(1);
+  await target.evaluate((target) => {
+    target.getAnimations()[0].currentTime = 600;
+  });
+  await expect.poll(async () => Math.abs((await track.boundingBox()).y - expected - 32)).toBeLessThan(1);
+  await target.evaluate((target) => {
+    target.classList.remove('moving');
+  });
+});
+
+test('scrolling and pointer movement reuse geometry without rescanning unrelated content', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Measure the same Chromium desktop workload once.');
+  await fixture(page);
+  await page.locator('#scrollContent').evaluate((content) => {
+    content.style.height = '1400px';
+  });
+  await expect(page.locator('.overlay-scrollbar-y[data-scroll-target="scrollFixture"]')).toBeVisible();
+  await page.mouse.move(100, 100);
+  // Allow discovery and ResizeObserver notifications to settle before measuring the hot path.
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    window.__scrollReads = { styles: 0, bounds: 0, fullScans: 0 };
+    const style = window.getComputedStyle;
+    const bounds = Element.prototype.getBoundingClientRect;
+    const query = Element.prototype.querySelectorAll;
+    window.getComputedStyle = function (...args) {
+      window.__scrollReads.styles++;
+      return style.apply(this, args);
+    };
+    Element.prototype.getBoundingClientRect = function (...args) {
+      window.__scrollReads.bounds++;
+      return bounds.apply(this, args);
+    };
+    Element.prototype.querySelectorAll = function (selector) {
+      if (this === document.body && selector === '*') window.__scrollReads.fullScans++;
+      return query.call(this, selector);
+    };
+  });
+  for (let step = 0; step < 24; step++) await page.mouse.move(100 + step * 2, 100);
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        let frames = 0;
+        const target = document.getElementById('scrollFixture');
+        function frame() {
+          target.scrollTop += 10;
+          if (++frames === 24) resolve();
+          else requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }),
+  );
+  const reads = await page.evaluate(() => window.__scrollReads);
+  expect(reads.fullScans).toBe(0);
+  expect(reads.styles).toBeLessThanOrEqual(6);
+  expect(reads.bounds).toBeLessThanOrEqual(8);
+  await page.locator('#scrollContent').evaluate((content) => {
+    content.classList.add('scroll-fixture-highlight');
+  });
+  await page.waitForTimeout(120);
+  expect(await page.evaluate(() => window.__scrollReads.fullScans)).toBe(0);
 });
 
 test.describe('touch scrollbar visibility', () => {

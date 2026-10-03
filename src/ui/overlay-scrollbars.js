@@ -8,10 +8,11 @@ function initializeOverlayScrollbars() {
   document.documentElement.classList.add('overlay-scrollbars-ready');
   const entries = new Map();
   const observed = new Set();
+  const scanRoots = new Map();
+  const motions = new Map();
   let pending = 0;
   let scanTimer = 0;
   let hideTimer = 0;
-  let movingUntil = 0;
   let hovered = null;
   let drag = null;
   const touchDevice = window.matchMedia('(any-pointer: coarse)');
@@ -23,14 +24,27 @@ function initializeOverlayScrollbars() {
   syncDevice();
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const isRoot = (target) => target === document.scrollingElement;
-  const resize = new ResizeObserver(() => schedule());
+  const resize = new ResizeObserver(() => invalidate());
 
   function schedule() {
     if (!pending) pending = requestAnimationFrame(update);
   }
-  function requestScan() {
+  function invalidate(target = null, descendantsOnly = false) {
+    for (const entry of entries.values()) {
+      if (!target || target.contains(entry.target) || (!descendantsOnly && entry.target.contains(target)))
+        entry.dirty = true;
+    }
     schedule();
+  }
+  function requestScan(target = document.body, subtree = true) {
+    if (!(target instanceof HTMLElement) || !target.isConnected || layer.contains(target)) return;
+    scanRoots.set(target, subtree || scanRoots.get(target) || false);
+    invalidate();
     if (!scanTimer) scanTimer = setTimeout(scan, 80);
+  }
+  function writeStyles(target, styles) {
+    for (const [name, value] of Object.entries(styles))
+      if (target.style[name] !== value) target.style[name] = value;
   }
   function activate(entry) {
     entry.activeUntil = performance.now() + 1100;
@@ -123,29 +137,48 @@ function initializeOverlayScrollbars() {
   function scan() {
     clearTimeout(scanTimer);
     scanTimer = 0;
-    const candidates = new Set([document.scrollingElement]);
-    for (const target of document.body.querySelectorAll('*')) {
-      if (!(target instanceof HTMLElement) || layer.contains(target) || target.tagName === 'SELECT') continue;
+    function inspect(target) {
+      if (!(target instanceof HTMLElement) || layer.contains(target) || target.tagName === 'SELECT') return;
       const style = getComputedStyle(target);
-      if (/(auto|scroll)/.test(style.overflowX + style.overflowY)) candidates.add(target);
+      const scrollable = isRoot(target) || /(auto|scroll)/.test(style.overflowX + style.overflowY);
+      const existing = entries.get(target);
+      if (scrollable && !existing) {
+        const entry = { target, geometry: {}, activeUntil: 0, tabIndexAdded: false, dirty: true };
+        entry.x = createTrack(entry, 'x');
+        entry.y = createTrack(entry, 'y');
+        entries.set(target, entry);
+      } else if (!scrollable && existing) remove(existing);
     }
-    for (const [target, entry] of entries) {
-      if (candidates.has(target) && target.isConnected) continue;
+    function remove(entry) {
       if (drag?.entry === entry) finishDrag();
       entry.x.track.remove();
       entry.y.track.remove();
-      if (entry.tabIndexAdded && target.getAttribute('tabindex') === '0') target.removeAttribute('tabindex');
-      entries.delete(target);
+      if (entry.tabIndexAdded && entry.target.getAttribute('tabindex') === '0')
+        entry.target.removeAttribute('tabindex');
+      entries.delete(entry.target);
     }
-    for (const target of candidates) {
-      if (!target || entries.has(target)) continue;
-      const entry = { target, geometry: {}, activeUntil: 0, tabIndexAdded: false };
-      entry.x = createTrack(entry, 'x');
-      entry.y = createTrack(entry, 'y');
-      entries.set(target, entry);
+    inspect(document.scrollingElement);
+    // Attribute changes inspect one element; discovery visits only newly added subtrees.
+    // Navigation and dragging must never rescan the complete catalog.
+    for (const [root, subtree] of scanRoots) {
+      if (!root.isConnected) continue;
+      let covered = false;
+      for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+        if (scanRoots.get(parent)) {
+          covered = true;
+          break;
+        }
+      }
+      if (covered) continue;
+      inspect(root);
+      if (subtree) for (const target of root.querySelectorAll('*')) inspect(target);
+    }
+    scanRoots.clear();
+    for (const [target, entry] of entries) {
+      if (!target.isConnected) remove(entry);
     }
     const nextObserved = new Set();
-    for (const target of candidates) {
+    for (const target of entries.keys()) {
       if (!target) continue;
       nextObserved.add(target);
       for (const child of target.children) if (child !== layer) nextObserved.add(child);
@@ -198,93 +231,128 @@ function initializeOverlayScrollbars() {
     pending = 0;
     const now = performance.now();
     const writes = [];
+    let moving = false;
+    for (const target of motions.keys()) if (!target.isConnected) motions.delete(target);
     for (const entry of entries.values()) {
       const { target } = entry;
-      const bounds = visibleBounds(target);
-      const style = getComputedStyle(target);
-      const axes = {
-        x:
-          (isRoot(target) || /(auto|scroll)/.test(style.overflowX)) &&
-          target.scrollWidth > target.clientWidth + 1,
-        y:
-          (isRoot(target) || /(auto|scroll)/.test(style.overflowY)) &&
-          target.scrollHeight > target.clientHeight + 1,
-      };
-      if (
-        bounds &&
-        (axes.x || axes.y) &&
-        !isRoot(target) &&
-        target.tabIndex < 0 &&
-        !target.hasAttribute('tabindex')
-      ) {
-        writes.push(() => { target.tabIndex = 0; });
-        entry.tabIndexAdded = true;
-      } else if (!axes.x && !axes.y && entry.tabIndexAdded && target.getAttribute('tabindex') === '0') {
-        writes.push(() => target.removeAttribute('tabindex'));
-        entry.tabIndexAdded = false;
+      for (const animated of motions.keys()) {
+        if (animated === target || animated.contains(target)) {
+          entry.dirty = true;
+          moving = true;
+          break;
+        }
       }
+      if (entry.dirty) measure(entry, writes);
       for (const axis of ['x', 'y']) {
         const { track, thumb } = entry[axis];
-        let visible = bounds && axes[axis];
-        if (visible) {
-          const vertical = axis === 'y';
-          const length =
-            (vertical ? bounds.bottom - bounds.top : bounds.right - bounds.left) -
-            8 -
-            (axes[vertical ? 'x' : 'y'] ? 12 : 0);
-          const client = vertical ? target.clientHeight : target.clientWidth;
-          const total = vertical ? target.scrollHeight : target.scrollWidth;
-          const thumbLength = Math.min(length, Math.max(28, (length * client) / total));
-          const max = total - client;
-          const travel = length - thumbLength;
-          const position = clamp(vertical ? target.scrollTop : target.scrollLeft, 0, max);
-          const left = vertical ? bounds.right - 13 : bounds.left + 4;
-          const top = vertical ? bounds.top + 4 : bounds.bottom - 13;
-          visible =
-            travel > 0 &&
-            unobstructed(target, left + (vertical ? 5 : length / 2), top + (vertical ? length / 2 : 5));
-          if (visible) {
-            writes.push(() => {
-              Object.assign(track.style, {
-                left: `${left}px`,
-                top: `${top}px`,
-                width: `${vertical ? 12 : length}px`,
-                height: `${vertical ? length : 12}px`,
-              });
-              Object.assign(thumb.style, {
-                width: vertical ? '' : `${thumbLength}px`,
-                height: vertical ? `${thumbLength}px` : '',
-                transform: `translate${vertical ? 'Y' : 'X'}(${(position / max) * travel}px)`,
-              });
-            });
-            entry.geometry[axis] = { start: vertical ? top : left, thumb: thumbLength, travel, max };
-          }
-        }
-        if (!visible) {
-          delete entry.geometry[axis];
-          if (drag?.entry === entry && drag.axis === axis) finishDrag();
-        }
+        const geometry = entry.geometry[axis];
         const active = Boolean(
-          visible &&
+          geometry &&
           (entry.activeUntil > now ||
             (!touchDevice.matches &&
-              (target.contains(hovered) ||
-                (!isRoot(target) && target.contains(document.activeElement)))) ||
+              (target.contains(hovered) || (!isRoot(target) && target.contains(document.activeElement)))) ||
             drag?.entry === entry),
         );
+        const position =
+          geometry && clamp(axis === 'y' ? target.scrollTop : target.scrollLeft, 0, geometry.max);
         writes.push(() => {
-          track.hidden = !visible;
-          track.classList.toggle('is-visible', active);
+          if (geometry)
+            writeStyles(thumb, {
+              transform: `translate${axis === 'y' ? 'Y' : 'X'}(${(position / geometry.max) * geometry.travel}px)`,
+            });
+          if (track.hidden !== !geometry) track.hidden = !geometry;
+          if (track.classList.contains('is-visible') !== active) track.classList.toggle('is-visible', active);
         });
       }
     }
-    // Geometry for every scroller is read before any proxy changes its styles.
+    // Normal scrolling only changes thumb transforms. All geometry reads precede writes.
     writes.forEach((write) => write());
-    if (now < movingUntil) schedule();
+    if (moving) schedule();
+  }
+  function measure(entry, writes) {
+    const { target } = entry;
+    entry.dirty = false;
+    const bounds = visibleBounds(target);
+    const style = getComputedStyle(target);
+    const axes = {
+      x:
+        (isRoot(target) || /(auto|scroll)/.test(style.overflowX)) &&
+        target.scrollWidth > target.clientWidth + 1,
+      y:
+        (isRoot(target) || /(auto|scroll)/.test(style.overflowY)) &&
+        target.scrollHeight > target.clientHeight + 1,
+    };
+    entry.overflowing = axes.x || axes.y;
+    if (
+      bounds &&
+      (axes.x || axes.y) &&
+      !isRoot(target) &&
+      target.tabIndex < 0 &&
+      !target.hasAttribute('tabindex')
+    ) {
+      writes.push(() => {
+        target.tabIndex = 0;
+      });
+      entry.tabIndexAdded = true;
+    } else if (!axes.x && !axes.y && entry.tabIndexAdded && target.getAttribute('tabindex') === '0') {
+      writes.push(() => target.removeAttribute('tabindex'));
+      entry.tabIndexAdded = false;
+    }
+    for (const axis of ['x', 'y']) {
+      const { track, thumb } = entry[axis];
+      let visible = bounds && axes[axis];
+      if (visible) {
+        const vertical = axis === 'y';
+        const length =
+          (vertical ? bounds.bottom - bounds.top : bounds.right - bounds.left) -
+          8 -
+          (axes[vertical ? 'x' : 'y'] ? 12 : 0);
+        const client = vertical ? target.clientHeight : target.clientWidth;
+        const total = vertical ? target.scrollHeight : target.scrollWidth;
+        const thumbLength = Math.min(length, Math.max(28, (length * client) / total));
+        const max = total - client;
+        const travel = length - thumbLength;
+        const left = vertical ? bounds.right - 13 : bounds.left + 4;
+        const top = vertical ? bounds.top + 4 : bounds.bottom - 13;
+        visible =
+          travel > 0 &&
+          unobstructed(target, left + (vertical ? 5 : length / 2), top + (vertical ? length / 2 : 5));
+        if (visible) {
+          writes.push(() => {
+            writeStyles(track, {
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${vertical ? 12 : length}px`,
+              height: `${vertical ? length : 12}px`,
+            });
+            writeStyles(thumb, {
+              width: vertical ? '' : `${thumbLength}px`,
+              height: vertical ? `${thumbLength}px` : '',
+            });
+          });
+          entry.geometry[axis] = { start: vertical ? top : left, thumb: thumbLength, travel, max };
+        }
+      }
+      if (!visible) {
+        delete entry.geometry[axis];
+        if (drag?.entry === entry && drag.axis === axis) finishDrag();
+      }
+    }
   }
 
   new MutationObserver((records) => {
-    if (records.some((record) => !layer.contains(record.target))) requestScan();
+    for (const record of records) {
+      if (
+        !(record.target instanceof Element) ||
+        record.target.closest('#overlayScrollbars,.product-order-floating,.cart-removal-layer')
+      )
+        continue;
+      invalidate();
+      if (record.type === 'attributes') requestScan(record.target, false);
+      else for (const node of record.addedNodes) if (node instanceof HTMLElement) requestScan(node);
+    }
+    if (!scanTimer && [...entries.keys()].some((target) => !target.isConnected))
+      scanTimer = setTimeout(scan, 80);
   }).observe(document.body, {
     subtree: true,
     childList: true,
@@ -296,6 +364,8 @@ function initializeOverlayScrollbars() {
     (event) => {
       const entry = entries.get(event.target === document ? document.scrollingElement : event.target);
       if (entry) activate(entry);
+      for (const child of entries.values())
+        if (child !== entry && child.overflowing && entry?.target.contains(child.target)) child.dirty = true;
       schedule();
     },
     true,
@@ -304,7 +374,10 @@ function initializeOverlayScrollbars() {
     'pointermove',
     (event) => {
       if (layer.contains(event.target)) return;
-      hovered = event.pointerType === 'touch' ? null : event.target;
+      let target = event.pointerType === 'touch' ? null : event.target;
+      while (target && !entries.has(target)) target = target.parentElement;
+      if (hovered === target) return;
+      hovered = target;
       schedule();
     },
     { passive: true },
@@ -324,23 +397,43 @@ function initializeOverlayScrollbars() {
     },
     true,
   );
-  for (const name of ['input', 'focusin', 'focusout', 'load'])
-    document.addEventListener(name, schedule, true);
-  for (const name of ['transitionrun', 'animationstart', 'transitionend', 'animationend']) {
+  for (const name of ['focusin', 'focusout']) document.addEventListener(name, schedule, true);
+  document.addEventListener('input', (event) => invalidate(event.target), true);
+  document.addEventListener('load', () => invalidate(), true);
+  for (const name of [
+    'transitionstart',
+    'animationstart',
+    'transitionend',
+    'animationend',
+    'transitioncancel',
+    'animationcancel',
+  ]) {
     document.addEventListener(
       name,
       (event) => {
         if (layer.contains(event.target)) return;
-        movingUntil = performance.now() + 650;
-        schedule();
+        const target = event.target;
+        const key = event.type.startsWith('transition')
+          ? `transition:${event.propertyName}`
+          : `animation:${event.animationName}`;
+        if (event.type.endsWith('start')) {
+          if (event.propertyName === 'opacity' || /color|shadow/.test(event.propertyName || '')) return;
+          if (!motions.has(target)) motions.set(target, new Set());
+          motions.get(target).add(key);
+        } else {
+          motions.get(target)?.delete(key);
+          if (!motions.get(target)?.size) motions.delete(target);
+        }
+        invalidate(target, true);
       },
       true,
     );
   }
-  window.addEventListener('resize', requestScan);
-  window.visualViewport?.addEventListener('resize', requestScan);
-  window.visualViewport?.addEventListener('scroll', schedule);
-  document.fonts?.ready.then(requestScan);
+  window.addEventListener('resize', () => requestScan());
+  window.visualViewport?.addEventListener('resize', () => requestScan());
+  window.visualViewport?.addEventListener('scroll', () => invalidate());
+  document.fonts?.ready.then(() => requestScan());
+  scanRoots.set(document.body, true);
   scan();
 }
 

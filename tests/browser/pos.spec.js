@@ -2628,7 +2628,7 @@ test('catalog uses gift-box cards with details and quantities synchronized to th
   await expect(page.locator('#cartTotalAmount')).toHaveText('50');
   await page.locator('#cartModalBody .cart-qty-btn').last().click();
   await expect(quantity).toHaveValue('3');
-  await page.locator('#cartModalBody .cart-delete-btn').click();
+  await page.locator('#cartModalBody .cart-item-options').click();
   await expect(quantity).toHaveValue('3');
   await page.locator('#cartModalBody .cart-swipe-delete').click();
   await expect(quantity).toHaveValue('0');
@@ -3906,7 +3906,7 @@ test('custom categories support unified catalog, cart and order editing', async 
   await expect(page.locator('#cartModalBody')).toContainText('烏龍茶');
   await page.locator('#cartModalBody .cart-qty-btn').last().click();
   await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
-  await page.locator('#cartModalBody .cart-delete-btn').click();
+  await page.locator('#cartModalBody .cart-item-options').click();
   await expect(page.locator('#workspaceQuantity')).toHaveText('2 件商品');
   await page.locator('#cartModalBody .cart-swipe-delete').click();
   await expect(page.locator('#workspaceQuantity')).toHaveText('0 件商品');
@@ -4294,6 +4294,31 @@ for (const width of [384, 512, 576]) {
     expect(qr.location.topLeftCorner.y - 4 * moduleSize).toBeCloseTo(orderLine * 40, 0);
   });
 }
+
+test('management panel navigation replays the page transition on every panel change', async ({ page }) => {
+  const errors = await openWorkspace(page);
+  await page.evaluate(() => {
+    window.__panelAnimations = [];
+    document.addEventListener('animationstart', (event) => {
+      if (event.target.classList.contains('settings-section')) {
+        window.__panelAnimations.push(event.target.id);
+      }
+    });
+  });
+  const seen = [];
+  for (const panel of ['products', 'capacity', 'device', 'products', 'capacity']) {
+    await openManagementPanel(page, panel);
+    seen.push('settings' + panel.charAt(0).toUpperCase() + panel.slice(1));
+    await expect.poll(() => page.evaluate(() => window.__panelAnimations)).toEqual(seen);
+    await expect(page.locator('.settings-section.active')).toHaveAttribute('id', seen.at(-1));
+    await settleUI(page);
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openManagementPanel(page, 'products');
+  await expect(page.locator('#settingsProducts')).toBeVisible();
+  expect(await page.locator('#settingsProducts').evaluate((panel) => panel.getAnimations().length)).toBe(0);
+  expect(errors).toEqual([]);
+});
 
 test('product order saves across management, POS and reload; cancel preserves order', async ({ page }) => {
   const errors = await openWorkspace(page);
